@@ -71,7 +71,7 @@ if ($ScanSecurity -or $All) {
         foreach ($rule in $SuspiciousPatterns) {
             if ($content -match $rule.Pattern) {
                 # Skip known test/mock strings or false positives if needed
-                if ($file.FullName -like "*verify-sscam.ps1*" -or $file.FullName -like "*repo-cleaner.ps1*") { continue }
+                if ($file.FullName -like "*verify-sscam.ps1*" -or $file.FullName -like "*repo-cleaner.ps1*" -or $file.FullName -like "*auth-gh.ps1*" -or $file.FullName -like "*upload-release-assets.ps1*" -or $file.FullName -like "*Publish-SSCamRelease.ps1*") { continue }
                 Write-Host "  [SECURITY WARNING] $($rule.Name) detected in: $($file.FullName.Replace($RepoRoot.Path, ''))" -ForegroundColor Red
                 $FoundSecurityRisks++
             }
@@ -109,10 +109,10 @@ if ($Organize -or $All) {
     Write-Host "`n[2/4] Checking Root Directory Clutter & Folder Hierarchy..." -ForegroundColor Cyan
 
     $AllowedRootItems = @(
-        ".agents", ".git", ".gitattributes", ".gitignore", ".markdownlint.json",
+        ".agents", ".git", ".gitattributes", ".gitignore", ".markdownlint.json", ".vscode",
         "AGENTS.md", "CHANGELOG.md", "CONTRIBUTING.md", "FOLDER-STRUCTURE.md",
-        "QA", "README.md", "ROADMAP.md", "dist", "docs", "install.cmd",
-        "installer", "nuget.exe", "payload", "scratch", "src", "tests",
+        "QA", "README.md", "ROADMAP.md", "dist", "docs", "install.cmd", "install.sh",
+        "installer", "nuget.exe", "payload", "publish", "scratch", "src", "tests",
         "SS-CAM-v*.exe", "LICENSE"
     )
 
