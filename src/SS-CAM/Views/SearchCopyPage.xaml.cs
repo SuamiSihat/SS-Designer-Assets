@@ -14,6 +14,7 @@ using System.Threading.Tasks;
 using SS_CAM.Models;
 using SS_CAM.Services;
 using SS_CAM.Utilities;
+using SS_CAM.Dialogs;
 
 namespace SS_CAM.Views
 {
@@ -620,6 +621,10 @@ namespace SS_CAM.Views
             });
 
             ImageGalleryList.ItemsSource = images;
+            if (TxtGalleryItemCount != null)
+            {
+                TxtGalleryItemCount.Text = string.Format("({0} images)", images.Count);
+            }
         }
 
         private void OnImageGalleryDoubleClicked(object sender, MouseButtonEventArgs e)
@@ -627,31 +632,44 @@ namespace SS_CAM.Views
             ProjectImageItem item = ImageGalleryList.SelectedItem as ProjectImageItem;
             if (item != null && File.Exists(item.FullPath))
             {
-                ShowFullImageModal(item.FullPath, item.FileName);
+                OpenVisualDiff(item.FullPath);
             }
         }
 
-        private void ShowFullImageModal(string imagePath, string title)
+        private void OnCompareRevisionsClicked(object sender, RoutedEventArgs e)
         {
-            Window win = new Window
-            {
-                Title = title,
-                Width = 900,
-                Height = 650,
-                WindowStartupLocation = WindowStartupLocation.CenterScreen,
-                Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#0F172A"))
-            };
+            ProjectImageItem item = ImageGalleryList != null ? ImageGalleryList.SelectedItem as ProjectImageItem : null;
+            string targetPath = item != null && File.Exists(item.FullPath) ? item.FullPath : null;
+            OpenVisualDiff(targetPath);
+        }
 
-            Grid g = new Grid();
-            Image img = new Image
+        private void OpenVisualDiff(string activeFile = null)
+        {
+            if (selectedItem == null || !Directory.Exists(selectedItem.FullPath))
             {
-                Source = new System.Windows.Media.Imaging.BitmapImage(new Uri(imagePath)),
-                Stretch = Stretch.Uniform,
-                Margin = new Thickness(16)
-            };
-            g.Children.Add(img);
-            win.Content = g;
-            win.ShowDialog();
+                NotificationService.ShowWarning("No Project Selected", "Please select a project with image assets to compare revisions.");
+                return;
+            }
+
+            string projectPath = selectedItem.FullPath;
+            List<RevisionPair> pairs = VisualDiffService.DetectRevisionPairs(projectPath, activeFile);
+
+            string before = null;
+            string after = null;
+
+            if (pairs.Count > 0)
+            {
+                before = pairs[0].BeforePath;
+                after = pairs[0].AfterPath;
+            }
+            else if (!string.IsNullOrWhiteSpace(activeFile))
+            {
+                before = activeFile;
+            }
+
+            VisualDiffDialog dialog = new VisualDiffDialog(projectPath, before, after);
+            dialog.Owner = Window.GetWindow(this);
+            dialog.ShowDialog();
         }
 
         private void OnInspectorStatusChanged(object sender, SelectionChangedEventArgs e)

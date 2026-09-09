@@ -220,6 +220,145 @@ namespace SS_CAM.Services
             return text.Trim();
         }
 
+        public static string FormatForWhatsApp(string markdown)
+        {
+            if (string.IsNullOrWhiteSpace(markdown)) return string.Empty;
+
+            string text = markdown;
+
+            // Convert Markdown headers #, ##, ### to WhatsApp bold:
+            text = Regex.Replace(text, @"^#{1,6}\s*(.+)$", "*$1*", RegexOptions.Multiline);
+
+            // Convert standard double asterisks markdown **text** to single *text* for WhatsApp
+            text = Regex.Replace(text, @"\*\*([^*]+)\*\*", "*$1*");
+            text = Regex.Replace(text, @"__([^_]+)__", "*$1*");
+
+            // Convert markdown strikethrough ~~text~~ to WhatsApp ~text~
+            text = Regex.Replace(text, @"~~([^~]+)~~", "~$1~");
+
+            // Convert markdown links [Text](url) to *Text*: url
+            text = Regex.Replace(text, @"\[([^\]]+)\]\(([^)]+)\)", "*$1*: $2");
+
+            // Clean blockquotes >
+            text = Regex.Replace(text, @"^>\s*", "", RegexOptions.Multiline);
+
+            // Clean table separators |---|---|
+            text = Regex.Replace(text, @"^\|?\s*:?-+:?\s*\|.*$", "", RegexOptions.Multiline);
+            // Replace table row pipes with clean bullet points
+            text = Regex.Replace(text, @"^\|\s*(.+?)\s*\|\s*(.+?)\s*\|.*$", "• $1 — $2", RegexOptions.Multiline);
+
+            // Convert checklist - [x] to WhatsApp checkmark emoji
+            text = Regex.Replace(text, @"-\s*\[[xX]\]\s*", "✅ ");
+            text = Regex.Replace(text, @"-\s*\[\s*\]\s*", "◻️ ");
+            text = Regex.Replace(text, @"^-\s+", "• ", RegexOptions.Multiline);
+
+            // Collapse 3+ consecutive line breaks
+            text = Regex.Replace(text, @"\n{3,}", "\n\n");
+
+            return text.Trim();
+        }
+
+        public static void ExtractHeadlineAndCta(string markdown, out string headline, out string cta, out string primaryText)
+        {
+            headline = "SuamiSihat — Formulasi Tenaga & Vitaliti Maskulin Premium";
+            cta = "Send Message";
+            primaryText = string.Empty;
+
+            if (string.IsNullOrWhiteSpace(markdown))
+            {
+                return;
+            }
+
+            // 1. Search for explicit Headline
+            Match mHeadline = Regex.Match(markdown, @"(?:Headline|Tajuk)\s*[:：]\s*[""“']?([^""”'\r\n]+)[""”']?", RegexOptions.IgnoreCase);
+            if (mHeadline.Success && !string.IsNullOrWhiteSpace(mHeadline.Groups[1].Value))
+            {
+                headline = mHeadline.Groups[1].Value.Trim();
+            }
+            else
+            {
+                // Fallback: search for first markdown # header
+                Match mH1 = Regex.Match(markdown, @"^#{1,3}\s+(.+)$", RegexOptions.Multiline);
+                if (mH1.Success && !string.IsNullOrWhiteSpace(mH1.Groups[1].Value))
+                {
+                    string cand = mH1.Groups[1].Value.Trim();
+                    cand = Regex.Replace(cand, @"^[^a-zA-Z0-9""'\[]+", "").Trim();
+                    if (!string.IsNullOrWhiteSpace(cand))
+                    {
+                        headline = cand;
+                    }
+                }
+            }
+
+            // 2. Search for explicit CTA
+            Match mCta = Regex.Match(markdown, @"(?:CTA|Action)\s*[:：]\s*\[?\s*([^\]\r\n]+)\s*\]?", RegexOptions.IgnoreCase);
+            if (mCta.Success && !string.IsNullOrWhiteSpace(mCta.Groups[1].Value))
+            {
+                string cand = mCta.Groups[1].Value.Trim();
+                cand = cand.Trim('[', ']', ' ', '-').Replace("👉", "").Trim();
+                if (!string.IsNullOrWhiteSpace(cand))
+                {
+                    if (cand.IndexOf("whatsapp", StringComparison.OrdinalIgnoreCase) >= 0 || cand.IndexOf("mesej", StringComparison.OrdinalIgnoreCase) >= 0)
+                        cta = "Send WhatsApp";
+                    else if (cand.IndexOf("tempah", StringComparison.OrdinalIgnoreCase) >= 0 || cand.IndexOf("order", StringComparison.OrdinalIgnoreCase) >= 0 || cand.IndexOf("beli", StringComparison.OrdinalIgnoreCase) >= 0)
+                        cta = "Order Now";
+                    else if (cand.IndexOf("beg kuning", StringComparison.OrdinalIgnoreCase) >= 0 || cand.IndexOf("shop", StringComparison.OrdinalIgnoreCase) >= 0)
+                        cta = "Shop Now";
+                    else if (cand.IndexOf("dapatkan", StringComparison.OrdinalIgnoreCase) >= 0 || cand.IndexOf("claim", StringComparison.OrdinalIgnoreCase) >= 0)
+                        cta = "Get Offer";
+                    else
+                        cta = cand.Length > 20 ? cand.Substring(0, 18) + "..." : cand;
+                }
+            }
+
+            // 3. Primary text: clean markdown body
+            string clean = StripMarkdownToPlainText(markdown);
+
+            if (!string.IsNullOrWhiteSpace(headline) && clean.StartsWith(headline, StringComparison.OrdinalIgnoreCase))
+            {
+                clean = clean.Substring(headline.Length).TrimStart(' ', '\r', '\n', ':', '-');
+            }
+
+            primaryText = clean.Trim();
+        }
+
+        public static string ExtractFirstUrl(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text)) return null;
+
+            Match m = Regex.Match(text, @"https?://[^\s)""'>]+|wa\.me/[^\s)""'>]+", RegexOptions.IgnoreCase);
+            if (m.Success)
+            {
+                string url = m.Value.TrimEnd('.', ',', ';', '!', ')');
+                if (!url.StartsWith("http", StringComparison.OrdinalIgnoreCase))
+                {
+                    url = "https://" + url;
+                }
+                return url;
+            }
+            return null;
+        }
+
+        public static string FormatForMetaAds(string markdown)
+        {
+            if (string.IsNullOrWhiteSpace(markdown)) return string.Empty;
+
+            string headline, cta, primaryText;
+            ExtractHeadlineAndCta(markdown, out headline, out cta, out primaryText);
+
+            StringBuilder sb = new StringBuilder();
+            sb.AppendLine("=== PRIMARY TEXT ===");
+            sb.AppendLine(primaryText);
+            sb.AppendLine();
+            sb.AppendLine("=== HEADLINE ===");
+            sb.AppendLine(headline);
+            sb.AppendLine();
+            sb.AppendLine("=== CALL TO ACTION ===");
+            sb.AppendLine(cta);
+
+            return sb.ToString().Trim();
+        }
+
         public static void SaveSnapshot(string projectPath, string projectId, string workspaceRoot, string content)
         {
             if (string.IsNullOrWhiteSpace(content)) return;

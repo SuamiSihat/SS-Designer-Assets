@@ -1,5 +1,35 @@
 # SS-CAM FIX LOG
 
+## v4.8.0 — 2026-09-09 (Interactive Visual Asset Revision Diff Slider, Copywriting Studio Live Preview & Cross-Platform Avatar Sync)
+- **Assembly Version**: `4.8.0.0` / Android `versionCode = 480`, `versionName = "4.8.0"`
+- **Interactive Visual Asset Revision Diff Inspector (`VisualDiffService.cs`, `VisualDiffDialog.xaml`, `VisualDiffDialog.xaml.cs`)**:
+  - Standalone Fluent 2 comparison inspector extending `<ui:FluentWindow>` with `DynamicResource` tokens.
+  - 5 interactive comparison modes: Vertical Split swipe, Horizontal Split swipe, Side-by-Side dual view, Opacity Blend onion skin (0%–100%), and 32bpp Euclidean RGB Pixel Difference mapping in high-visibility magenta (`#FF007F`).
+  - Automated revision pair detection (`DetectRevisionPairs`) scanning project folders (`04_DELIVERABLES`, `Client_Revisions`, `01_CREATIVE`) for version suffixes (`_v1` → `_v2`, `draft` → `final`) with active file priority sorting.
+  - Lock-free image metadata extraction preventing Windows file locks.
+  - Synchronized lockstep zoom (0.1x–10.0x) and pan; keyboard shortcuts (<kbd>←</kbd> / <kbd>→</kbd>, <kbd>Space</kbd>, <kbd>Esc</kbd>).
+  - Integrated into `SearchCopyPage` Assets Gallery ribbon, Task Inspector Revision ribbon, and gallery double-click event.
+- **Copywriting Studio Split-View Live Preview & Formatting Engine (`CopywritingDesktopService.cs`, `CopywritingPage.xaml`, `CopywritingPage.xaml.cs`)**:
+  - Live side-by-side Markdown editor and rendered preview with 150ms debounced synchronization.
+  - Sub-mode switcher: FlowDocument (`[ Doc ]`), WhatsApp broadcast chat simulation (`[ WhatsApp ]`), Meta Ad feed sponsored post (`[ Meta Ad ]`), and dual view (`[ Both ]`).
+  - WhatsApp inline parsing (`*bold*`, `_italic_`, `~strike~`, monospace) and automatic OG link preview cards with title, domain, and thumbnail.
+  - Meta Ad headline extraction, dynamic CTA inference (`Send Message`, `Order Now`, `Shop Now`), and interactive `... See more` truncation.
+  - 1-click clipboard exporters for WhatsApp broadcast copy and structured Meta Ads Manager payload.
+- **Cross-Platform Avatar & User Profile Synchronization (`TeamService.js`, `api.js`, `UserProfileModels.cs`, `UserProfileService.cs`)**:
+  - Dedicated binary file storage inside `_Team/Users/{staffId}/avatar.jpg` and `profile.json`.
+  - Lightweight reference index in `staff_directory.json` (`avatarUrl: "/api/users/{staffId}/avatar"`).
+  - Binary streaming endpoint `GET /api/users/:id/avatar` with MIME type headers and caching.
+  - C# `StaffDirectoryItem` camelCase `[JsonProperty]` serialization and bi-directional auto-sync in `UserProfileService.LoadProfile()`.
+- **Source Guardian & Code Cleanliness**:
+  - Replaced raw high-byte Unicode characters with XML entities (`&#x2122;`, `&#x26A0;`, `&#x1F1F2;&#x1F1FE;`) in `CopywritingPage.xaml` and `CalendarPage.xaml`.
+  - Source Guardian audit passed with 7 passed, 2 warned, 0 failed.
+- **Release Verification**:
+  - Rebuilt WPF Desktop single-file executable (`dist/SS-CAM-v4.8.0.exe` and canonical `dist/SS-CAM.exe` at 5.88 MB).
+  - Rebuilt Web Portal production client bundle (2,253 modules transformed in 8.15s).
+  - Passed 30/30 backend automated tests.
+
+---
+
 ## v4.7.0 — 2026-09-09 (Velocity Navigation Engine, Canva Creative Cloud Bridge, Per-User Team Storage & Visual Timeline Alignment)
 - **Assembly Version**: `4.7.0.0` / Android `versionCode = 471`, `versionName = "4.7.0"`
 - **High-Velocity Desktop Navigation Engine (`MainWindow.xaml`, `WorkspaceScanner.cs`, `DashboardModels.cs`)**:

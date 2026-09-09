@@ -46,32 +46,19 @@
 | **v4.6.1** | 2026-09-04 | **Multi-Platform Release — Cross-Platform Creative Orders Real-Time Sync, Order Requests Scaffolding Engine & Desktop Startup Resilience**: Direct live REST API integration between Desktop (Windows WPF & Linux Avalonia) and central Web Portal (`/api/orders`), automatic JWT authentication and live queue fetching with local Synology NAS ledger caching (`creative-orders.jsonl`), instant bidirectional status sync (`PATCH /api/orders/{id}`), 1-Click project vault scaffolding (`01_Brief_and_Copy/COPY.md` + frontmatter), startup splash hang resolution, task manager Kanban overdue suppression, frontmatter YAML quote sanitization, web creative direction matrix preview & auto-wrapping markdown editor, shared team board test isolation, Android Companion App release (v4.6.1, Code 462), and Linux Avalonia release package. |
 | **v4.6.2** | 2026-09-08 | **NAS Temporary Attachment Vault, Designer Task Handover, Web Multi-File Upload & Desktop Project Creator Auto-Ingestion**: Desktop Task Manager Kanban card task ownership handover & reassignment menu (`README.md` + frontmatter sync), Synology NAS temporary intake directory (`\\SSNAS\Creative-Team\_Orders\<ORDER_ID>\`) with JSONL persistence, Web Portal drag-and-drop multi-file upload dropzone, role detection fix for composite roles (`"Admin, Designer"`), 1-click project ingestion into `01_BRIEF_ASSETS`, and Desktop Project Creator live order discovery, auto-population, and automatic attachment copy |
 | **v4.7.0** | 2026-09-09 | **Velocity Navigation Engine, Canva Cloud Bridge, Per-User Team Storage & Visual Timeline Alignment**: 0 ms desktop navigation (`NavigationCacheMode="Required"`), Canva Creative Cloud Bridge with platform auto-size launcher and `.url` scaffolding, per-user team storage architecture (`_Team/Users/{staffId}/avatar.jpg` + `profile.json`), bi-directional avatar synchronization across Web/Desktop/Android, Big Calendar 3-letter day names (`Mon..Sun`), holiday-strict red highlighting, and off-day schedule conflict prevention |
+| **v4.8.0** | 2026-09-09 | **Interactive Visual Asset Revision Diff Slider, Copywriting Studio Live Preview & Cross-Platform Avatar Sync**: 5-mode Fluent 2 Visual Diff Inspector (Vertical/Horizontal Split swipe, Side-by-Side dual view, Opacity Blend onion skin, 32bpp Euclidean Pixel Difference mapping), automated revision pair detection (`_v1` → `_v2`, `draft` → `final`), synchronized lockstep zoom & pan, Copywriting Studio split-view live preview (WhatsApp chat & Meta Ad feed simulation with OG previews and 1-click exporters), per-user team storage architecture, and zero-warning Source Guardian audit |
 
 ---
 
-## 🎯 Active Milestone — v4.8.0: Production Pipeline Intelligence (Target: Q4 2026)
+## 🎯 Active Milestone — v4.9.0: Global Studio Command Palette & Smart Ingester (Target: Q4 2026)
 
-### 1. Copywriting Studio Split-View Live Preview (Desktop)
-* **Live WhatsApp & Ad Message Card**: Real-time side-by-side rendering transforming structured Markdown into live WhatsApp bubbles (bold asterisks `*text*`, emoji spacing, call-to-action link previews) and Meta Ad primary text mockups.
-* **Instant Toggle Controls**: View mode switcher (`[Split View]`, `[Editor Only]`, `[Preview Only]`) with live character and word counters.
+### 1. Global Command Palette (`Ctrl + K`)
+* Universal keyboard launcher for jumping to projects, copying brand hex codes, searching copywriting snippets, or toggling radio stations without leaving the current view.
 
-### 2. Creative Snippet & Hook Drawer
-* **1-Click Viral Hook & CTA Inserter**: Pre-approved medical disclaimers, viral hook formulas (Problem-Agitate-Solve, Before-After-Bridge), promo code snippets, and WhatsApp routing links inserted directly at cursor position.
+### 2. Drag-and-Drop Folder Ingester
+* Drag external assets directly onto project cards in Project Creator or Search Copy to automatically ingest and organize into `01_BRIEF_ASSETS`, `02_SOURCE`, etc.
 
-### 3. Visual Polish & Art Director Enhancements
-* **Dynamic Status Pill Badges**: Standardized visual indicators for campaign lifecycle (`Active`, `In Review`, `Archived`, `NAS Synced`).
-* **Polished Empty States**: Elegant vector empty states with helpful callouts for project selection across Copywriting, Search Copy, and Task Manager.
-* **Typographic Hierarchy & Overlines**: Consistent overlines (`11px Bold CharacterSpacing="50"`), 24px hero titles, and enhanced breathing room across cards.
-
----
-
-## 🔄 In Progress — v4.8.0: Visual Asset Revision Diff & Side-by-Side Comparison (Target: Q4 2026)
-
-### 1. Interactive Split-Slider Visual Diff (Desktop & Web)
-* Split-slider comparison between deliverable revisions (`_v1.png` vs `_v2.png`, or artwork mockup vs print dieline).
-* Synchronized zoom and pan for high-resolution print exports and packaging dielines.
-
-### 2. Copywriting & Brief Revision Diff Engine
+### 3. Copywriting & Brief Revision Diff Engine
 * Visual color-coded diff viewer (green additions / red deletions) for `COPY.md` scripts and `README.md` project briefs across revision cycles.
 
 ---

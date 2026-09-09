@@ -1,7 +1,7 @@
 # SS-CAM QA Suite
 
 **Application:** SuamiSihat Creative Assets Management (SS-CAM)
-**Version under review:** v4.7.0
+**Version under review:** v4.8.0
 **QA Lead:** Brand / Creative & Brand Team
 **Date initiated:** 2026-09-09
 
@@ -35,7 +35,7 @@ This folder contains the complete quality assurance record for SS-CAM — a WPF 
 ## QA Process
 
 ```text
-Build v4.7.0 dist
+Build v4.8.0 dist
       │
       ▼
 01 Architecture review  ──→  02 Functional tests (manual)
@@ -74,8 +74,8 @@ FINAL-QA-REPORT.md  →  Sign-off  →  Tag release
 ## Build under test
 
 ```text
-Executable : src\SS-CAM\bin\Release\SS-CAM.exe / dist\SS-CAM-v4.7.0.exe
-Size       : ~5.70 MB (Costura single-file, all DLLs embedded)
+Executable : src\SS-CAM\bin\Release\SS-CAM.exe / dist\SS-CAM-v4.8.0.exe
+Size       : ~5.88 MB (Costura single-file, all DLLs embedded)
 Framework  : .NET Framework 4.8 (CLR 4.0.30319)
 UI Library : WPF-UI / Fluent 2 (Wpf.Ui v3.0.4)
 Commit     : SS-Master branch

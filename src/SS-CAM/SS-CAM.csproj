@@ -146,6 +146,10 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
+    <Page Include="Dialogs\VisualDiffDialog.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="Views\RadioPage.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
@@ -227,6 +231,7 @@
     <Compile Include="Services\PreflightValidatorService.cs" />
     <Compile Include="Services\WorkloadSlaService.cs" />
     <Compile Include="Services\MalaysiaHolidayService.cs" />
+    <Compile Include="Services\VisualDiffService.cs" />
     <Compile Include="Views\SplashWindow.xaml.cs">
       <DependentUpon>SplashWindow.xaml</DependentUpon>
       <SubType>Code</SubType>
@@ -281,6 +286,10 @@
     </Compile>
     <Compile Include="Dialogs\FirstRunSetupDialog.xaml.cs">
       <DependentUpon>FirstRunSetupDialog.xaml</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Dialogs\VisualDiffDialog.xaml.cs">
+      <DependentUpon>VisualDiffDialog.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Views\RadioPage.xaml.cs">

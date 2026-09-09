@@ -6,8 +6,10 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Threading;
 using SS_CAM.Models;
 using SS_CAM.Services;
 using SS_CAM.Utilities;
@@ -20,7 +22,10 @@ namespace SS_CAM.Views
         private List<ProjectItemInfo> discoveredProjects = new List<ProjectItemInfo>();
         private ProjectItemInfo selectedProject = null;
         private bool isInternalChange = false;
-        private int currentViewMode = 0; // 0 = Split, 1 = RenderedDoc, 2 = EditorOnly
+        private int currentViewMode = 0; // 0 = PreviewLive, 1 = Split, 2 = EditMode, 3 = MockupView
+        private int currentSubMode = 0; // 0 = Doc, 1 = WhatsApp, 2 = MetaAd, 3 = Both
+        private bool isMetaTextExpanded = false;
+        private DispatcherTimer liveSimulationDebounceTimer;
         private bool isRightPaneCollapsed = false;
         private GridLength rightPaneSavedWidth = new GridLength(320);
 
@@ -39,6 +44,11 @@ namespace SS_CAM.Views
         public CopywritingPage()
         {
             InitializeComponent();
+
+            liveSimulationDebounceTimer = new DispatcherTimer();
+            liveSimulationDebounceTimer.Interval = TimeSpan.FromMilliseconds(150);
+            liveSimulationDebounceTimer.Tick += OnLiveSimulationTimerTick;
+
             Loaded += OnPageLoaded;
             Unloaded += OnPageUnloaded;
         }
@@ -59,6 +69,10 @@ namespace SS_CAM.Views
         {
             try
             {
+                if (liveSimulationDebounceTimer != null)
+                {
+                    liveSimulationDebounceTimer.Stop();
+                }
                 WorkspaceWatcherService.Instance.WorkspaceChanged -= OnWorkspaceChanged;
             }
             catch (Exception ex)
@@ -283,7 +297,7 @@ namespace SS_CAM.Views
                 BtnModeEdit.Appearance = Wpf.Ui.Controls.ControlAppearance.Secondary;
                 BtnModeMockup.Appearance = Wpf.Ui.Controls.ControlAppearance.Secondary;
             }
-            else if (mode == 1) // 2. Split View: Raw Editor (Left) + Live Rendered Markdown (Right) Side-by-Side
+            else if (mode == 1) // 2. Split View: Raw Editor (Left) + Sub-Mode Right Pane Side-by-Side
             {
                 ColEditor.Width = new GridLength(1, GridUnitType.Star);
                 ColSplitter.Width = new GridLength(12, GridUnitType.Pixel);
@@ -293,13 +307,8 @@ namespace SS_CAM.Views
                 RenderedCopyViewer.Visibility = Visibility.Collapsed;
                 LiveGridSplitter.Visibility = Visibility.Visible;
                 RightPaneContainer.Visibility = Visibility.Visible;
-                RenderedCopyViewerSplit.Visibility = Visibility.Visible;
-                LivePreviewPanel.Visibility = Visibility.Collapsed;
 
-                if (RenderedCopyViewerSplit != null && CopyScriptEditor != null)
-                {
-                    RenderedCopyViewerSplit.Document = MarkdownHelper.ToFlowDocument(CopyScriptEditor.Text ?? string.Empty);
-                }
+                ApplySubMode(currentSubMode);
 
                 TxtCanvasHeader.Text = "Copywriting Studio — Side-by-Side Split View";
                 TxtEditorShortcutHint.Visibility = Visibility.Visible;
@@ -340,8 +349,12 @@ namespace SS_CAM.Views
                 RenderedCopyViewer.Visibility = Visibility.Collapsed;
                 LiveGridSplitter.Visibility = Visibility.Collapsed;
                 RightPaneContainer.Visibility = Visibility.Visible;
-                RenderedCopyViewerSplit.Visibility = Visibility.Collapsed;
-                LivePreviewPanel.Visibility = Visibility.Visible;
+
+                if (currentSubMode == 0)
+                {
+                    currentSubMode = 3; // Default to Both mockups in Mockup View
+                }
+                ApplySubMode(currentSubMode);
 
                 TxtCanvasHeader.Text = "WhatsApp Broadcast & Meta Ad Live Mockups";
                 TxtEditorShortcutHint.Visibility = Visibility.Collapsed;
@@ -350,8 +363,89 @@ namespace SS_CAM.Views
                 BtnModeSplit.Appearance = Wpf.Ui.Controls.ControlAppearance.Secondary;
                 BtnModeEdit.Appearance = Wpf.Ui.Controls.ControlAppearance.Secondary;
                 BtnModeMockup.Appearance = Wpf.Ui.Controls.ControlAppearance.Primary;
+            }
+        }
 
-                UpdateLiveSimulation(CopyScriptEditor.Text ?? string.Empty);
+        private void OnSubModeDocClicked(object sender, RoutedEventArgs e)
+        {
+            ApplySubMode(0);
+        }
+
+        private void OnSubModeWhatsAppClicked(object sender, RoutedEventArgs e)
+        {
+            ApplySubMode(1);
+        }
+
+        private void OnSubModeMetaAdClicked(object sender, RoutedEventArgs e)
+        {
+            ApplySubMode(2);
+        }
+
+        private void OnSubModeBothClicked(object sender, RoutedEventArgs e)
+        {
+            ApplySubMode(3);
+        }
+
+        private void ApplySubMode(int subMode)
+        {
+            currentSubMode = subMode;
+
+            if (BtnSubModeDoc != null)
+                BtnSubModeDoc.Appearance = (subMode == 0) ? Wpf.Ui.Controls.ControlAppearance.Primary : Wpf.Ui.Controls.ControlAppearance.Secondary;
+            if (BtnSubModeWhatsApp != null)
+                BtnSubModeWhatsApp.Appearance = (subMode == 1) ? Wpf.Ui.Controls.ControlAppearance.Primary : Wpf.Ui.Controls.ControlAppearance.Secondary;
+            if (BtnSubModeMetaAd != null)
+                BtnSubModeMetaAd.Appearance = (subMode == 2) ? Wpf.Ui.Controls.ControlAppearance.Primary : Wpf.Ui.Controls.ControlAppearance.Secondary;
+            if (BtnSubModeBoth != null)
+                BtnSubModeBoth.Appearance = (subMode == 3) ? Wpf.Ui.Controls.ControlAppearance.Primary : Wpf.Ui.Controls.ControlAppearance.Secondary;
+
+            string currentText = CopyScriptEditor != null ? CopyScriptEditor.Text ?? string.Empty : string.Empty;
+
+            if (subMode == 0) // 1. Rendered Markdown Document
+            {
+                if (RenderedCopyViewerSplit != null)
+                {
+                    RenderedCopyViewerSplit.Visibility = Visibility.Visible;
+                    RenderedCopyViewerSplit.Document = MarkdownHelper.ToFlowDocument(currentText);
+                }
+                if (LivePreviewPanel != null) LivePreviewPanel.Visibility = Visibility.Collapsed;
+                if (TxtSubPreviewTitle != null) TxtSubPreviewTitle.Text = "Rendered Markdown Document";
+            }
+            else if (subMode == 1) // 2. WhatsApp Broadcast only
+            {
+                if (RenderedCopyViewerSplit != null) RenderedCopyViewerSplit.Visibility = Visibility.Collapsed;
+                if (LivePreviewPanel != null) LivePreviewPanel.Visibility = Visibility.Visible;
+                if (CardWhatsAppPreview != null) CardWhatsAppPreview.Visibility = Visibility.Visible;
+                if (CardMetaAdPreview != null) CardMetaAdPreview.Visibility = Visibility.Collapsed;
+                if (ColMockupWhatsApp != null) ColMockupWhatsApp.Width = new GridLength(1, GridUnitType.Star);
+                if (ColMockupDivider != null) ColMockupDivider.Width = new GridLength(0);
+                if (ColMockupMetaAd != null) ColMockupMetaAd.Width = new GridLength(0);
+                if (TxtSubPreviewTitle != null) TxtSubPreviewTitle.Text = "WhatsApp Broadcast Simulation";
+                UpdateLiveSimulation(currentText);
+            }
+            else if (subMode == 2) // 3. Meta Ad only
+            {
+                if (RenderedCopyViewerSplit != null) RenderedCopyViewerSplit.Visibility = Visibility.Collapsed;
+                if (LivePreviewPanel != null) LivePreviewPanel.Visibility = Visibility.Visible;
+                if (CardWhatsAppPreview != null) CardWhatsAppPreview.Visibility = Visibility.Collapsed;
+                if (CardMetaAdPreview != null) CardMetaAdPreview.Visibility = Visibility.Visible;
+                if (ColMockupWhatsApp != null) ColMockupWhatsApp.Width = new GridLength(0);
+                if (ColMockupDivider != null) ColMockupDivider.Width = new GridLength(0);
+                if (ColMockupMetaAd != null) ColMockupMetaAd.Width = new GridLength(1, GridUnitType.Star);
+                if (TxtSubPreviewTitle != null) TxtSubPreviewTitle.Text = "Meta Ads Sponsored Post Simulation";
+                UpdateLiveSimulation(currentText);
+            }
+            else // subMode == 3: Both mockups side-by-side
+            {
+                if (RenderedCopyViewerSplit != null) RenderedCopyViewerSplit.Visibility = Visibility.Collapsed;
+                if (LivePreviewPanel != null) LivePreviewPanel.Visibility = Visibility.Visible;
+                if (CardWhatsAppPreview != null) CardWhatsAppPreview.Visibility = Visibility.Visible;
+                if (CardMetaAdPreview != null) CardMetaAdPreview.Visibility = Visibility.Visible;
+                if (ColMockupWhatsApp != null) ColMockupWhatsApp.Width = new GridLength(1, GridUnitType.Star);
+                if (ColMockupDivider != null) ColMockupDivider.Width = new GridLength(14);
+                if (ColMockupMetaAd != null) ColMockupMetaAd.Width = new GridLength(1, GridUnitType.Star);
+                if (TxtSubPreviewTitle != null) TxtSubPreviewTitle.Text = "Combined WhatsApp & Meta Ad Preview";
+                UpdateLiveSimulation(currentText);
             }
         }
 
@@ -361,50 +455,232 @@ namespace SS_CAM.Views
 
             string currentText = CopyScriptEditor.Text ?? string.Empty;
             UpdateMetrics(currentText);
-            UpdateLiveSimulation(currentText);
 
-            if (currentViewMode == 0 && RenderedCopyViewer != null)
+            if (liveSimulationDebounceTimer != null)
             {
-                RenderedCopyViewer.Document = MarkdownHelper.ToFlowDocument(currentText);
+                liveSimulationDebounceTimer.Stop();
+                liveSimulationDebounceTimer.Start();
             }
-            else if (currentViewMode == 1 && RenderedCopyViewerSplit != null)
+            else
             {
-                RenderedCopyViewerSplit.Document = MarkdownHelper.ToFlowDocument(currentText);
+                UpdateLiveSimulation(currentText);
             }
 
             SetStatusBadge("Unsaved Changes", false);
         }
 
+        private void OnLiveSimulationTimerTick(object sender, EventArgs e)
+        {
+            if (liveSimulationDebounceTimer != null)
+            {
+                liveSimulationDebounceTimer.Stop();
+            }
+
+            string currentText = CopyScriptEditor != null ? CopyScriptEditor.Text ?? string.Empty : string.Empty;
+
+            if (currentViewMode == 0 && RenderedCopyViewer != null)
+            {
+                RenderedCopyViewer.Document = MarkdownHelper.ToFlowDocument(currentText);
+            }
+            else if (currentViewMode == 1)
+            {
+                if (currentSubMode == 0 && RenderedCopyViewerSplit != null)
+                {
+                    RenderedCopyViewerSplit.Document = MarkdownHelper.ToFlowDocument(currentText);
+                }
+                else
+                {
+                    UpdateLiveSimulation(currentText);
+                }
+            }
+            else if (currentViewMode == 3)
+            {
+                UpdateLiveSimulation(currentText);
+            }
+        }
+
         private void UpdateLiveSimulation(string content)
         {
-            if (string.IsNullOrWhiteSpace(content))
-            {
-                if (TxtWhatsAppLiveContent != null)
-                    TxtWhatsAppLiveContent.Text = "Drafting your copy in the editor on the left will render formatted WhatsApp & Meta Ad previews here in real time...";
-                if (TxtMetaAdLiveContent != null)
-                    TxtMetaAdLiveContent.Text = "Primary ad copy will appear here formatted for Facebook & Instagram feed ads.";
-                return;
-            }
-
-            // Convert Markdown to clean simulated WhatsApp / Ad body
-            string clean = CopywritingDesktopService.StripMarkdownToPlainText(content);
-
-            // WhatsApp formatting (simulate bold, emojis, clean line breaks)
             if (TxtWhatsAppLiveContent != null)
             {
-                TxtWhatsAppLiveContent.Text = clean.Trim();
+                BuildWhatsAppInlines(TxtWhatsAppLiveContent, content);
             }
 
-            // Meta Ad body formatting (first 400 characters preview with natural wrap)
-            if (TxtMetaAdLiveContent != null)
-            {
-                TxtMetaAdLiveContent.Text = clean.Trim();
-            }
+            UpdateWhatsAppLinkPreview(content);
+            UpdateMetaAdSimulation(content);
 
             if (TxtWhatsAppTimestamp != null)
             {
                 TxtWhatsAppTimestamp.Text = DateTime.Now.ToString("h:mm tt");
             }
+        }
+
+        private void BuildWhatsAppInlines(TextBlock targetBlock, string rawContent)
+        {
+            if (targetBlock == null) return;
+            targetBlock.Inlines.Clear();
+
+            if (string.IsNullOrWhiteSpace(rawContent))
+            {
+                targetBlock.Inlines.Add(new Run("Drafting your copy in the editor on the left will render formatted WhatsApp inlines here in real time..."));
+                return;
+            }
+
+            string formatted = CopywritingDesktopService.FormatForWhatsApp(rawContent);
+
+            Regex tokenRegex = new Regex(@"(https?://[^\s)""'>]+|wa\.me/[^\s)""'>]+)|\*([^*\r\n]+)\*|_([^_\r\n]+)_|~([^~\r\n]+)~|`([^`\r\n]+)`", RegexOptions.Compiled);
+
+            int lastIdx = 0;
+            foreach (Match m in tokenRegex.Matches(formatted))
+            {
+                if (m.Index > lastIdx)
+                {
+                    targetBlock.Inlines.Add(new Run(formatted.Substring(lastIdx, m.Index - lastIdx)));
+                }
+
+                if (m.Groups[1].Success) // URL
+                {
+                    string urlText = m.Groups[1].Value;
+                    Run r = new Run(urlText)
+                    {
+                        Foreground = new SolidColorBrush(Color.FromRgb(2, 126, 181)),
+                        TextDecorations = TextDecorations.Underline
+                    };
+                    targetBlock.Inlines.Add(r);
+                }
+                else if (m.Groups[2].Success) // Bold *text*
+                {
+                    Bold b = new Bold(new Run(m.Groups[2].Value));
+                    targetBlock.Inlines.Add(b);
+                }
+                else if (m.Groups[3].Success) // Italic _text_
+                {
+                    Italic it = new Italic(new Run(m.Groups[3].Value));
+                    targetBlock.Inlines.Add(it);
+                }
+                else if (m.Groups[4].Success) // Strikethrough ~text~
+                {
+                    Run r = new Run(m.Groups[4].Value)
+                    {
+                        TextDecorations = TextDecorations.Strikethrough
+                    };
+                    targetBlock.Inlines.Add(r);
+                }
+                else if (m.Groups[5].Success) // Monospace code `text`
+                {
+                    Run r = new Run(m.Groups[5].Value)
+                    {
+                        FontFamily = new FontFamily("Consolas, monospace"),
+                        Background = new SolidColorBrush(Color.FromRgb(235, 237, 240))
+                    };
+                    targetBlock.Inlines.Add(r);
+                }
+
+                lastIdx = m.Index + m.Length;
+            }
+
+            if (lastIdx < formatted.Length)
+            {
+                targetBlock.Inlines.Add(new Run(formatted.Substring(lastIdx)));
+            }
+        }
+
+        private void UpdateWhatsAppLinkPreview(string markdown)
+        {
+            string url = CopywritingDesktopService.ExtractFirstUrl(markdown);
+            if (!string.IsNullOrWhiteSpace(url) && WhatsAppLinkPreviewCard != null)
+            {
+                WhatsAppLinkPreviewCard.Visibility = Visibility.Visible;
+                try
+                {
+                    Uri uri = new Uri(url);
+                    if (TxtWhatsAppPreviewDomain != null) TxtWhatsAppPreviewDomain.Text = uri.Host.ToUpperInvariant();
+                }
+                catch
+                {
+                    if (TxtWhatsAppPreviewDomain != null) TxtWhatsAppPreviewDomain.Text = "SUAMISIHAT.CLINIC";
+                }
+
+                if (TxtWhatsAppPreviewUrl != null) TxtWhatsAppPreviewUrl.Text = url;
+            }
+            else if (WhatsAppLinkPreviewCard != null)
+            {
+                WhatsAppLinkPreviewCard.Visibility = Visibility.Collapsed;
+            }
+        }
+
+        private void UpdateMetaAdSimulation(string markdown)
+        {
+            string headline, cta, primaryText;
+            CopywritingDesktopService.ExtractHeadlineAndCta(markdown, out headline, out cta, out primaryText);
+
+            if (TxtMetaHeadline != null)
+            {
+                TxtMetaHeadline.Text = !string.IsNullOrWhiteSpace(headline) ? headline : "SuamiSihat — Formulasi Tenaga & Vitaliti Maskulin Premium";
+            }
+
+            if (TxtMetaCtaButton != null)
+            {
+                TxtMetaCtaButton.Text = !string.IsNullOrWhiteSpace(cta) ? cta : "Send Message";
+            }
+
+            string detectedUrl = CopywritingDesktopService.ExtractFirstUrl(markdown);
+            if (!string.IsNullOrWhiteSpace(detectedUrl))
+            {
+                try
+                {
+                    Uri uri = new Uri(detectedUrl);
+                    if (TxtMetaDomain != null) TxtMetaDomain.Text = uri.Host.ToUpperInvariant();
+                }
+                catch
+                {
+                    if (TxtMetaDomain != null) TxtMetaDomain.Text = "SUAMISIHAT.CLINIC";
+                }
+            }
+            else
+            {
+                if (TxtMetaDomain != null) TxtMetaDomain.Text = "SUAMISIHAT.CLINIC";
+            }
+
+            if (TxtMetaAdLiveContent != null)
+            {
+                if (string.IsNullOrWhiteSpace(primaryText))
+                {
+                    TxtMetaAdLiveContent.Text = "Primary ad copy will appear here formatted for Facebook & Instagram feed ads.";
+                    if (BtnMetaSeeMore != null) BtnMetaSeeMore.Visibility = Visibility.Collapsed;
+                }
+                else if (primaryText.Length > 180 && !isMetaTextExpanded)
+                {
+                    TxtMetaAdLiveContent.Text = primaryText.Substring(0, 180).TrimEnd() + "...";
+                    if (BtnMetaSeeMore != null)
+                    {
+                        BtnMetaSeeMore.Visibility = Visibility.Visible;
+                        if (TxtMetaSeeMoreLabel != null) TxtMetaSeeMoreLabel.Text = "... See more";
+                    }
+                }
+                else
+                {
+                    TxtMetaAdLiveContent.Text = primaryText;
+                    if (BtnMetaSeeMore != null)
+                    {
+                        if (primaryText.Length > 180)
+                        {
+                            BtnMetaSeeMore.Visibility = Visibility.Visible;
+                            if (TxtMetaSeeMoreLabel != null) TxtMetaSeeMoreLabel.Text = "See less";
+                        }
+                        else
+                        {
+                            BtnMetaSeeMore.Visibility = Visibility.Collapsed;
+                        }
+                    }
+                }
+            }
+        }
+
+        private void OnMetaSeeMoreClicked(object sender, RoutedEventArgs e)
+        {
+            isMetaTextExpanded = !isMetaTextExpanded;
+            UpdateMetaAdSimulation(CopyScriptEditor != null ? CopyScriptEditor.Text ?? string.Empty : string.Empty);
         }
 
         private void SetStatusBadge(string statusText, bool isSuccess)
@@ -516,6 +792,50 @@ namespace SS_CAM.Views
             catch (Exception ex)
             {
                 Debug.WriteLine("[CopywritingPage] Copy error: " + ex.Message);
+            }
+        }
+
+        private void OnCopyWhatsAppClicked(object sender, RoutedEventArgs e)
+        {
+            string content = CopyScriptEditor != null ? CopyScriptEditor.Text : string.Empty;
+            if (string.IsNullOrWhiteSpace(content))
+            {
+                MessageBox.Show("No copy text to format for WhatsApp.", "Copywriting Studio", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            try
+            {
+                string waFormatted = CopywritingDesktopService.FormatForWhatsApp(content);
+                ClipboardService.SetText(waFormatted);
+                SetStatusBadge("WhatsApp Copy Copied", true);
+                NotificationService.ShowSuccess("WhatsApp Copy Copied", "Copy formatted with *bold*, emojis, and clean line breaks!");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine("[CopywritingPage] Copy WhatsApp error: " + ex.Message);
+            }
+        }
+
+        private void OnCopyMetaAdsClicked(object sender, RoutedEventArgs e)
+        {
+            string content = CopyScriptEditor != null ? CopyScriptEditor.Text : string.Empty;
+            if (string.IsNullOrWhiteSpace(content))
+            {
+                MessageBox.Show("No copy text to format for Meta Ads.", "Copywriting Studio", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            try
+            {
+                string metaFormatted = CopywritingDesktopService.FormatForMetaAds(content);
+                ClipboardService.SetText(metaFormatted);
+                SetStatusBadge("Meta Ads Copy Copied", true);
+                NotificationService.ShowSuccess("Meta Ads Copy Copied", "Primary text, Headline, and CTA structured for Ads Manager!");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine("[CopywritingPage] Copy Meta Ads error: " + ex.Message);
             }
         }
 

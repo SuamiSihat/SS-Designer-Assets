@@ -35,11 +35,27 @@
 
                 <!-- Action Buttons -->
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <ui:Button x:Name="BtnCopyWhatsApp" Appearance="Secondary" Margin="0,0,8,0"
+                               Click="OnCopyWhatsAppClicked" Cursor="Hand" ToolTip="Copy formatted specifically for WhatsApp (*bold*, emojis, clean line breaks)">
+                        <StackPanel Orientation="Horizontal">
+                            <ui:SymbolIcon Symbol="Chat24" Margin="0,0,6,0" FontSize="14" Foreground="#25D366"/>
+                            <ui:TextBlock Text="WhatsApp Copy"/>
+                        </StackPanel>
+                    </ui:Button>
+
+                    <ui:Button x:Name="BtnCopyMetaAds" Appearance="Secondary" Margin="0,0,8,0"
+                               Click="OnCopyMetaAdsClicked" Cursor="Hand" ToolTip="Copy formatted for Meta Ads Manager (Headline, Primary Text, CTA)">
+                        <StackPanel Orientation="Horizontal">
+                            <ui:SymbolIcon Symbol="Megaphone24" Margin="0,0,6,0" FontSize="14" Foreground="{DynamicResource FluentBrand80}"/>
+                            <ui:TextBlock Text="Meta Ads Copy"/>
+                        </StackPanel>
+                    </ui:Button>
+
                     <ui:Button x:Name="BtnCopyPlainText" Appearance="Secondary" Margin="0,0,8,0"
                                Click="OnCopyPlainTextClicked" Cursor="Hand" ToolTip="Copy clean plain text (strips markdown formatting for Ads/WhatsApp)">
                         <StackPanel Orientation="Horizontal">
                             <ui:SymbolIcon Symbol="DocumentBulletList24" Margin="0,0,6,0" FontSize="14"/>
-                            <ui:TextBlock Text="Copy Plain Text"/>
+                            <ui:TextBlock Text="Plain Text"/>
                         </StackPanel>
                     </ui:Button>
 
@@ -47,7 +63,7 @@
                                Click="OnCopyClipboardClicked" Cursor="Hand" ToolTip="Copy raw Markdown script to clipboard">
                         <StackPanel Orientation="Horizontal">
                             <ui:SymbolIcon Symbol="Copy24" Margin="0,0,6,0" FontSize="14"/>
-                            <ui:TextBlock Text="Copy Markdown"/>
+                            <ui:TextBlock Text="Markdown"/>
                         </StackPanel>
                     </ui:Button>
 
@@ -328,141 +344,252 @@
 
                         <!-- RIGHT COLUMN: SPLIT LIVE RENDERED MARKDOWN OR MOCKUP VIEW -->
                         <Grid x:Name="RightPaneContainer" Grid.Column="2" Visibility="Collapsed" VerticalAlignment="Stretch">
-                            <!-- 1. Split Live Rendered FlowDocument (Right pane in Split Mode) -->
-                            <FlowDocumentScrollViewer x:Name="RenderedCopyViewerSplit"
-                                                      MinHeight="700"
-                                                      VerticalScrollBarVisibility="Auto"
-                                                      VerticalAlignment="Stretch"
-                                                      FontFamily="{DynamicResource FluentFontFamily}"
-                                                      Foreground="{DynamicResource TextFillColorPrimaryBrush}"
-                                                      Background="{DynamicResource TextControlBackground}"
-                                                      BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
-                                                      BorderThickness="1"
-                                                      Padding="18"
-                                                      Visibility="Collapsed"/>
+                            <Grid.RowDefinitions>
+                                <!-- Sub-Preview Switcher Header -->
+                                <RowDefinition Height="Auto"/>
+                                <!-- Main Content Area -->
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
 
-                            <!-- 2. Ad & WhatsApp Live Mockups (Mockup View - Side by Side) -->
-                            <Border x:Name="LivePreviewPanel"
-                                    MinHeight="700"
-                                    VerticalAlignment="Stretch"
-                                    Background="{DynamicResource TextControlBackground}"
-                                    BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
-                                    BorderThickness="1" CornerRadius="8" Padding="16"
-                                    Visibility="Collapsed">
-                                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <!-- Left: WhatsApp Broadcast Mockup -->
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="16"/>
-                                            <!-- Right: Meta Sponsored Ad Mockup -->
-                                            <ColumnDefinition Width="*"/>
-                                        </Grid.ColumnDefinitions>
+                            <!-- 1. Sub-Preview Toolbar -->
+                            <Grid Grid.Row="0" Margin="0,0,0,10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
 
-                                        <!-- WhatsApp Live Simulation Card -->
-                                        <Border Grid.Column="0" Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
-                                                BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
-                                                BorderThickness="1" CornerRadius="10" VerticalAlignment="Top">
-                                            <StackPanel>
-                                                <!-- WhatsApp Header Bar -->
-                                                <Border Background="#075E54" CornerRadius="9,9,0,0" Padding="14,10">
-                                                    <Grid>
+                                <ui:TextBlock x:Name="TxtSubPreviewTitle" Text="Live Rendered Preview" FontSize="12" FontWeight="SemiBold"
+                                              Foreground="{DynamicResource TextFillColorSecondaryBrush}" VerticalAlignment="Center"/>
+
+                                <Border Grid.Column="1" Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                                        BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" BorderThickness="1"
+                                        CornerRadius="6" Padding="2">
+                                    <StackPanel Orientation="Horizontal">
+                                        <ui:Button x:Name="BtnSubModeDoc" Appearance="Primary" Height="26" Padding="8,0" Margin="0,0,2,0"
+                                                   Click="OnSubModeDocClicked" Cursor="Hand" ToolTip="Rendered Markdown Document (Default)">
+                                            <StackPanel Orientation="Horizontal">
+                                                <ui:SymbolIcon Symbol="Document24" Margin="0,0,3,0" FontSize="11"/>
+                                                <ui:TextBlock Text="Doc" FontSize="10.5"/>
+                                            </StackPanel>
+                                        </ui:Button>
+
+                                        <ui:Button x:Name="BtnSubModeWhatsApp" Appearance="Secondary" Height="26" Padding="8,0" Margin="0,0,2,0"
+                                                   Click="OnSubModeWhatsAppClicked" Cursor="Hand" ToolTip="WhatsApp Broadcast Live Simulation">
+                                            <StackPanel Orientation="Horizontal">
+                                                <ui:SymbolIcon Symbol="Chat24" Margin="0,0,3,0" FontSize="11" Foreground="#25D366"/>
+                                                <ui:TextBlock Text="WhatsApp" FontSize="10.5"/>
+                                            </StackPanel>
+                                        </ui:Button>
+
+                                        <ui:Button x:Name="BtnSubModeMetaAd" Appearance="Secondary" Height="26" Padding="8,0" Margin="0,0,2,0"
+                                                   Click="OnSubModeMetaAdClicked" Cursor="Hand" ToolTip="Meta Ad Sponsored Post Simulation">
+                                            <StackPanel Orientation="Horizontal">
+                                                <ui:SymbolIcon Symbol="Megaphone24" Margin="0,0,3,0" FontSize="11" Foreground="{DynamicResource FluentBrand80}"/>
+                                                <ui:TextBlock Text="Meta Ad" FontSize="10.5"/>
+                                            </StackPanel>
+                                        </ui:Button>
+
+                                        <ui:Button x:Name="BtnSubModeBoth" Appearance="Secondary" Height="26" Padding="8,0"
+                                                   Click="OnSubModeBothClicked" Cursor="Hand" ToolTip="Side-by-side WhatsApp &amp; Meta Ad Preview">
+                                            <StackPanel Orientation="Horizontal">
+                                                <ui:SymbolIcon Symbol="DualScreen24" Margin="0,0,3,0" FontSize="11"/>
+                                                <ui:TextBlock Text="Both" FontSize="10.5"/>
+                                            </StackPanel>
+                                        </ui:Button>
+                                    </StackPanel>
+                                </Border>
+                            </Grid>
+
+                            <!-- 2. Content Row: FlowDocument or Live Simulation Panel -->
+                            <Grid Grid.Row="1" VerticalAlignment="Stretch">
+                                <!-- A. Split Live Rendered FlowDocument -->
+                                <FlowDocumentScrollViewer x:Name="RenderedCopyViewerSplit"
+                                                          MinHeight="680"
+                                                          VerticalScrollBarVisibility="Auto"
+                                                          VerticalAlignment="Stretch"
+                                                          FontFamily="{DynamicResource FluentFontFamily}"
+                                                          Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                                                          Background="{DynamicResource TextControlBackground}"
+                                                          BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                                                          BorderThickness="1"
+                                                          Padding="18"
+                                                          Visibility="Visible"/>
+
+                                <!-- B. Ad & WhatsApp Live Mockups -->
+                                <Border x:Name="LivePreviewPanel"
+                                        MinHeight="680"
+                                        VerticalAlignment="Stretch"
+                                        Background="{DynamicResource TextControlBackground}"
+                                        BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                                        BorderThickness="1" CornerRadius="8" Padding="14"
+                                        Visibility="Collapsed">
+                                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <!-- Left: WhatsApp Broadcast Mockup -->
+                                                <ColumnDefinition x:Name="ColMockupWhatsApp" Width="*"/>
+                                                <ColumnDefinition x:Name="ColMockupDivider" Width="14"/>
+                                                <!-- Right: Meta Sponsored Ad Mockup -->
+                                                <ColumnDefinition x:Name="ColMockupMetaAd" Width="*"/>
+                                            </Grid.ColumnDefinitions>
+
+                                            <!-- WhatsApp Live Simulation Card -->
+                                            <Border x:Name="CardWhatsAppPreview" Grid.Column="0"
+                                                    Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                                                    BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                                                    BorderThickness="1" CornerRadius="10" VerticalAlignment="Top">
+                                                <StackPanel>
+                                                    <!-- WhatsApp Header Bar -->
+                                                    <Border Background="#075E54" CornerRadius="9,9,0,0" Padding="12,10">
+                                                        <Grid>
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="Auto"/>
+                                                                <ColumnDefinition Width="*"/>
+                                                                <ColumnDefinition Width="Auto"/>
+                                                            </Grid.ColumnDefinitions>
+
+                                                            <Border Grid.Column="0" Width="28" Height="28" CornerRadius="14" Background="#25D366" Margin="0,0,10,0">
+                                                                <ui:SymbolIcon Symbol="Chat24" FontSize="15" Foreground="#FFFFFF" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                            </Border>
+                                                            
+                                                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                                <ui:TextBlock Text="SuamiSihat&#x2122; Official" FontWeight="Bold" FontSize="12" Foreground="#FFFFFF"/>
+                                                                <ui:TextBlock Text="WhatsApp Broadcast Live Preview" FontSize="9.5" Foreground="#DCF8C6"/>
+                                                            </StackPanel>
+
+                                                            <Border Grid.Column="2" Background="#128C7E" CornerRadius="4" Padding="6,2" VerticalAlignment="Center">
+                                                                <ui:TextBlock Text="WHATSAPP" FontSize="8.5" FontWeight="Bold" Foreground="#FFFFFF"/>
+                                                            </Border>
+                                                        </Grid>
+                                                    </Border>
+
+                                                    <!-- WhatsApp Chat Bubble Surface -->
+                                                    <Border Background="#E5DDD5" Padding="12" MinHeight="260">
+                                                        <Border Background="#FFFFFF" CornerRadius="8" Padding="12,10" HorizontalAlignment="Stretch"
+                                                                BorderBrush="#D0D7DE" BorderThickness="1">
+                                                            <StackPanel>
+                                                                <!-- Rich Inlines rendered dynamically in code-behind -->
+                                                                <TextBlock x:Name="TxtWhatsAppLiveContent" Text="Drafting your copy in the editor on the left will render formatted text here in real time..."
+                                                                           TextWrapping="Wrap" FontSize="12.5" FontFamily="Segoe UI" LineHeight="19"
+                                                                           Foreground="#111B21"/>
+
+                                                                <!-- Dynamic WhatsApp OG Link Preview Card (Visible if URL detected) -->
+                                                                <Border x:Name="WhatsAppLinkPreviewCard" Background="#F0F2F5" CornerRadius="6" Padding="8" Margin="0,8,0,4"
+                                                                        BorderBrush="#D0D7DE" BorderThickness="1" Visibility="Collapsed">
+                                                                    <Grid>
+                                                                        <Grid.ColumnDefinitions>
+                                                                            <ColumnDefinition Width="46"/>
+                                                                            <ColumnDefinition Width="*"/>
+                                                                        </Grid.ColumnDefinitions>
+                                                                        <Border Grid.Column="0" Background="{DynamicResource FluentBrand80}" CornerRadius="4" Height="46" Margin="0,0,8,0">
+                                                                            <ui:SymbolIcon Symbol="Globe24" FontSize="18" Foreground="#FFFFFF" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                                        </Border>
+                                                                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                                            <ui:TextBlock x:Name="TxtWhatsAppPreviewDomain" Text="SUAMISIHAT.CLINIC" FontSize="9" FontWeight="Bold" Foreground="#667781"/>
+                                                                            <ui:TextBlock x:Name="TxtWhatsAppPreviewTitle" Text="SuamiSihat&#x2122; Official Store &amp; Consultation" FontSize="11" FontWeight="SemiBold" Foreground="#111B21" TextTrimming="CharacterEllipsis"/>
+                                                                            <ui:TextBlock x:Name="TxtWhatsAppPreviewUrl" Text="https://suamisihat.clinic" FontSize="9.5" Foreground="#027EB5" TextTrimming="CharacterEllipsis"/>
+                                                                        </StackPanel>
+                                                                    </Grid>
+                                                                </Border>
+                                                                
+                                                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
+                                                                    <TextBlock x:Name="TxtWhatsAppTimestamp" Text="10:30 AM" FontSize="9.5" Foreground="#667781" Margin="0,0,4,0"/>
+                                                                    <TextBlock Text="&#x2713;&#x2713;" FontSize="9.5" FontWeight="Bold" Foreground="#53BDEB"/>
+                                                                </StackPanel>
+                                                            </StackPanel>
+                                                        </Border>
+                                                    </Border>
+                                                </StackPanel>
+                                            </Border>
+
+                                            <!-- Meta Ad Primary Text Card -->
+                                            <Border x:Name="CardMetaAdPreview" Grid.Column="2"
+                                                    Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                                                    BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                                                    BorderThickness="1" CornerRadius="10" Padding="14" VerticalAlignment="Top">
+                                                <StackPanel>
+                                                    <!-- Meta Sponsor Header -->
+                                                    <Grid Margin="0,0,0,10">
                                                         <Grid.ColumnDefinitions>
                                                             <ColumnDefinition Width="Auto"/>
                                                             <ColumnDefinition Width="*"/>
                                                             <ColumnDefinition Width="Auto"/>
                                                         </Grid.ColumnDefinitions>
 
-                                                        <Ellipse Grid.Column="0" Width="28" Height="28" Fill="#25D366" Margin="0,0,10,0"/>
-                                                        
-                                                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                                            <ui:TextBlock Text="SuamiSihat&#x2122; Official" FontWeight="Bold" FontSize="12.5" Foreground="#FFFFFF"/>
-                                                            <ui:TextBlock Text="WhatsApp Broadcast Live Preview" FontSize="10" Foreground="#DCF8C6"/>
-                                                        </StackPanel>
-
-                                                        <Border Grid.Column="2" Background="#128C7E" CornerRadius="4" Padding="6,2" VerticalAlignment="Center">
-                                                            <ui:TextBlock Text="WHATSAPP BROADCAST" FontSize="9" FontWeight="Bold" Foreground="#FFFFFF"/>
+                                                        <Border Grid.Column="0" Width="32" Height="32" CornerRadius="16" Background="{DynamicResource FluentBrand80}" Margin="0,0,10,0">
+                                                            <ui:TextBlock Text="SS" FontSize="11.5" FontWeight="Bold" Foreground="#FFFFFF" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                                         </Border>
-                                                    </Grid>
-                                                </Border>
 
-                                                <!-- WhatsApp Chat Bubble Surface -->
-                                                <Border Background="#E5DDD5" Padding="14" MinHeight="260">
-                                                    <Border Background="#FFFFFF" CornerRadius="8" Padding="12,10" HorizontalAlignment="Stretch"
-                                                            BorderBrush="#D0D7DE" BorderThickness="1">
-                                                        <StackPanel>
-                                                            <TextBlock x:Name="TxtWhatsAppLiveContent" Text="Drafting your copy in the editor on the left will render formatted text here in real time..."
-                                                                       TextWrapping="Wrap" FontSize="12.5" FontFamily="Segoe UI" LineHeight="19"
-                                                                       Foreground="#111B21"/>
-                                                            
-                                                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
-                                                                <TextBlock x:Name="TxtWhatsAppTimestamp" Text="10:30 AM" FontSize="9.5" Foreground="#667781" Margin="0,0,4,0"/>
-                                                                <TextBlock Text="&#x2713;&#x2713;" FontSize="9.5" FontWeight="Bold" Foreground="#53BDEB"/>
+                                                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                            <StackPanel Orientation="Horizontal">
+                                                                <ui:TextBlock Text="SuamiSihat" FontWeight="SemiBold" FontSize="12.5"
+                                                                              Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                                                <ui:SymbolIcon Symbol="CheckmarkCircle24" FontSize="12" Foreground="#0084FF" Margin="4,0,0,0" VerticalAlignment="Center"/>
                                                             </StackPanel>
+                                                            <ui:TextBlock Text="Sponsored &#x2022; Paid Partnership" FontSize="10"
+                                                                          Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
                                                         </StackPanel>
-                                                    </Border>
-                                                </Border>
-                                            </StackPanel>
-                                        </Border>
 
-                                        <!-- Meta Ad Primary Text Card -->
-                                        <Border Grid.Column="2" Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
-                                                BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
-                                                BorderThickness="1" CornerRadius="10" Padding="14" VerticalAlignment="Top">
-                                            <StackPanel>
-                                                <!-- Meta Sponsor Header -->
-                                                <Grid Margin="0,0,0,10">
-                                                    <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="Auto"/>
-                                                        <ColumnDefinition Width="*"/>
-                                                        <ColumnDefinition Width="Auto"/>
-                                                    </Grid.ColumnDefinitions>
+                                                        <ui:SymbolIcon Grid.Column="2" Symbol="MoreHorizontal24" FontSize="14"
+                                                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}" VerticalAlignment="Center"/>
+                                                    </Grid>
 
-                                                    <Ellipse Grid.Column="0" Width="30" Height="30" Fill="{DynamicResource FluentBrand80}" Margin="0,0,10,0"/>
-
-                                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                                        <ui:TextBlock Text="SuamiSihat" FontWeight="SemiBold" FontSize="12.5"
-                                                                      Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                                                        <ui:TextBlock Text="Sponsored &#x2022; Meta Ads (FB/IG Feed)" FontSize="10"
-                                                                      Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                                    <!-- Ad Body Text with See More Toggle -->
+                                                    <StackPanel Margin="0,0,0,10">
+                                                        <TextBlock x:Name="TxtMetaAdLiveContent" Text="Primary ad copy will appear here formatted for Facebook &amp; Instagram feed ads."
+                                                                   TextWrapping="Wrap" FontSize="12" FontFamily="Segoe UI" LineHeight="18"
+                                                                   Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                                        <ui:Button x:Name="BtnMetaSeeMore" Appearance="Transparent" Padding="0" Margin="0,3,0,0"
+                                                                   HorizontalAlignment="Left" Click="OnMetaSeeMoreClicked" Cursor="Hand" Visibility="Collapsed">
+                                                            <ui:TextBlock x:Name="TxtMetaSeeMoreLabel" Text="... See more" FontSize="11" FontWeight="SemiBold"
+                                                                          Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                                        </ui:Button>
                                                     </StackPanel>
 
-                                                    <ui:SymbolIcon Grid.Column="2" Symbol="MoreHorizontal24" FontSize="14"
-                                                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}" VerticalAlignment="Center"/>
-                                                </Grid>
+                                                    <!-- Mockup Ad Creative Visual Frame (1:1 / 4:5 Feed Media) -->
+                                                    <Border Height="160" Background="{DynamicResource TextControlBackground}"
+                                                            BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" BorderThickness="1"
+                                                            CornerRadius="6" Margin="0,0,0,10">
+                                                        <Grid>
+                                                            <Border Background="{DynamicResource FluentBrandTint}" Opacity="0.12"/>
+                                                            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                                                                <ui:SymbolIcon Symbol="Image24" FontSize="30" Foreground="{DynamicResource FluentBrand80}" Margin="0,0,0,4"/>
+                                                                <ui:TextBlock Text="1:1 / 4:5 Feed Creative Artwork" FontSize="11" FontWeight="SemiBold"
+                                                                              Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                                                <ui:TextBlock Text="Rendered from 05_DELIVERABLES" FontSize="9.5"
+                                                                              Foreground="{DynamicResource TextFillColorTertiaryBrush}" Margin="0,2,0,0"/>
+                                                            </StackPanel>
+                                                        </Grid>
+                                                    </Border>
 
-                                                <!-- Ad Body Text -->
-                                                <TextBlock x:Name="TxtMetaAdLiveContent" Text="Primary ad copy will appear here formatted for Facebook &amp; Instagram feed ads."
-                                                           TextWrapping="Wrap" FontSize="12" FontFamily="Segoe UI" LineHeight="18"
-                                                           Foreground="{DynamicResource TextFillColorPrimaryBrush}" Margin="0,0,0,14"/>
+                                                    <!-- Mock CTA Footer -->
+                                                    <Border Background="{DynamicResource ApplicationPageBackgroundThemeBrush}"
+                                                            BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                                                            BorderThickness="1" CornerRadius="6" Padding="12,10">
+                                                        <Grid>
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="*"/>
+                                                                <ColumnDefinition Width="Auto"/>
+                                                            </Grid.ColumnDefinitions>
 
-                                                <!-- Mock CTA Footer -->
-                                                <Border Background="{DynamicResource ApplicationPageBackgroundThemeBrush}"
-                                                        BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
-                                                        BorderThickness="1" CornerRadius="6" Padding="12,10">
-                                                    <Grid>
-                                                        <Grid.ColumnDefinitions>
-                                                            <ColumnDefinition Width="*"/>
-                                                            <ColumnDefinition Width="Auto"/>
-                                                        </Grid.ColumnDefinitions>
+                                                            <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,8,0">
+                                                                <ui:TextBlock x:Name="TxtMetaDomain" Text="SUAMISIHAT.CLINIC" FontSize="9.5" FontWeight="SemiBold"
+                                                                              Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                                                <ui:TextBlock x:Name="TxtMetaHeadline" Text="Dapatkan Konsultasi &amp; Rawatan Premium" FontSize="11" FontWeight="Bold"
+                                                                              Foreground="{DynamicResource TextFillColorPrimaryBrush}" TextTrimming="CharacterEllipsis"/>
+                                                            </StackPanel>
 
-                                                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                                                            <ui:TextBlock Text="SUAMISIHAT.CLINIC" FontSize="9.5" FontWeight="SemiBold"
-                                                                          Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
-                                                            <ui:TextBlock Text="Dapatkan Konsultasi &amp; Rawatan Premium" FontSize="11" FontWeight="Bold"
-                                                                          Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                                                        </StackPanel>
-
-                                                        <Border Grid.Column="1" Background="{DynamicResource FluentBrand80}" CornerRadius="4" Padding="12,6">
-                                                            <ui:TextBlock Text="Send Message" FontSize="10.5" FontWeight="Bold" Foreground="#FFFFFF"/>
-                                                        </Border>
-                                                    </Grid>
-                                                </Border>
-                                            </StackPanel>
-                                        </Border>
-                                    </Grid>
-                                </ScrollViewer>
-                            </Border>
+                                                            <Border Grid.Column="1" Background="{DynamicResource FluentBrand80}" CornerRadius="4" Padding="12,6" VerticalAlignment="Center">
+                                                                <ui:TextBlock x:Name="TxtMetaCtaButton" Text="Send Message" FontSize="10" FontWeight="Bold" Foreground="#FFFFFF"/>
+                                                            </Border>
+                                                        </Grid>
+                                                    </Border>
+                                                </StackPanel>
+                                            </Border>
+                                        </Grid>
+                                    </ScrollViewer>
+                                </Border>
+                            </Grid>
                         </Grid>
 
                         <!-- COLUMN 3: Subtle Draggable Splitter for Right Pane -->

@@ -376,9 +376,35 @@
                                           BorderThickness="0"
                                           Padding="14"
                                           Visibility="Collapsed">
-                                <ListBox x:Name="ImageGalleryList"
-                                         BorderThickness="0" Background="Transparent"
-                                         MouseDoubleClick="OnImageGalleryDoubleClicked">
+                                <DockPanel LastChildFill="True">
+                                    <!-- Gallery Action Ribbon -->
+                                    <Border DockPanel.Dock="Top" Margin="6,0,6,10" Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                                            BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="8" Padding="12,8">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                                                <ui:SymbolIcon Symbol="Image24" FontSize="14" Foreground="{DynamicResource FluentBrand80}" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                                <ui:TextBlock Text="PROJECT ASSETS GALLERY" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextFillColorSecondaryBrush}" VerticalAlignment="Center"/>
+                                                <ui:TextBlock x:Name="TxtGalleryItemCount" Text="(0 images)" FontSize="10.5" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="8,0,0,0" VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                                <ui:Button Appearance="Primary" Click="OnCompareRevisionsClicked"
+                                                           Height="28" Padding="12,0" Cursor="Hand" ToolTip="Open interactive before/after visual diff slider">
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <ui:SymbolIcon Symbol="SlideSize24" FontSize="12" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                                        <ui:TextBlock Text="Compare Revisions (Diff)" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                                    </StackPanel>
+                                                </ui:Button>
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+
+                                    <ListBox x:Name="ImageGalleryList"
+                                             BorderThickness="0" Background="Transparent"
+                                             MouseDoubleClick="OnImageGalleryDoubleClicked">
                                     <ListBox.ItemsPanel>
                                         <ItemsPanelTemplate>
                                             <WrapPanel IsItemsHost="True"/>
@@ -406,6 +432,7 @@
                                         </DataTemplate>
                                     </ListBox.ItemTemplate>
                                 </ListBox>
+                                </DockPanel>
                             </ScrollViewer>
                         </Grid>
 
@@ -494,6 +521,15 @@
                                             </Grid>
                                         </StackPanel>
                                     </Grid>
+
+                                    <!-- Visual Diff Inspector Button -->
+                                    <ui:Button Appearance="Secondary" Click="OnCompareRevisionsClicked"
+                                               Height="28" Margin="0,0,0,10" Cursor="Hand" ToolTip="Compare visual revision rounds in interactive diff slider">
+                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                            <ui:SymbolIcon Symbol="SlideSize24" FontSize="12" Foreground="{DynamicResource FluentBrand80}" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                            <ui:TextBlock Text="Visual Revision Diff" FontSize="10.5" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </ui:Button>
 
                                     <Border Height="1" Background="{DynamicResource CardStrokeColorDefaultBrush}" Margin="0,2,0,10"/>
                                 </StackPanel>

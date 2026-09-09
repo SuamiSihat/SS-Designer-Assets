@@ -2,6 +2,49 @@
 
 All notable SS-CAM changes are documented here.
 
+## [4.8.0] - 2026-09-09 (Interactive Visual Asset Revision Diff Slider, Copywriting Studio Live Preview & Formatting Engine, Cross-Platform Avatar Sync)
+
+### Added & Refined — Visual Diff Inspector, Copywriting Studio Live Mockups & Cross-Platform Team Identity
+- **Interactive Visual Asset Revision Diff Inspector (`VisualDiffService.cs`, `VisualDiffDialog.xaml`, `VisualDiffDialog.xaml.cs`)**:
+  - Dedicated production-ready Fluent 2 comparison inspector extending `<ui:FluentWindow>` with `DynamicResource` tokens.
+  - **5 Interactive Inspection Modes**:
+    1. **Vertical Split**: Interactive vertical swipe slider with a draggable Fluent 2 grip badge and hardware-accelerated clipping (`RectangleGeometry`).
+    2. **Horizontal Split**: Horizontal swipe comparison, optimized for 9:16 vertical video thumbnails and story creatives.
+    3. **Side-by-Side**: Dual viewports with synchronized lockstep zoom and pan.
+    4. **Opacity Blend**: Onion-skin opacity fader (0% to 100%) to detect micro-movements, typographical shifts, and layout adjustments.
+    5. **Pixel Diff**: Hardware-accelerated 32bpp Euclidean RGB delta calculation highlighting altered pixels in high-visibility magenta (`#FF007F`) while dimming unchanged areas.
+  - **Automated Revision Pair Detection (`DetectRevisionPairs`)**: Scans deliverables and project folders (`04_DELIVERABLES`, `Client_Revisions`, `01_CREATIVE`), extracting version suffixes (`_v1` → `_v2`, `_rev1` → `_rev2`, `draft` → `final`) and prioritizing the active file pair at index 0.
+  - **Synchronized Navigation**: Smooth mouse wheel zoom (0.1x to 10.0x) centered on cursor; middle-click / right-click drag-to-pan affecting both comparison layers simultaneously; quick reset controls (`[ Fit ]`, `[ 1:1 Actual ]`, `[ + ]`, `[ - ]`).
+  - **Technical Asset Inspection Strip**: Displays resolution, file size with delta (`2.1 MB (-12.5%)`), format, green `1:1 MATCH` badge or amber `SCALED` indicator, and a 1-click `⇄ Swap` button to invert Before and After layers.
+  - **Keyboard Gestures**: Arrow keys (<kbd>←</kbd> / <kbd>→</kbd>) nudge slider, <kbd>Space</kbd> swaps layers, <kbd>Esc</kbd> closes inspector.
+- **Catalog & Task Inspector Visual Diff Integration (`SearchCopyPage.xaml`, `SearchCopyPage.xaml.cs`)**:
+  - Added **"Compare Revisions (Diff)"** button in the Assets Gallery header ribbon with real-time asset count badge.
+  - Added **"Visual Revision Diff"** button in the Task Inspector Revision ribbon.
+  - Upgraded gallery double-click to automatically seed and launch `VisualDiffDialog` with revision pairing pre-selected.
+- **Copywriting Studio Split-View Live Preview & Formatting Engine (`CopywritingDesktopService.cs`, `CopywritingPage.xaml`, `CopywritingPage.xaml.cs`)**:
+  - Side-by-side split view with real-time markdown editor on left and live rendered preview on right with debounced 150ms parsing.
+  - **Segmented Sub-Preview Switcher**: Instant toggling between `[ Doc ]` (FlowDocument), `[ WhatsApp ]` (Chat Simulation), `[ Meta Ad ]` (Feed Sponsored Post), and `[ Both ]` (Dual side-by-side).
+  - **WhatsApp Rich Inlines & OG Link Preview**: Tokenized inline parser converting `*bold*`, `_italic_`, `~strike~`, and monospace into WPF RichText inlines; automatic URL extraction (`wa.me`, `https://...`) generating rich OG link preview cards with title, domain, and thumbnail.
+  - **Meta Ad Feed Post Simulation**: Headline extraction from `#` headers or YAML tags, dynamic CTA button inference (`Send Message`, `Order Now`, `Shop Now`, `Get Offer`), and interactive `... See more` / `See less` text truncation matching Meta feed behavior.
+  - **1-Click Platform Exporters**: Dedicated header buttons to export sanitized WhatsApp broadcast copy or structured Meta Ads Manager payload (`=== PRIMARY TEXT ===`, `=== HEADLINE ===`, `=== CALL TO ACTION ===`).
+- **Cross-Platform Avatar & User Profile Synchronization (`TeamService.js`, `api.js`, `UserProfileModels.cs`, `UserProfileService.cs`, `SettingsPage.xaml.cs`)**:
+  - Physical binary file storage inside `_Team/Users/{staffId}/avatar.jpg` and `profile.json`.
+  - Sanitized `staff_directory.json` into a lightweight reference index (`avatarUrl: "/api/users/{staffId}/avatar"`), eliminating JSON bloating.
+  - High-performance binary streaming route `GET /api/users/:id/avatar` with MIME type detection and HTTP cache control headers.
+  - Resolved C# desktop `StaffDirectoryItem` serialization with explicit `[JsonProperty("...")]` camelCase mappings.
+  - Added bi-directional auto-sync in desktop `UserProfileService.LoadProfile()` and `SyncAvatarToNas()` for instant updates.
+- **Source Guardian & Code Quality Polish (`QA/verify-sscam.ps1`, `CopywritingPage.xaml`, `CalendarPage.xaml`)**:
+  - Replaced raw high-byte Unicode characters in XAML attributes with XML entities (`&#x2122;`, `&#x26A0;`, `&#x1F1F2;&#x1F1FE;`), achieving 100% clean PASS across all XAML attribute string audits.
+- **Release Packaging & Binary Verification**:
+  - Rebuilt WPF Desktop executable using MSBuild 4.8 in Release mode with Costura.Fody single-file embedding.
+  - Generated `dist/SS-CAM-v4.8.0.exe` and updated canonical pointer `dist/SS-CAM.exe` (AssemblyVersion and FileVersion `4.8.0.0`, 5.88 MB).
+
+| Asset / Artifact | Target Platform | Specification | Status |
+|---|---|---|---|
+| `dist/SS-CAM-v4.8.0.exe` | Windows 10/11 x64 | .NET Framework 4.8 Single-File Binary | **Verified** |
+| `dist/SS-CAM.exe` | Windows 10/11 x64 | Canonical Latest Executable Pointer | **Verified** |
+| `src/SS-CAM.Web/client/dist` | Web Portal / Docker | Svelte 5 + Vite Production Assets | **Verified** |
+
 ## [4.7.0] - 2026-09-09 (Velocity Navigation Engine, Canva Creative Cloud Bridge, Per-User Team Storage & Visual Timeline Alignment)
 
 ### Added & Refined — Zero-Latency Navigation, Canva Cloud Bridge, Team Storage & Ecosystem Synchronization

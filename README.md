@@ -4,7 +4,7 @@
 
 Standardized Project Vaults · ClickUp 3.0 Workspace · Copywriting Studio · Brand Asset Inspector · Synology NAS Native · Multi-Platform
 
-[![Release](https://img.shields.io/badge/release-v4.7.0-blue?style=flat-square)](https://github.com/SuamiSihat/ss_cam/releases/tag/v4.7.0)
+[![Release](https://img.shields.io/badge/release-v4.8.0-blue?style=flat-square)](https://github.com/SuamiSihat/ss_cam/releases/tag/v4.8.0)
 [![Platform](https://img.shields.io/badge/platform-Windows%2010%2F11%20%7C%20Linux%20%7C%20Android%20%7C%20Docker-blue?style=flat-square)](https://github.com/SuamiSihat/ss_cam)
 [![Framework](https://img.shields.io/badge/.NET%20Framework-4.8%20%7C%20.NET%208.0%20%7C%20Compose-purple?style=flat-square)](https://dotnet.microsoft.com)
 [![Web Stack](https://img.shields.io/badge/web-Svelte%205%20%2B%20Node.js%2020-ff3e00?style=flat-square)](https://svelte.dev)
@@ -12,6 +12,28 @@ Standardized Project Vaults · ClickUp 3.0 Workspace · Copywriting Studio · Br
 [![License](https://img.shields.io/badge/licence-Internal%20Use-orange?style=flat-square)](./installer/EULA.txt)
 
 ---
+
+## 🚀 What's New in v4.8.0 ("Visual Revision Diff & Copywriting Studio Live Preview")
+
+* **🔍 Interactive Visual Asset Revision Diff Inspector ([VisualDiffDialog.xaml](file:///e:/Dev/Projects/SS-Brand-Assets/src/SS-CAM/Dialogs/VisualDiffDialog.xaml))**:
+  * **5 Interactive Inspection Modes**: Vertical Split swipe with draggable Fluent 2 grip badge, Horizontal Split swipe for 9:16 vertical video creatives, Side-by-Side dual view, Opacity Blend onion-skin (0%–100%) for alignment verification, and 32bpp Euclidean RGB Pixel Difference mapping highlighting altered regions in high-visibility magenta (`#FF007F`).
+  * **Automated Revision Pair Detection**: Intelligently groups deliverables and project folders (`_v1` → `_v2`, `_rev1` → `_rev2`, `draft` → `final`) and auto-selects the active file pair.
+  * **Synchronized Navigation**: Smooth mouse wheel zoom (0.1x to 10.0x) centered on cursor and middle/right-click drag-to-pan affecting both comparison layers in lockstep.
+  * **Technical Asset Inspection Strip**: Displays resolution, file size with delta (`2.1 MB (-12.5%)`), green `1:1 MATCH` badge or amber `SCALED` indicator, and a 1-click `⇄ Swap` button.
+  * **Catalog & Task Inspector Quick Launchers**: Added `Compare Revisions (Diff)` button in Assets Gallery, `Visual Revision Diff` in Task Inspector, and gallery double-click auto-seeding.
+* **✍️ Copywriting Studio Split-View Live Preview & Formatting Engine ([CopywritingPage.xaml](file:///e:/Dev/Projects/SS-Brand-Assets/src/SS-CAM/Views/CopywritingPage.xaml))**:
+  * **Side-by-Side Split View**: Real-time markdown editor with live rendered preview synced at 150ms debounced interval.
+  * **Segmented Sub-Preview Modes**: Toggle seamlessly between `[ Doc ]` (FlowDocument), `[ WhatsApp ]` (Chat Simulation), `[ Meta Ad ]` (Feed Sponsored Post), and `[ Both ]` (Dual side-by-side).
+  * **WhatsApp Rich Inlines & OG Preview**: Converts `*bold*`, `_italic_`, `~strike~`, and code into RichText inlines; automatically extracts destination URLs to build dynamic OG preview cards with domain, title, and thumbnail.
+  * **Meta Ad Feed Simulation**: Automatic headline extraction from `#` headers or YAML tags, dynamic CTA inference (`Send Message`, `Order Now`, `Shop Now`), and interactive `... See more` / `See less` text truncation.
+  * **1-Click Platform Exporters**: Dedicated buttons to copy sanitized WhatsApp broadcast copy or structured Meta Ads Manager payload (`=== PRIMARY TEXT ===`, `=== HEADLINE ===`, `=== CALL TO ACTION ===`).
+* **🖼️ Cross-Platform Avatar & User Profile Synchronization**:
+  * Dedicated physical binary file storage inside `_Team/Users/{staffId}/avatar.jpg` and `profile.json`.
+  * Sanitized `staff_directory.json` into a lightweight reference index (`avatarUrl: "/api/users/{staffId}/avatar"`), eliminating JSON bloating.
+  * High-performance binary streaming route `GET /api/users/:id/avatar` with MIME type detection and HTTP cache headers.
+  * Desktop `UserProfileService.cs` bi-directional auto-sync (mirrors local avatars to NAS `_Team/Users/{staffId}/avatar.jpg`) and complete camelCase `[JsonProperty]` mappings preventing credential stripping.
+* **🛡️ Source Guardian 100% PASS**:
+  * Replaced all raw high-byte Unicode characters in XAML attributes with XML entities (`&#x2122;`, `&#x26A0;`, `&#x1F1F2;&#x1F1FE;`), achieving zero warnings on XAML attributes.
 
 ## 🚀 What's New in v4.7.0 ("Velocity Navigation & Canva Cloud Bridge")
 
@@ -80,7 +102,7 @@ SS-CAM provides a comprehensive multi-client ecosystem to support diverse creati
 
 | Target Platform | Package / Variant | Deployment / Execution | Role in Ecosystem |
 |---|---|---|---|
-| 🪟 **Windows 10 / 11** | **Native WPF Single-File (`src/SS-CAM`)** | Portable executable: `.\dist\SS-CAM-v4.7.0.exe` | **Flagship Designer Client**: Offline-first, full Post Haste template generator, Preflight Quality Auditor, Direct Synology Drive I/O. |
+| 🪟 **Windows 10 / 11** | **Native WPF Single-File (`src/SS-CAM`)** | Portable executable: `.\dist\SS-CAM-v4.8.0.exe` | **Flagship Designer Client**: Offline-first, full Post Haste template generator, Preflight Quality Auditor, Direct Synology Drive I/O. |
 | 🐧 **Linux Desktop (Fedora/Ubuntu)** | **Native Avalonia UI (`src/SS-CAM.Linux`)** | Standalone Tarball: `.\dist\SS-CAM-v4.6.2-linux-x64.tar.gz`<br>1-Command: `curl -fsSL https://raw.githubusercontent.com/SuamiSihat/ss_cam/SS-Master/installer/install-linux.sh \| sudo bash` | **Native Linux Desktop Client**: Skia graphics engine, GNOME/KDE `.desktop` integration, direct `~/SynologyDrive/` I/O. |
 | 📱 **Android Native** | **Native Android App (`src/SS-CAM.Android`)** | [Google Play Store](https://play.google.com/store/apps/details?id=com.suamisihat.creative&hl=en-US&ah=4fxu9FCVL39aFVxQdNL2fGvtHd4&pli=1)<br>Direct APK: `.\dist\SS-CAM-v4.6.2-android-release.apk` | **Mobile Studio Companion**: 2×2 Bento KPI telemetry, 1-tap deliverable approvals, live ICY radio streaming, desk standby clock, push alerts. |
 | 🌐 **Admin Web Portal** | **Docker Web Container (`src/SS-CAM.Web`)** | Deploy on Synology NAS / Linux Server: `cd src/SS-CAM.Web && docker compose up -d` | **Admin & Central Control Plane**: User provisioning, holding switcher (SSH/SSC/SSW/SSE/SST), audit logs, API hub. |
