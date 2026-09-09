@@ -52,7 +52,7 @@ if ($ScanSecurity -or $All) {
 
     $SuspiciousPatterns = @(
         @{ Name = "Hardcoded Secret/Token"; Pattern = '(?i)(api[_-]?key|secret[_-]?key|password|bearer\s+[a-z0-9_\-\.]{20,})\s*[:=]\s*["''][^"'']{8,}["'']' },
-        @{ Name = "AWS Credential"; Pattern = '(A3T[A-Z0-9]|AKIA|AGPA|AIDA|AROA|AIPA|ANPA|ANVA|ASIA)[A-Z0-9]{16}' },
+        @{ Name = "AWS Credential"; Pattern = '\b(A3T[A-Z0-9]|AKIA|AGPA|AIDA|AROA|AIPA|ANPA|ANVA|ASIA)[A-Z0-9]{16}\b'; ExactCase = $true },
         @{ Name = "Private Key Header"; Pattern = '-----BEGIN (RSA|EC|DSA|OPENSSH) PRIVATE KEY-----' },
         @{ Name = "Suspicious Shell Execution"; Pattern = 'Process\.Start\s*\(\s*["''](cmd|powershell|cscript|wscript|bash|sh)' }
     )
@@ -69,7 +69,8 @@ if ($ScanSecurity -or $All) {
         if ([string]::IsNullOrEmpty($content)) { continue }
 
         foreach ($rule in $SuspiciousPatterns) {
-            if ($content -match $rule.Pattern) {
+            $isMatch = if ($rule.ExactCase) { $content -cmatch $rule.Pattern } else { $content -match $rule.Pattern }
+            if ($isMatch) {
                 # Skip known test/mock strings or false positives if needed
                 if ($file.FullName -like "*verify-sscam.ps1*" -or $file.FullName -like "*repo-cleaner.ps1*" -or $file.FullName -like "*auth-gh.ps1*" -or $file.FullName -like "*upload-release-assets.ps1*" -or $file.FullName -like "*Publish-SSCamRelease.ps1*") { continue }
                 Write-Host "  [SECURITY WARNING] $($rule.Name) detected in: $($file.FullName.Replace($RepoRoot.Path, ''))" -ForegroundColor Red
