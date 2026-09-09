@@ -1,4 +1,4 @@
-﻿# SS-CAM — Git text attribute rules
+# SS-CAM — Git text attribute rules
 # Force UTF-8 for all source files. Prevents encoding drift between
 # developer machines with different system code pages (e.g. Windows-1252).
 
