@@ -160,14 +160,14 @@ namespace SS_CAM.Services
         {
             switch (date.DayOfWeek)
             {
-                case DayOfWeek.Monday: return "M";
-                case DayOfWeek.Tuesday: return "T";
-                case DayOfWeek.Wednesday: return "W";
-                case DayOfWeek.Thursday: return "T";
-                case DayOfWeek.Friday: return "F";
-                case DayOfWeek.Saturday: return "S";
+                case DayOfWeek.Monday: return "Mon";
+                case DayOfWeek.Tuesday: return "Tue";
+                case DayOfWeek.Wednesday: return "Wed";
+                case DayOfWeek.Thursday: return "Thu";
+                case DayOfWeek.Friday: return "Fri";
+                case DayOfWeek.Saturday: return "Sat";
                 case DayOfWeek.Sunday: return "Sun";
-                default: return date.ToString("ddd").Substring(0, 1);
+                default: return date.ToString("ddd", System.Globalization.CultureInfo.InvariantCulture);
             }
         }
 

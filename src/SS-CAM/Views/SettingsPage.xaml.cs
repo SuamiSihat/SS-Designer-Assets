@@ -177,15 +177,15 @@ namespace SS_CAM.Views
                     string targetFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SuamiSihat");
                     if (!Directory.Exists(targetFolder)) Directory.CreateDirectory(targetFolder);
 
-                    string ext = Path.GetExtension(dlg.FileName);
-                    string targetPath = Path.Combine(targetFolder, string.Format("avatar{0}", ext));
+                    string staffPrefix = string.IsNullOrWhiteSpace(currentProfile.StaffId) ? "user" : currentProfile.StaffId.Trim();
+                    string targetPath = Path.Combine(targetFolder, string.Format("avatar_{0}.jpg", staffPrefix));
 
                     File.Copy(dlg.FileName, targetPath, true);
                     currentProfile.AvatarPath = targetPath;
 
                     UpdateAvatarPreview(targetPath);
 
-                    // Sync avatar to NAS staff_directory.json for Web Portal & Android
+                    // Sync avatar to NAS user folder and staff_directory.json for Web Portal & Android
                     if (!string.IsNullOrWhiteSpace(currentProfile.StaffId))
                     {
                         UserProfileService.SyncAvatarToNas(currentProfile.StaffId, targetPath, currentProfile.WorkspaceRoot);

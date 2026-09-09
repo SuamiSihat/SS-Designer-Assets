@@ -1,47 +1,43 @@
 # SS-CAM FINAL QA REPORT
 
-## Status: PASS — v4.6.2 Multi-Platform Release
+## Status: PASS — v4.7.0 Stable Release
 
-**QA Date**: 2026-09-08  
-**Configuration**: Release (MSBuild 4.8 / .NET Framework 4.8 / Avalonia .NET 10 / Svelte 5 / Android Compose)  
-**Source Guardian**: **PASS — 9 checks passed, 0 warned, 0 failed**  
+**QA Date**: 2026-09-09  
+**Configuration**: Release (MSBuild 4.8 / .NET Framework 4.8 / Svelte 5 / Android Compose)  
+**Source Guardian**: **PASS — 6 passed, 3 warned, 0 failed**  
 **Smoke & Web Test Suite**: **PASS — 30 passed, 0 failed (100%)**  
-**Android Build**: **BUILD SUCCESSFUL (versionCode 466, versionName 4.6.2)**  
-**Linux Desktop Build**: **BUILD SUCCESSFUL (Avalonia .NET 10, Standalone Tarball)**  
+**Android Build**: **BUILD SUCCESSFUL (versionCode 471, versionName 4.7.0)**  
+**Windows Desktop Build**: **BUILD SUCCESSFUL (Release single-file executable)**  
 
 ---
 
 ### Build & Code Quality Status
-- Windows Desktop Release build: **PASS** (`dist/SS-CAM-v4.6.2.exe` — 5.42 MB single-file)
-- Linux Desktop Release build: **PASS** (`dist/SS-CAM-v4.6.2-linux-x64.tar.gz` — 46.05 MB standalone)
+- Windows Desktop Release build: **PASS** (`dist/SS-CAM-v4.7.0.exe` — 5.70 MB single-file)
 - Web Production build: **PASS** (`npm run build:client` completed cleanly with Vite/Svelte 5)
-- Android Release builds: **PASS** (`dist/SS-CAM-v4.6.2-android-release.aab` & `dist/SS-CAM-v4.6.2-android-release.apk`)
-- Source Guardian: **PASS** (9 passed / 0 warned / 0 failed)
+- Android Release builds: **PASS** (`dist/SS-CAM-Companion-v4.7.0.aab` & `dist/SS-CAM-v4.7.0-android-release.apk`)
+- Source Guardian: **PASS** (6 passed / 3 warned / 0 failed, UTF-8 BOM intact)
 - Test Suite: **PASS** (30 passed / 0 failed across frontmatter, SLA, audit, SSE, API, security, attachments)
-- Cross-Platform Synchronization: **PASS** (Web, Windows Desktop, Linux Desktop, and Mobile Companion sync creative orders live)
+- Cross-Platform Synchronization: **PASS** (Web, Windows Desktop, and Mobile Companion sync creative orders and user profiles live)
 - Brand System & Fluent 2 Icons: **PASS** (0 Unicode emojis, 45+ type-safe Fluent 2 SVG icons)
 
 ---
 
-### Key Resolved Issues (v4.6.0 – v4.6.1)
+### Key Resolved Issues (v4.7.0)
 
 | ID | Severity | Description | Resolution | Status |
 |---|---|---|---|---|
-| SYNC-02 | P0 | Cross-Platform Creative Orders Discrepancy | Unified Desktop (WPF & Linux Avalonia) with Web Portal (`/api/orders`) using live REST API with automatic JWT authentication, dual-layer local Synology NAS ledger caching (`creative-orders.jsonl`), and bidirectional `PATCH` sync | **Resolved** |
-| SCAF-01 | P0 | Order Requests Scaffolding Engine | Implemented 1-Click Project Scaffolding in `CreativeOrderService.cs` calculating next canonical project ID (`NNNNX`), generating 4-folder vaults, `01_Brief_and_Copy/COPY.md` script, and `README.md` frontmatter | **Resolved** |
-| BOOT-01 | P0 | Desktop Splash Screen Hang on Launch | Resolved WPF-UI icon collision (`ClipboardTasklist24` -> `ClipboardTask24`), switched to fast in-process `WScript.Shell` shortcut registration, set `OnLastWindowClose` shutdown mode, and added diagnostic trace logging | **Resolved** |
-| KAN-01 | P1 | Task Manager Kanban Overdue Status on Completed Projects | Added strict `IsCompletedStatus` checking (`done`, `approved`, `completed`) suppressing overdue badge and rendering clean emerald green deadlines | **Resolved** |
-| YML-01 | P1 | Frontmatter Quoted String Parsing | Sanitized surrounding quotes on frontmatter values in `FrontmatterService.cs` across Windows WPF and Linux Avalonia | **Resolved** |
-| WEB-01 | P1 | Web Creative Direction Matrix Preview & Header Toggle | Redesigned Creative Direction tab to default to read-only matrix cards with live color chips and header action buttons | **Resolved** |
-| WEB-02 | P1 | Markdown Editor Height Clipping | Removed fixed 720px constraint in `MarkdownEditor.svelte` enabling auto-wrapping with sticky toolbar | **Resolved** |
-| TST-01 | P1 | Shared Team Board Test Isolation | Guarded `ApprovalService.postTeamNotification` from polluting live Synology NAS `team-notes.json` during test runs | **Resolved** |
+| PERF-01 | P0 | Desktop Navigation Latency & UI Thread Freezing | Enabled `NavigationCacheMode="Required"` across all 15 navigation views; eliminated synchronous recursive directory crawling on UI thread in Dashboard, Calendar, and Task Manager | **Resolved** |
+| CNV-01 | P1 | Canva Cloud Integration | Integrated Canva Creative Cloud Bridge card in Project Creator with platform auto-sizing, `.url` Windows shortcut generation, and `canva_url` YAML frontmatter sync | **Resolved** |
+| TEAM-01 | P0 | Cross-Platform Profile Picture & User Data Desync | Transitioned from Base64 in `staff_directory.json` to dedicated physical binary file storage inside `_Team/Users/{staffId}/avatar.jpg` and `profile.json`; implemented `GET /api/users/:id/avatar` streaming route and bi-directional desktop auto-sync | **Resolved** |
+| CAL-01 | P1 | Big Calendar Timeline Day Names & Weekend Highlighting | Standardized day headers to uniform 3-letter abbreviations (`Mon`..`Sun`); restricted red text highlight strictly to official Malaysia Public Holidays, rendering weekends in neutral slate | **Resolved** |
+| CAST-01 | P1 | Order Requests ContextMenu InvalidCastException | Statically isolated `OrderCardContextMenu` into page resource, eliminating runtime cast failure on order selection | **Resolved** |
 
 ---
 
 ### Executable Binaries & Packages
-- Windows Desktop: [`dist/SS-CAM-v4.6.2.exe`](file:///e:/Dev/Projects/SS-Brand-Assets/dist/SS-CAM-v4.6.2.exe) (5.42 MB)
-- Linux Desktop: [`dist/SS-CAM-v4.6.2-linux-x64.tar.gz`](file:///e:/Dev/Projects/SS-Brand-Assets/dist/SS-CAM-v4.6.2-linux-x64.tar.gz) (46.05 MB)
-- Android Play Store AAB: [`dist/SS-CAM-v4.6.2-android-release.aab`](file:///e:/Dev/Projects/SS-Brand-Assets/dist/SS-CAM-v4.6.2-android-release.aab)
-- Android Standalone APK: [`dist/SS-CAM-v4.6.2-android-release.apk`](file:///e:/Dev/Projects/SS-Brand-Assets/dist/SS-CAM-v4.6.2-android-release.apk)
-- Assembly Version: `4.6.2.0`
-- Android versionCode: `466` (versionName: `"4.6.2"`)
+- Windows Desktop: [`dist/SS-CAM-v4.7.0.exe`](file:///e:/Dev/Projects/SS-Brand-Assets/dist/SS-CAM-v4.7.0.exe) (5.70 MB)
+- Windows Latest Pointer: [`dist/SS-CAM.exe`](file:///e:/Dev/Projects/SS-Brand-Assets/dist/SS-CAM.exe) (5.70 MB)
+- Android Play Store AAB: [`dist/SS-CAM-Companion-v4.7.0.aab`](file:///e:/Dev/Projects/SS-Brand-Assets/dist/SS-CAM-Companion-v4.7.0.aab)
+- Android Standalone APK: [`dist/SS-CAM-v4.7.0-android-release.apk`](file:///e:/Dev/Projects/SS-Brand-Assets/dist/SS-CAM-v4.7.0-android-release.apk)
+- Assembly Version: `4.7.0.0`
+- Android versionCode: `471` (versionName: `"4.7.0"`)

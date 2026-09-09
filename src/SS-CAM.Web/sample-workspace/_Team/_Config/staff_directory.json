@@ -1,4 +1,4 @@
-[
+﻿[
   {
     "staffId": "SS0004",
     "username": "harussani",
@@ -13,7 +13,9 @@
     "roles": [
       "Admin",
       "Designer"
-    ]
+    ],
+    "avatarUrl": "/api/users/SS0004/avatar",
+    "avatar": "/api/users/SS0004/avatar"
   },
   {
     "staffId": "SS0035",

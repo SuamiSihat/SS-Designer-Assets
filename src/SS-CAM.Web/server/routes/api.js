@@ -106,7 +106,8 @@ router.post('/auth/login', (req, res) => {
       staffId: user.staffId,
       department: user.department,
       email: user.email || '',
-      avatar: user.avatar || user.avatarUrl || '',
+      avatar: user.avatarUrl || user.avatar || '',
+      avatarUrl: user.avatarUrl || user.avatar || '',
       avatarColor: user.avatarColor || '#0078D4',
       defaultBrand: user.defaultBrand || 'SS',
       permissions
@@ -157,7 +158,8 @@ router.get('/auth/me', authenticateToken, (req, res) => {
         roles: liveStaff.roles || req.user.roles,
         department: liveStaff.department || req.user.department,
         email: liveStaff.email || req.user.email,
-        avatar: liveStaff.avatar || liveStaff.avatarUrl || liveStaff.avatarPath || '',
+        avatar: liveStaff.avatarUrl || liveStaff.avatar || '',
+        avatarUrl: liveStaff.avatarUrl || liveStaff.avatar || '',
         avatarColor: liveStaff.avatarColor || req.user.avatarColor || '#0078D4',
         defaultBrand: liveStaff.defaultBrand || req.user.defaultBrand || 'SS'
       }
@@ -217,7 +219,8 @@ router.put('/auth/profile', authenticateToken, (req, res) => {
         name: updatedMember.name,
         email: updatedMember.email,
         department: updatedMember.department,
-        avatar: updatedMember.avatar || '',
+        avatar: updatedMember.avatarUrl || updatedMember.avatar || '',
+        avatarUrl: updatedMember.avatarUrl || updatedMember.avatar || '',
         avatarColor: updatedMember.avatarColor || '#0078D4',
         defaultBrand: updatedMember.defaultBrand || 'SS'
       }
@@ -1062,6 +1065,27 @@ router.get('/team/roster', (req, res) => {
   try {
     const roster = TeamService.getStaffRoster();
     res.json({ success: true, roster, users: roster });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/users/:id/avatar', (req, res) => {
+  try {
+    const staffId = req.params.id;
+    const avatarPath = TeamService.getAvatarPath(staffId);
+    if (!avatarPath || !fs.existsSync(avatarPath)) {
+      return res.status(404).json({ error: 'Avatar not found' });
+    }
+
+    const ext = path.extname(avatarPath).toLowerCase();
+    let mime = 'image/jpeg';
+    if (ext === '.png') mime = 'image/png';
+    else if (ext === '.webp') mime = 'image/webp';
+
+    res.setHeader('Content-Type', mime);
+    res.setHeader('Cache-Control', 'public, max-age=86400, stale-while-revalidate=3600');
+    return fs.createReadStream(avatarPath).pipe(res);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

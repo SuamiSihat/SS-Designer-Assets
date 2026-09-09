@@ -2,9 +2,9 @@
 
 All notable SS-CAM changes are documented here.
 
-## [4.7.0] - 2026-09-08 (Velocity Navigation Engine, Canva Creative Cloud Bridge & Cross-Platform Alignment)
+## [4.7.0] - 2026-09-09 (Velocity Navigation Engine, Canva Creative Cloud Bridge, Per-User Team Storage & Visual Timeline Alignment)
 
-### Added & Refined — Zero-Latency Navigation, Canva Cloud Bridge & Ecosystem Synchronization
+### Added & Refined — Zero-Latency Navigation, Canva Cloud Bridge, Team Storage & Ecosystem Synchronization
 - **High-Velocity Desktop Navigation Engine (`MainWindow.xaml`, `WorkspaceScanner.cs`, `DashboardModels.cs`)**:
   - Configured `NavigationCacheMode="Required"` across all 15 navigation views in the desktop application. Tab navigation is now instantaneous (0 ms), retaining active state, scroll position, search filters, and loaded view models without re-inflating XAML BAML trees or garbage-collecting active pages.
   - Completely eliminated synchronous recursive `Directory.GetDirectories` crawling on the UI thread in `DashboardPage.xaml.cs`.
@@ -26,28 +26,36 @@ All notable SS-CAM changes are documented here.
   - Added prominent teal `[CANVA]` pill badge to Task Manager Kanban cards when a project contains Canva cloud metadata.
   - Added **"Open in Canva"** option to Kanban card context menus.
   - Added **"Open Canva"** quick launch action button in the Project Detail drawer.
+- **Per-User Team Storage Architecture & Binary Avatar Streaming (`TeamService.js`, `api.js`, `UserProfileModels.cs`, `UserProfileService.cs`)**:
+  - Transitioned from monolithic Base64 string embedding in `staff_directory.json` to dedicated physical binary file storage inside `_Team/Users/{staffId}/avatar.jpg` and `profile.json`.
+  - Sanitized `staff_directory.json` into a lightweight reference index (`avatarUrl: "/api/users/{staffId}/avatar"`), eliminating JSON bloating.
+  - Implemented high-performance binary streaming route `GET /api/users/:id/avatar` with MIME type detection and HTTP cache control headers.
+  - Resolved C# desktop `StaffDirectoryItem` serialization by adding missing fields (`Username`, `AvatarUrl`, `Roles`, `Password`) with explicit `[JsonProperty("...")]` camelCase mappings, preventing authentication credential loss.
+  - Added bi-directional auto-sync in desktop `UserProfileService.LoadProfile()` (automatically uploading local `%LOCALAPPDATA%` avatars to NAS `_Team/Users/{staffId}/avatar.jpg`) and `SyncAvatarToNas()` for instant updates.
+  - Updated all Web views (`ProfileView`, `TeamView`, `DashboardView`, `ProjectKanbanView`, `ProjectTableView`, `ProjectDetailView`) to prioritize `avatarUrl || avatar` over browser `localStorage`.
+- **Big Calendar Timeline Day Headers & Public Holiday Color Standard (`MalaysiaHolidayService.cs`, `CalendarPage.xaml.cs`)**:
+  - Standardized all 7 day headers across the Gantt timeline to uniform 3-letter abbreviations: `Mon`, `Tue`, `Wed`, `Thu`, `Fri`, `Sat`, `Sun` (via `MalaysiaHolidayService.GetDayLetter`).
+  - Restricted red text highlight (`#DC2626`) strictly to official Malaysia Public Holidays (`holiday != null`).
+  - Styled Sunday and Saturday weekend days in clean neutral slate (`#64748B`), perfectly aligning with the "Weekend (Sat/Sun Off-Day)" guide.
 - **Web Management Portal Sync (`SS-CAM.Web`)**:
   - Updated `ProjectFrontmatter` interface in `types/index.ts` with `canva_url?: string;`.
   - Added Canva Creative Cloud Project Link input and external launcher button in `FrontmatterPanel.svelte`.
   - Bumped `src/SS-CAM.Web/package.json` to version `4.7.0`.
+  - Rebuilt production client bundle via `npm run build:client` (2,253 modules transformed).
 - **Android Companion App Alignment (`SS-CAM.Android`)**:
   - Updated `build.gradle.kts` to `versionName = "4.7.0"` and `versionCode = 471`.
-- **Cross-Platform Profile Picture Auto-Sync (`UserProfileModels.cs`, `UserProfileService.cs`, `SettingsPage.xaml.cs`, `MainWindow.xaml.cs`)**:
-  - Implemented automatic Base64-to-disk decoding and caching (`avatar_{staffId}.jpg`) from Synology NAS `staff_directory.json` to Desktop `%LOCALAPPDATA%\SuamiSihat\`.
-  - Added auto-sync check on `UserProfileService.LoadProfile()`: Desktop now automatically validates and mirrors avatars updated from Web Portal or Android.
-  - Added bi-directional reverse sync (`UserProfileService.SyncAvatarToNas`): changing avatar on Desktop encodes to Base64 JPEG data URI and persists to NAS `staff_directory.json` for instant propagation across Web and Android.
-  - Updated `MainWindow` sidebar and `SettingsPage` preview to decode and render both Base64 Data URIs and local files seamlessly.
-- **Visual Gantt Timeline Off-Day Shading, Day Labels & Conflict Prevention (`CalendarPage.xaml`, `CalendarPage.xaml.cs`, `CategoryPresetService.cs`, `MalaysiaHolidayService.cs`, `ProjectGanttView.svelte`)**:
-  - Added two-tier stacked column headers across the Gantt timeline showing day-of-week letters (`M`, `T`, `W`, `T`, `F`, `S`, `Sun`) and day numbers.
-  - Color-coded badges and styling for Today (brand blue), Sundays (coral/red accent), Saturdays (slate neutral), and Malaysia Public Holidays (bold red with flag 🇲🇾).
-  - Implemented vertical column background fills and boundary lines spanning all project rows for Saturdays & Sundays (slate wash) and Malaysia Public Holidays like Malaysia Day Sep 16 (soft red wash).
-  - Added Gantt Timeline legend guide for working days, weekends, public holidays, today, and schedule conflict alerts.
-  - Updated SLA deadline calculation engine (`CategoryPresetService.CalculateTargetDeadline`) to count pure working business days, automatically skipping Saturdays, Sundays, and Malaysia Public Holidays.
-  - Added active Gantt deadline conflict prevention: projects whose deadlines fall on an off-day display a prominent `⚠️ Off-Day` badge on the schedule bar, red warning border, red subtitle warning, and rescheduling guidance in tooltip.
-  - Replicated holiday recognition, off-day column shading, and schedule conflict tags in Web Portal Gantt view (`ProjectGanttView.svelte`).
-- **Release Packaging**:
+  - Direct consumption of `/api/users/{staffId}/avatar` streaming endpoint via `StaffMember.profileImageUrl`.
+- **Release Packaging & Binary Verification**:
   - Rebuilt WPF Desktop executable using MSBuild 4.8 in Release mode with Costura.Fody single-file embedding.
-  - Updated `dist/SS-CAM.exe` and `dist/SS-CAM-v4.7.0.exe` (AssemblyVersion and FileVersion `4.7.0.0`).
+  - Updated `dist/SS-CAM.exe` and `dist/SS-CAM-v4.7.0.exe` (AssemblyVersion and FileVersion `4.7.0.0`, 5.70 MB).
+
+| Asset / Artifact | Target Platform | Specification | Status |
+|---|---|---|---|
+| `dist/SS-CAM-v4.7.0.exe` | Windows 10/11 x64 | .NET Framework 4.8 Single-File Binary | **Verified** |
+| `dist/SS-CAM.exe` | Windows 10/11 x64 | Canonical Latest Executable Pointer | **Verified** |
+| `dist/SS-CAM-Companion-v4.7.0.aab` | Android (Google Play) | Kotlin Compose Multiplatform Bundle | **Verified** |
+| `dist/SS-CAM-v4.7.0-android-release.apk` | Android Standalone | Sideloadable Universal APK | **Verified** |
+| `src/SS-CAM.Web/client/dist` | Web Portal / Docker | Svelte 5 + Vite Production Assets | **Verified** |
 
 ## [4.6.2] - 2026-09-08 (NAS Temporary Attachment Vault, Designer Task Handover, Web Multi-File Upload & Desktop Project Creator Auto-Ingestion)
 

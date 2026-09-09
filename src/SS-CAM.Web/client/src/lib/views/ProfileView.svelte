@@ -118,7 +118,7 @@
       role = appState.currentUser.role || 'Designer';
       email = appState.currentUser.email || '';
       defaultBrand = appState.currentUser.defaultBrand || 'SS';
-      avatar = appState.currentUser.avatar || (typeof localStorage !== 'undefined' ? (localStorage.getItem(`ss_cam_avatar_${staffId}`) || localStorage.getItem('ss_cam_user_avatar') || '') : '');
+      avatar = appState.currentUser.avatarUrl || appState.currentUser.avatar || (typeof localStorage !== 'undefined' ? (localStorage.getItem(`ss_cam_avatar_${staffId}`) || localStorage.getItem('ss_cam_user_avatar') || '') : '');
       avatarColor = appState.currentUser.avatarColor || '#0078D4';
     }
   }
@@ -150,7 +150,7 @@
       role = found.role || 'Designer';
       if (found.email) email = found.email;
       if (found.defaultBrand) defaultBrand = found.defaultBrand;
-      if (found.avatar) avatar = found.avatar;
+      if (found.avatarUrl || found.avatar) avatar = found.avatarUrl || found.avatar || '';
       if (found.avatarColor) avatarColor = found.avatarColor;
       appState.addToast(`Loaded profile fields for ${found.name}`, 'info');
     }

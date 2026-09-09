@@ -67,26 +67,40 @@ namespace SS_CAM.Services
                 }
             }
 
-            // Auto-sync avatar from staff_directory.json on NAS if available
+            // Auto-sync avatar from _Team/Users/{staffId}/avatar.jpg or staff_directory.json on NAS
             if (profile != null && !string.IsNullOrWhiteSpace(profile.StaffId))
             {
                 try
                 {
-                    var directory = GetStaffDirectory(profile.WorkspaceRoot);
-                    if (directory != null)
+                    string ws = !string.IsNullOrWhiteSpace(profile.WorkspaceRoot) && Directory.Exists(profile.WorkspaceRoot)
+                        ? profile.WorkspaceRoot
+                        : NasConfigSyncService.DiscoverWorkspaceRoot();
+
+                    if (!string.IsNullOrWhiteSpace(ws) && Directory.Exists(ws))
                     {
-                        var match = directory.Find(d => string.Equals(d.StaffId, profile.StaffId, StringComparison.OrdinalIgnoreCase));
-                        if (match != null && !string.IsNullOrWhiteSpace(match.Avatar))
+                        string nasAvatar = GetUserAvatarPath(ws, profile.StaffId);
+                        if (!string.IsNullOrWhiteSpace(nasAvatar) && File.Exists(nasAvatar))
                         {
-                            string cached = CacheAvatarFromData(match.Avatar, match.StaffId);
-                            if (!string.IsNullOrWhiteSpace(cached) && File.Exists(cached))
+                            string localApp = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SuamiSihat");
+                            if (!Directory.Exists(localApp)) Directory.CreateDirectory(localApp);
+                            string localCached = Path.Combine(localApp, string.Format("avatar_{0}.jpg", profile.StaffId.Trim()));
+
+                            // Copy from NAS if local is missing or NAS avatar was modified more recently
+                            if (!File.Exists(localCached) || File.GetLastWriteTimeUtc(nasAvatar) > File.GetLastWriteTimeUtc(localCached).AddSeconds(2))
                             {
-                                if (!string.Equals(profile.AvatarPath, cached, StringComparison.OrdinalIgnoreCase))
-                                {
-                                    profile.AvatarPath = cached;
-                                    JsonPersistenceHelper.Save(ConfigFilePath, profile);
-                                }
+                                File.Copy(nasAvatar, localCached, true);
                             }
+
+                            if (!string.Equals(profile.AvatarPath, localCached, StringComparison.OrdinalIgnoreCase))
+                            {
+                                profile.AvatarPath = localCached;
+                                JsonPersistenceHelper.Save(ConfigFilePath, profile);
+                            }
+                        }
+                        else if (!string.IsNullOrWhiteSpace(profile.AvatarPath) && File.Exists(profile.AvatarPath))
+                        {
+                            // Local avatar exists but NAS is missing it: auto-push to NAS _Team/Users/{staffId}/avatar.jpg
+                            SyncAvatarToNas(profile.StaffId, profile.AvatarPath, ws);
                         }
                     }
                 }
@@ -105,6 +119,27 @@ namespace SS_CAM.Services
             if (profile != null && !string.IsNullOrWhiteSpace(profile.WorkspaceRoot))
             {
                 NasConfigSyncService.SaveToNas(profile.WorkspaceRoot, "user_profile.json");
+
+                // Mirror to dedicated _Team/Users/{staffId}/profile.json on NAS
+                if (!string.IsNullOrWhiteSpace(profile.StaffId))
+                {
+                    string uFolder = GetUserFolder(profile.WorkspaceRoot, profile.StaffId);
+                    if (!string.IsNullOrWhiteSpace(uFolder))
+                    {
+                        try
+                        {
+                            string uProfilePath = Path.Combine(uFolder, "profile.json");
+                            JsonPersistenceHelper.Save(uProfilePath, profile);
+                        }
+                        catch (Exception ex) { System.Diagnostics.Debug.WriteLine("[UserProfileService] SaveUserProfile error: " + ex.Message); }
+                    }
+
+                    // Push avatar to NAS if valid local avatar exists
+                    if (!string.IsNullOrWhiteSpace(profile.AvatarPath) && File.Exists(profile.AvatarPath))
+                    {
+                        SyncAvatarToNas(profile.StaffId, profile.AvatarPath, profile.WorkspaceRoot);
+                    }
+                }
             }
         }
 
@@ -415,6 +450,48 @@ namespace SS_CAM.Services
             return defaults;
         }
 
+        public static string GetUserFolder(string workspaceRoot, string staffId)
+        {
+            if (string.IsNullOrWhiteSpace(workspaceRoot) || string.IsNullOrWhiteSpace(staffId)) return null;
+            try
+            {
+                string userDir = Path.Combine(workspaceRoot, "_Team", "Users", staffId.Trim().ToUpperInvariant());
+                if (!Directory.Exists(userDir))
+                {
+                    Directory.CreateDirectory(userDir);
+                }
+                return userDir;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("[UserProfileService] GetUserFolder error: " + ex.Message);
+                return null;
+            }
+        }
+
+        public static string GetUserAvatarPath(string workspaceRoot, string staffId)
+        {
+            if (string.IsNullOrWhiteSpace(workspaceRoot) || string.IsNullOrWhiteSpace(staffId)) return null;
+            try
+            {
+                string userDir = Path.Combine(workspaceRoot, "_Team", "Users", staffId.Trim().ToUpperInvariant());
+                if (Directory.Exists(userDir))
+                {
+                    string[] candidates = { "avatar.jpg", "avatar.jpeg", "avatar.png", "avatar.webp" };
+                    foreach (var f in candidates)
+                    {
+                        string p = Path.Combine(userDir, f);
+                        if (File.Exists(p)) return p;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("[UserProfileService] GetUserAvatarPath error: " + ex.Message);
+            }
+            return null;
+        }
+
         public static string CacheAvatarFromData(string avatarData, string staffId)
         {
             if (string.IsNullOrWhiteSpace(avatarData)) return null;
@@ -433,6 +510,19 @@ namespace SS_CAM.Services
                         string targetPath = Path.Combine(localApp, fileName);
                         File.WriteAllBytes(targetPath, bytes);
                         return targetPath;
+                    }
+                }
+                else if (avatarData.StartsWith("/api/users/", StringComparison.OrdinalIgnoreCase) || avatarData.StartsWith("http", StringComparison.OrdinalIgnoreCase))
+                {
+                    // Check if physical file exists in workspace root on disk
+                    string ws = NasConfigSyncService.DiscoverWorkspaceRoot();
+                    if (!string.IsNullOrWhiteSpace(ws))
+                    {
+                        string diskAvatar = GetUserAvatarPath(ws, staffId);
+                        if (!string.IsNullOrWhiteSpace(diskAvatar) && File.Exists(diskAvatar))
+                        {
+                            return diskAvatar;
+                        }
                     }
                 }
                 else if (File.Exists(avatarData))
@@ -462,25 +552,37 @@ namespace SS_CAM.Services
 
             try
             {
-                byte[] bytes = File.ReadAllBytes(localImagePath);
-                string ext = Path.GetExtension(localImagePath).TrimStart('.').ToLowerInvariant();
-                if (ext == "jpg") ext = "jpeg";
-                string mime = "image/" + ext;
-                string base64 = string.Format("data:{0};base64,{1}", mime, Convert.ToBase64String(bytes));
+                string cleanStaffId = staffId.Trim().ToUpperInvariant();
 
+                // 1. Save binary file to _Team/Users/{staffId}/avatar.jpg
+                string userDir = GetUserFolder(workspaceRoot, cleanStaffId);
+                if (!string.IsNullOrWhiteSpace(userDir))
+                {
+                    string destFile = Path.Combine(userDir, "avatar.jpg");
+                    if (!string.Equals(Path.GetFullPath(localImagePath), Path.GetFullPath(destFile), StringComparison.OrdinalIgnoreCase))
+                    {
+                        File.Copy(localImagePath, destFile, true);
+                    }
+                }
+
+                // 2. Update staff_directory.json with clean lightweight avatarUrl
                 string staffPath = Path.Combine(workspaceRoot, "_Team", "_Config", "staff_directory.json");
                 if (File.Exists(staffPath))
                 {
                     string json = File.ReadAllText(staffPath, System.Text.Encoding.UTF8);
+                    if (json.Length > 0 && json[0] == '\uFEFF') json = json.Substring(1);
+
                     var list = Newtonsoft.Json.JsonConvert.DeserializeObject<List<StaffDirectoryItem>>(json);
                     if (list != null)
                     {
-                        var member = list.Find(x => string.Equals(x.StaffId, staffId, StringComparison.OrdinalIgnoreCase));
+                        var member = list.Find(x => string.Equals(x.StaffId, cleanStaffId, StringComparison.OrdinalIgnoreCase));
                         if (member != null)
                         {
-                            member.Avatar = base64;
+                            string avatarEndpoint = string.Format("/api/users/{0}/avatar", cleanStaffId);
+                            member.AvatarUrl = avatarEndpoint;
+                            member.Avatar = avatarEndpoint;
                             string newJson = Newtonsoft.Json.JsonConvert.SerializeObject(list, Newtonsoft.Json.Formatting.Indented);
-                            File.WriteAllText(staffPath, newJson, System.Text.Encoding.UTF8);
+                            File.WriteAllText(staffPath, newJson, new System.Text.UTF8Encoding(false));
                             return true;
                         }
                     }

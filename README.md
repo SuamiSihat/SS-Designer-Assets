@@ -28,15 +28,17 @@ Standardized Project Vaults · ClickUp 3.0 Workspace · Copywriting Studio · Br
   * **"Open in Canva"** quick action integrated into Kanban card context menus and the project detail drawer.
 * **🌐 Web Management Portal Synchronization (`SS-CAM.Web`)**:
   * Added Canva Creative Cloud link input and direct launch button to `FrontmatterPanel.svelte`.
-* **🖼️ Cross-Platform Profile Picture Auto-Sync**:
-  * Bi-directional avatar synchronization between Desktop (`user_profile.json` / local disk cache) and Web/Android (`staff_directory.json` Base64 Data URIs) with automatic local caching.
+* **🖼️ Per-User Team Storage & Binary Avatar Streaming**:
+  * Transitioned from monolithic Base64 string embedding in `staff_directory.json` to dedicated physical binary file storage inside `_Team/Users/{staffId}/avatar.jpg` and `profile.json`.
+  * High-performance binary streaming route `GET /api/users/:id/avatar` with MIME type detection and HTTP cache headers.
+  * Desktop `UserProfileService.cs` bi-directional auto-sync (mirrors local avatars to NAS `_Team/Users/{staffId}/avatar.jpg`) and complete camelCase `[JsonProperty]` mappings preventing credential stripping.
 * **📅 Visual Gantt Timeline Off-Day Shading, Day Labels & Conflict Prevention**:
-  * Two-tier stacked day headers (`M, T, W, T, F, S, Sun`) with color-coded status badges for Today, Weekends, and Malaysia Public Holidays.
+  * Two-tier stacked day headers with uniform 3-letter day names (`Mon, Tue, Wed, Thu, Fri, Sat, Sun`) via `MalaysiaHolidayService.GetDayLetter`.
+  * Red color highlight (`#DC2626`) restricted strictly to official Malaysia Public Holidays, rendering weekends in clean neutral slate (`#64748B`).
   * Full-height column background fills and boundary lines across all project rows for Saturdays & Sundays (slate wash) and official Malaysia Public Holidays (soft red wash).
   * Business working day SLA engine skipping non-working days, plus active Gantt deadline conflict detection with `⚠️ Off-Day` badges and rescheduling alerts.
-  * Version bumped to `v4.7.0`.
 * **📱 Android Companion App Alignment (`SS-CAM.Android`)**:
-  * Version bumped to `v4.7.0` (build 471).
+  * Version bumped to `v4.7.0` (build 471), automatically streaming `/api/users/{staffId}/avatar`.
 
 ## 🚀 What's New in v4.6.2
 

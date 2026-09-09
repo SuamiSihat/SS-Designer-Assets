@@ -41,21 +41,46 @@ namespace SS_CAM.Models
 
     public class StaffDirectoryItem
     {
+        [Newtonsoft.Json.JsonProperty("staffId")]
         public string StaffId { get; set; }
+
+        [Newtonsoft.Json.JsonProperty("username")]
+        public string Username { get; set; }
+
+        [Newtonsoft.Json.JsonProperty("name")]
         public string Name { get; set; }
+
+        [Newtonsoft.Json.JsonProperty("role")]
         public string Role { get; set; }
+
+        [Newtonsoft.Json.JsonProperty("department")]
         public string Department { get; set; }
+
+        [Newtonsoft.Json.JsonProperty("email")]
         public string Email { get; set; }
 
         [Newtonsoft.Json.JsonProperty("avatar")]
         public string Avatar { get; set; }
 
+        [Newtonsoft.Json.JsonProperty("avatarUrl")]
+        public string AvatarUrl { get; set; }
+
         [Newtonsoft.Json.JsonProperty("avatarColor")]
         public string AvatarColor { get; set; }
 
         public string AvatarPath { get; set; }
+
+        [Newtonsoft.Json.JsonProperty("defaultBrand")]
         public string DefaultBrand { get; set; }
+
+        [Newtonsoft.Json.JsonProperty("active")]
         public bool Active { get; set; }
+
+        [Newtonsoft.Json.JsonProperty("roles")]
+        public System.Collections.Generic.List<string> Roles { get; set; }
+
+        [Newtonsoft.Json.JsonProperty("password")]
+        public string Password { get; set; }
 
         public string DisplayText
         {
@@ -68,15 +93,19 @@ namespace SS_CAM.Models
         public StaffDirectoryItem()
         {
             StaffId = "";
+            Username = "";
             Name = "";
             Role = "";
             Department = "Creative Production";
             Email = "";
             Avatar = "";
+            AvatarUrl = "";
             AvatarColor = "#0078D4";
             AvatarPath = "";
             DefaultBrand = "SS";
             Active = true;
+            Roles = new System.Collections.Generic.List<string>();
+            Password = "";
         }
     }
 

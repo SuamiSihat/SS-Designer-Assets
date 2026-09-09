@@ -396,10 +396,10 @@
               (w.name && appState.currentUser.name && w.name.toLowerCase() === appState.currentUser.name.toLowerCase()) ||
               (w.designer && appState.currentUser.username && w.designer.toLowerCase() === appState.currentUser.username.toLowerCase())
             ))}
-            {@const wAvatar = w.avatar || (typeof localStorage !== 'undefined' ? (
+            {@const wAvatar = w.avatarUrl || w.avatar || (typeof localStorage !== 'undefined' ? (
               (w.staffId ? localStorage.getItem(`ss_cam_avatar_${w.staffId}`) : null) ||
               (w.designer ? localStorage.getItem(`ss_cam_avatar_${w.designer}`) : null) ||
-              (isCurrentDesigner ? (appState.currentUser?.avatar || localStorage.getItem('ss_cam_user_avatar') || '') : '')
+              (isCurrentDesigner ? (appState.currentUser?.avatarUrl || appState.currentUser?.avatar || localStorage.getItem('ss_cam_user_avatar') || '') : '')
             ) : '')}
             <div class="workload-row">
               <div class="workload-user">

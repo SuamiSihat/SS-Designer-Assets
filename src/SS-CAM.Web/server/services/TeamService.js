@@ -4,6 +4,71 @@ const config = require('../config');
 const WorkspaceService = require('./WorkspaceService');
 
 class TeamService {
+  static getUsersDir() {
+    const usersDir = path.join(config.WORKSPACE_ROOT, '_Team', 'Users');
+    if (!fs.existsSync(usersDir)) {
+      try { fs.mkdirSync(usersDir, { recursive: true }); } catch (e) {}
+    }
+    return usersDir;
+  }
+
+  static getUserDir(staffId) {
+    if (!staffId) return null;
+    const cleanId = String(staffId).trim().toUpperCase();
+    const userDir = path.join(this.getUsersDir(), cleanId);
+    if (!fs.existsSync(userDir)) {
+      try { fs.mkdirSync(userDir, { recursive: true }); } catch (e) {}
+    }
+    return userDir;
+  }
+
+  static getAvatarPath(staffId) {
+    if (!staffId) return null;
+    const cleanId = String(staffId).trim().toUpperCase();
+    const userDir = path.join(this.getUsersDir(), cleanId);
+    const candidates = ['avatar.jpg', 'avatar.jpeg', 'avatar.png', 'avatar.webp'];
+    for (const file of candidates) {
+      const full = path.join(userDir, file);
+      if (fs.existsSync(full)) return full;
+    }
+    return null;
+  }
+
+  static saveAvatarFile(staffId, avatarData) {
+    if (!staffId || !avatarData) return null;
+    try {
+      const userDir = this.getUserDir(staffId);
+      if (!userDir) return null;
+
+      if (avatarData.startsWith('data:image/')) {
+        const commaIdx = avatarData.indexOf(',');
+        if (commaIdx >= 0) {
+          const base64Str = avatarData.substring(commaIdx + 1);
+          const buffer = Buffer.from(base64Str, 'base64');
+          const avatarFile = path.join(userDir, 'avatar.jpg');
+          fs.writeFileSync(avatarFile, buffer);
+          return `/api/users/${encodeURIComponent(staffId.trim().toUpperCase())}/avatar`;
+        }
+      } else if (avatarData.startsWith('/api/users/')) {
+        return avatarData;
+      }
+    } catch (err) {
+      console.error(`[TeamService] saveAvatarFile error for ${staffId}:`, err.message);
+    }
+    return null;
+  }
+
+  static saveUserProfile(staffId, profileData) {
+    if (!staffId) return;
+    try {
+      const userDir = this.getUserDir(staffId);
+      if (userDir) {
+        const pPath = path.join(userDir, 'profile.json');
+        fs.writeFileSync(pPath, JSON.stringify(profileData, null, 2), 'utf8');
+      }
+    } catch (e) {}
+  }
+
   static getRosterPath() {
     const configDir = path.join(config.WORKSPACE_ROOT, '_Team', '_Config');
     if (!fs.existsSync(configDir)) {
@@ -36,9 +101,24 @@ class TeamService {
     }
 
     try {
-      const json = fs.readFileSync(rosterPath, 'utf8');
+      const raw = fs.readFileSync(rosterPath, 'utf8');
+      const json = raw.replace(/^\uFEFF/, '');
       const roster = JSON.parse(json);
-      return Array.isArray(roster) && roster.length > 0 ? roster : defaultTeam;
+      const list = Array.isArray(roster) && roster.length > 0 ? roster : defaultTeam;
+
+      // Auto-enrich members with physical avatars from _Team/Users/{staffId}/avatar.*
+      list.forEach(m => {
+        if (!m.avatarUrl || !m.avatar) {
+          const diskAvatar = this.getAvatarPath(m.staffId);
+          if (diskAvatar) {
+            const url = `/api/users/${encodeURIComponent(m.staffId)}/avatar`;
+            if (!m.avatarUrl) m.avatarUrl = url;
+            if (!m.avatar) m.avatar = url;
+          }
+        }
+      });
+
+      return list;
     } catch (err) {
       console.error('[TeamService] Failed to parse staff_directory.json:', err.message);
       return defaultTeam;
@@ -88,6 +168,16 @@ class TeamService {
     }
     const roleString = roles.join(', ') || 'Designer';
 
+    let avatarUrl = member.avatarUrl || '';
+    let avatarVal = member.avatar || '';
+    if (member.avatar && member.avatar.startsWith('data:image/')) {
+      const savedUrl = this.saveAvatarFile(staffId, member.avatar);
+      if (savedUrl) {
+        avatarUrl = savedUrl;
+        avatarVal = savedUrl;
+      }
+    }
+
     const newMember = {
       staffId,
       username,
@@ -97,13 +187,15 @@ class TeamService {
       roles: roles.length > 0 ? roles : ['Designer'],
       department: member.department ? member.department.trim() : 'Creative Production',
       defaultBrand: (member.defaultBrand || 'SS').trim().toUpperCase(),
-      avatar: member.avatar || '',
+      avatar: avatarVal,
+      avatarUrl: avatarUrl,
       avatarColor: member.avatarColor || '#0078D4',
       active: member.active !== false
     };
 
     roster.push(newMember);
     this.saveStaffRoster(roster);
+    this.saveUserProfile(staffId, newMember);
     return newMember;
   }
 
@@ -112,6 +204,17 @@ class TeamService {
     const idx = roster.findIndex(m => m.staffId.toLowerCase() === staffId.toLowerCase() || (m.username && m.username.toLowerCase() === staffId.toLowerCase()));
     if (idx === -1) {
       throw new Error(`Staff member '${staffId}' not found.`);
+    }
+
+    const targetStaffId = roster[idx].staffId;
+
+    // If avatar contains Base64 image, save physically to _Team/Users/{staffId}/avatar.jpg
+    if (updates.avatar && typeof updates.avatar === 'string' && updates.avatar.startsWith('data:image/')) {
+      const savedUrl = this.saveAvatarFile(targetStaffId, updates.avatar);
+      if (savedUrl) {
+        updates.avatarUrl = `${savedUrl}?t=${Date.now()}`;
+        updates.avatar = updates.avatarUrl;
+      }
     }
 
     let updatedRoles = updates.roles;
@@ -131,10 +234,11 @@ class TeamService {
       ...updates,
       role: updatedRole || 'Designer',
       roles: updatedRoles || ['Designer'],
-      staffId: roster[idx].staffId // Preserve immutable Staff ID
+      staffId: targetStaffId // Preserve immutable Staff ID
     };
 
     this.saveStaffRoster(roster);
+    this.saveUserProfile(targetStaffId, roster[idx]);
     return roster[idx];
   }
 

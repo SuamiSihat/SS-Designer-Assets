@@ -1112,26 +1112,22 @@ namespace SS_CAM.Views
 
                         StackPanel cellStack = new StackPanel { Orientation = Orientation.Vertical, HorizontalAlignment = HorizontalAlignment.Center };
 
-                        // Day Letter (M, T, W, T, F, S, Sun)
+                        // Day Name (Mon, Tue, Wed, Thu, Fri, Sat, Sun)
                         TextBlock txtDayLetter = new TextBlock
                         {
                             Text = dayLetter,
                             FontSize = 8,
-                            FontWeight = (isWeekend || holiday != null) ? FontWeights.Bold : FontWeights.SemiBold,
+                            FontWeight = (holiday != null) ? FontWeights.Bold : (isWeekend ? FontWeights.SemiBold : FontWeights.Normal),
                             HorizontalAlignment = HorizontalAlignment.Center
                         };
 
                         if (holiday != null)
                         {
-                            txtDayLetter.Foreground = new SolidColorBrush(Color.FromRgb(220, 38, 38));
+                            txtDayLetter.Foreground = new SolidColorBrush(Color.FromRgb(220, 38, 38)); // Red only on public holidays
                         }
-                        else if (isSunday)
+                        else if (isWeekend)
                         {
-                            txtDayLetter.Foreground = new SolidColorBrush(Color.FromRgb(239, 68, 68)); // Coral/Red for Sunday
-                        }
-                        else if (isSaturday)
-                        {
-                            txtDayLetter.Foreground = new SolidColorBrush(Color.FromRgb(100, 116, 139)); // Slate for Saturday
+                            txtDayLetter.Foreground = new SolidColorBrush(Color.FromRgb(100, 116, 139)); // Slate for Saturday & Sunday weekend
                         }
                         else if (dt.DayOfWeek == DayOfWeek.Friday)
                         {
@@ -1153,11 +1149,7 @@ namespace SS_CAM.Views
 
                         if (holiday != null)
                         {
-                            txtDayNum.Foreground = new SolidColorBrush(Color.FromRgb(220, 38, 38));
-                        }
-                        else if (isSunday)
-                        {
-                            txtDayNum.Foreground = new SolidColorBrush(Color.FromRgb(239, 68, 68));
+                            txtDayNum.Foreground = new SolidColorBrush(Color.FromRgb(220, 38, 38)); // Red only on public holidays
                         }
                         else
                         {

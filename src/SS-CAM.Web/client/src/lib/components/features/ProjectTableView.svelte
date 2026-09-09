@@ -117,7 +117,7 @@
       (member?.staffId && appState.currentUser.staffId && member.staffId.toLowerCase() === appState.currentUser.staffId.toLowerCase())
     ));
 
-    let avatar: string | null = member?.avatar || null;
+    let avatar: string | null = member?.avatarUrl || member?.avatar || null;
 
     if (!avatar && typeof localStorage !== 'undefined') {
       if (member?.staffId) {
@@ -127,12 +127,12 @@
         avatar = localStorage.getItem(`ss_cam_avatar_${member.username}`);
       }
       if (!avatar && isCurrentUser) {
-        avatar = appState.currentUser?.avatar || localStorage.getItem('ss_cam_user_avatar') || null;
+        avatar = appState.currentUser?.avatarUrl || appState.currentUser?.avatar || localStorage.getItem('ss_cam_user_avatar') || null;
       }
     }
 
-    if (!avatar && isCurrentUser && appState.currentUser?.avatar) {
-      avatar = appState.currentUser.avatar;
+    if (!avatar && isCurrentUser && (appState.currentUser?.avatarUrl || appState.currentUser?.avatar)) {
+      avatar = appState.currentUser?.avatarUrl || appState.currentUser?.avatar;
     }
 
     const avatarColor = member?.avatarColor || (isCurrentUser ? appState.currentUser?.avatarColor : null) || '#0078D4';

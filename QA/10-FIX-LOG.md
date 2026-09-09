@@ -1,5 +1,37 @@
 # SS-CAM FIX LOG
 
+## v4.7.0 — 2026-09-09 (Velocity Navigation Engine, Canva Creative Cloud Bridge, Per-User Team Storage & Visual Timeline Alignment)
+- **Assembly Version**: `4.7.0.0` / Android `versionCode = 471`, `versionName = "4.7.0"`
+- **High-Velocity Desktop Navigation Engine (`MainWindow.xaml`, `WorkspaceScanner.cs`, `DashboardModels.cs`)**:
+  - Configured `NavigationCacheMode="Required"` across all 15 navigation views in the desktop application. Tab navigation is now instantaneous (0 ms), retaining active state, scroll position, search filters, and loaded view models without re-inflating XAML BAML trees.
+  - Eliminated synchronous recursive `Directory.GetDirectories` crawling on the UI thread in `DashboardPage.xaml.cs`.
+  - Shifted `ActiveWipProjects` computation to the background thread in `WorkspaceScanner.ScanAsync` and surfaced directly via `DashboardSnapshot`.
+  - Converted synchronous folder scans in `CalendarPage.xaml.cs` and `TaskManagerPage.xaml.cs` to non-blocking `await Task.Run(...)`.
+  - Converted directory search in `OrderRequestsPage.xaml.cs` to asynchronous execution to eliminate UI stutter when selecting order cards.
+  - Resolved `System.InvalidCastException` in `OrderRequestsPage.xaml` by extracting `ContextMenu` into a statically referenced page resource (`OrderCardContextMenu`).
+- **Canva Creative Cloud Bridge in Project Creator (`ProjectCreatorPage.xaml`, `ProjectCreatorPage.xaml.cs`)**:
+  - Integrated dedicated **Canva Creative Cloud Bridge** card in the desktop Project Creator.
+  - Added **"Create on Canva (Auto-size)"** 1-click launcher opening Canva pre-configured with exact pixel/mm dimensions (`https://www.canva.com/create/?width={w}&height={h}&unit={px|mm}`).
+  - Added `CanvaUrlInput` field with **"Test Link"** button for pasting design URLs and `"Canva (.url)"` to starter canvas extension selector.
+  - Automatic scaffolding of `02_SOURCE/Open_In_Canva.url` Windows Internet Shortcut file, enabling 1-click browser launching.
+  - Added `canva_url` frontmatter persistence, Task Manager teal `[CANVA]` pill badge, and Web `FrontmatterPanel.svelte` launcher.
+- **Per-User Team Storage Architecture & Binary Avatar Streaming (`TeamService.js`, `api.js`, `UserProfileModels.cs`, `UserProfileService.cs`)**:
+  - Transitioned from monolithic Base64 string embedding in `staff_directory.json` to dedicated physical binary file storage inside `_Team/Users/{staffId}/avatar.jpg` and `profile.json`.
+  - Sanitized `staff_directory.json` into a lightweight reference index (`avatarUrl: "/api/users/{staffId}/avatar"`), eliminating JSON bloat.
+  - Implemented high-performance binary streaming route `GET /api/users/:id/avatar` with MIME type detection and HTTP cache control headers.
+  - Resolved C# desktop `StaffDirectoryItem` serialization by adding missing fields (`Username`, `AvatarUrl`, `Roles`, `Password`) with explicit `[JsonProperty("...")]` camelCase mappings, preventing authentication credential loss.
+  - Added bi-directional auto-sync in desktop `UserProfileService.LoadProfile()` (automatically uploading local `%LOCALAPPDATA%` avatars to NAS `_Team/Users/{staffId}/avatar.jpg`) and `SyncAvatarToNas()` for instant updates.
+  - Updated all Web views (`ProfileView`, `TeamView`, `DashboardView`, `ProjectKanbanView`, `ProjectTableView`, `ProjectDetailView`) to prioritize `avatarUrl || avatar` over browser `localStorage`.
+- **Big Calendar Timeline Day Headers & Public Holiday Color Standard (`MalaysiaHolidayService.cs`, `CalendarPage.xaml.cs`)**:
+  - Standardized all 7 day headers across the Gantt timeline to uniform 3-letter abbreviations: `Mon`, `Tue`, `Wed`, `Thu`, `Fri`, `Sat`, `Sun` (via `MalaysiaHolidayService.GetDayLetter`).
+  - Restricted red text highlight (`#DC2626`) strictly to official Malaysia Public Holidays (`holiday != null`).
+  - Styled Sunday and Saturday weekend days in clean neutral slate (`#64748B`), perfectly aligning with the "Weekend (Sat/Sun Off-Day)" guide.
+- **Ecosystem Test Suite & Build Verification**:
+  - Verified 30/30 passing Web Portal test suite.
+  - Rebuilt WPF Desktop executable using MSBuild 4.8 in Release mode (`dist/SS-CAM-v4.7.0.exe` and `dist/SS-CAM.exe` at 5.70 MB).
+
+---
+
 ## v4.6.2 — 2026-09-08 (NAS Temporary Attachment Vault, Designer Task Handover, Web Multi-File Upload & Desktop Auto-Ingestion)
 - **Assembly Version**: `4.6.2.0` / Android `versionCode = 466`, `versionName = "4.6.2"`
 - **Desktop Task Ownership Handover & Reassignment (`TaskManagerPage.xaml`, `TaskManagerPage.xaml.cs`)**:
