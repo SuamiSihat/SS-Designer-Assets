@@ -1,5 +1,74 @@
 # SS-CAM FIX LOG
 
+## v4.8.1 — 2026-09-10 (Global Studio Command Palette `Ctrl + K`, Art Director 60-30-10 Polish, Live Work Session Stopwatch & Status Indicator, Creative Operations Upgrade)
+- **Assembly Version**: `4.8.1.0`
+- **Creative Operations & Intake Architecture Upgrade (`OrderFormView.svelte`, `OrderService.js`, `CreativeOrder.cs`)**:
+  - Implemented Low Priority / Pipeline Tier (`tier_0`) with automated +21 day minimum delivery date threshold.
+  - Replaced flat format list with segmented 2-step Digital Screen vs. Print & Packaging channel selectors, custom dimensions, and physical substrates/laminations.
+  - Added full request editing capability (Option A permission governance) with automatic locking upon backlog acceptance or cancellation.
+  - Renamed intake status from "Completed" to "Added to Backlog" across Web, Windows WPF, and Linux Avalonia clients.
+  - Removed duplicate "Lifecycle Actions" from expanded detail card, consolidating actions into canonical table row.
+  - Stripped UTF-8 BOM (`\uFEFF`) in Node.js JSONL parsers to prevent Windows/.NET interoperability parse failures.
+  - Purged all legacy demo seed orders from NAS ledgers and temporary attachment storage.
+- **Global Studio Command Palette (`Ctrl + K`) (`CommandPaletteService.cs`, `MainWindow.xaml`, `MainWindow.xaml.cs`)**:
+  - Global modal launcher accessible via <kbd>Ctrl</kbd> + <kbd>K</kbd>, top header spotlight search trigger, and sidebar search trigger.
+  - Multi-category indexing and scoring engine across:
+    - 15 Navigation Views (`Dashboard`, `Project Creator`, `Order Requests`, `Search & Copy`, `Copywriting Studio`, `Brand Assets`, `Task Manager`, `Big Calendar`, `Quick Notes`, `Creative Wellbeing`, `Waktu Solat`, `Radio Player`, `QR Code Studio`, `Workstation Health`, `Settings`).
+    - Master Brand System v3.5.1 color tokens with real-time visual color swatch badges and 1-click clipboard copy.
+    - Copywriting marketing hooks and high-converting CTAs.
+    - Live workspace project discovery from Synology NAS / local storage.
+    - Studio system actions (Toggle Theme, Play/Pause Radio, Start/Pause Timer, Rescan NAS, Open Explorer).
+  - Arrow key navigation, <kbd>Enter</kbd> execution, <kbd>Esc</kbd> dismissal.
+- **Art Director 60-30-10 Color Scheme & Layout Polish (`MainWindow.xaml`, Fluent 2 Styling)**:
+  - Strict adherence to 60:30:10 rule:
+    - 60% calm canvas (`ApplicationPageBackgroundThemeBrush`).
+    - 30% structural surfaces (`CardBackgroundFillColorDefaultBrush`, `CardStrokeColorDefaultBrush`).
+    - 10% intentional brand accent (`FluentBrand80`, `#21A1F7`) and status emerald (`#10B981`) for CTAs and focus indicators.
+  - Centered header title bar strip with integrated spotlight search trigger (`Ctrl + K`) and live work status pill.
+- **Live Designer Work Session Stopwatch & Status Indicator (`WorkSessionTrackerService.cs`, `MainWindow.xaml`, `MainWindow.xaml.cs`)**:
+  - Live activity stopwatch and project status pill in header bar (`[ 🟢 0085D_SS_Rejal • 01:42:15 • Working ]`).
+  - Interactive timer popover drawer with big digital timer display (`00 : 00 : 00`), project selector ComboBox, session notes, and playback controls.
+  - **Active Project Filter by Designer (`CmbPopoverDesignerFilter`)**:
+    - Integrated inline designer filter dropdown right beside the `ACTIVE PROJECT` label in the popover drawer.
+    - Populates all studio designers (`"All Designers"`, `Harussani`, `Brand`, `Rejal`, etc.) from staff directory and workspace folders.
+    - Automatically defaults to the currently logged-in designer profile, immediately filtering the project list to that designer's active projects.
+    - Switching designers instantaneously filters the project dropdown without blocking the UI thread or triggering unintended project switches (`_popoverUpdating` guard).
+  - Periodic and on-change crash-recovery checkpointing to `%LOCALAPPDATA%\SS-CAM\work_session.json` with 16-hour session recovery.
+  - Synchronized with sidebar footer active work indicator and live team broadcaster.
+- **Comprehensive Dropdown Overlap & Cropping Resolution across All Views**:
+  - Added default `<Style TargetType="{x:Type ComboBox}">` and `ComboBoxItem` in `Styles/Fluent2Styles.xaml` enforcing `MinHeight="36"`, `VerticalContentAlignment="Center"`, and `Padding="10,0"`.
+  - Replaced default access-key content presenters with explicit `<ItemTemplate>` utilizing `<ui:TextBlock Text="{Binding}" VerticalAlignment="Center"/>` in `MainWindow.xaml` (`CmbPopoverProjectPicker`), eliminating mnemonic underscore stripping (e.g. `202609_0017W_SS_...` losing underscores and shifting baselines) and vertical text baseline slicing.
+  - Standardized height (`36px`) and comfortable padding (`10,0`) across:
+    - `TaskManagerPage.xaml`: Search query input, Designer, Status, Priority, and Sort ComboBoxes; added horizontal `<ScrollViewer>` to top filter bar preventing dropdown squishing on compact viewports; verified Task Inspector drawer dropdowns (`DetailStatus`, `DetailPriority`, `DetailDesigner`).
+    - `SearchCopyPage.xaml`: Batch action dropdowns (`BatchStatusCmb`, `BatchPriorityCmb`) and Task Inspector metadata dropdowns (`InspectorStatusCmb`, `InspectorPriorityCmb`).
+    - `CalendarPage.xaml`: Search query input, Designer filter, and Status filter.
+    - `WaktuSolatPage.xaml`: Prayer zone dropdown (`ZoneCombo`) and format toggle button.
+    - `ProjectCreatorPage.xaml`: Template extension selector (`TemplateExtensionComboBox`).
+    - `OrderRequestsPage.xaml`: Entity filter (`CmbEntityFilter`) and Assignee filter (`CmbAssignee`).
+    - `VisualDiffDialog.xaml`: Before asset (`CmbBeforeAsset`), After asset (`CmbAfterAsset`), and comparison controls.
+- **Studio Real-Time Live Tasks & Work Telemetry (`LiveTaskSyncService.cs`)**:
+  - Multi-workstation synchronization via shared ledger at `<WorkspaceRoot>\_Team\live_tasks.json` with local `%LOCALAPPDATA%\SS-CAM\_Team\` fallback.
+  - 4-second non-blocking background polling and 15-second active heartbeat broadcasts.
+  - Instant studio desktop toast notification (`NotificationService.Show("Team Designer Active", "{Designer} has started working on '{Project}'")`) whenever another designer begins or resumes work on a project task.
+- **Main Dashboard Real-Time Live Task Stream (`DashboardPage.xaml`, `DashboardPage.xaml.cs`)**:
+  - Embedded "Live Studio Tasks (Real-Time Work Stream)" card container above Recent Projects.
+  - Pulsing emerald active indicator badge (`{N} Active`).
+  - Designer avatar circles with initials, formatted author and staff ID, status pills ("Working Now" in emerald, "Paused" in amber).
+  - 1-second live digital stopwatch ticker updating elapsed duration (`00 : 42 : 18`) without blocking UI.
+  - "View Project" direct navigation action into Project Catalog.
+  - Clean idle workstation card fallback when all team members are inactive.
+- **Source Guardian & Code Cleanliness**:
+  - Enforced UTF-8 BOM across all `.cs` and `.xaml` files.
+  - Replaced high-byte Unicode characters in XAML attributes with XML entities (`&#x2191;`, `&#x2193;`, `&#x21B5;`).
+  - Source Guardian audit: 7 passed, 2 pre-existing warnings, 0 failed.
+- **Release Verification**:
+  - Compiled MSBuild Release binary (`dist/SS-CAM.exe` at 5.52 MB).
+  - Passed all automated service unit tests (`QA/scripts/test_v481_services.ps1`).
+  - Passed full project regression suite (`QA/run_tests.ps1`).
+  - Verified live desktop execution and responsive process lifecycle.
+
+---
+
 ## v4.8.0 — 2026-09-09 (Interactive Visual Asset Revision Diff Slider, Copywriting Studio Live Preview & Cross-Platform Avatar Sync)
 - **Assembly Version**: `4.8.0.0` / Android `versionCode = 480`, `versionName = "4.8.0"`
 - **Interactive Visual Asset Revision Diff Inspector (`VisualDiffService.cs`, `VisualDiffDialog.xaml`, `VisualDiffDialog.xaml.cs`)**:

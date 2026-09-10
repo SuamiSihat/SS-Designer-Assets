@@ -47,19 +47,20 @@
 | **v4.6.2** | 2026-09-08 | **NAS Temporary Attachment Vault, Designer Task Handover, Web Multi-File Upload & Desktop Project Creator Auto-Ingestion**: Desktop Task Manager Kanban card task ownership handover & reassignment menu (`README.md` + frontmatter sync), Synology NAS temporary intake directory (`\\SSNAS\Creative-Team\_Orders\<ORDER_ID>\`) with JSONL persistence, Web Portal drag-and-drop multi-file upload dropzone, role detection fix for composite roles (`"Admin, Designer"`), 1-click project ingestion into `01_BRIEF_ASSETS`, and Desktop Project Creator live order discovery, auto-population, and automatic attachment copy |
 | **v4.7.0** | 2026-09-09 | **Velocity Navigation Engine, Canva Cloud Bridge, Per-User Team Storage & Visual Timeline Alignment**: 0 ms desktop navigation (`NavigationCacheMode="Required"`), Canva Creative Cloud Bridge with platform auto-size launcher and `.url` scaffolding, per-user team storage architecture (`_Team/Users/{staffId}/avatar.jpg` + `profile.json`), bi-directional avatar synchronization across Web/Desktop/Android, Big Calendar 3-letter day names (`Mon..Sun`), holiday-strict red highlighting, and off-day schedule conflict prevention |
 | **v4.8.0** | 2026-09-09 | **Interactive Visual Asset Revision Diff Slider, Copywriting Studio Live Preview & Cross-Platform Avatar Sync**: 5-mode Fluent 2 Visual Diff Inspector (Vertical/Horizontal Split swipe, Side-by-Side dual view, Opacity Blend onion skin, 32bpp Euclidean Pixel Difference mapping), automated revision pair detection (`_v1` → `_v2`, `draft` → `final`), synchronized lockstep zoom & pan, Copywriting Studio split-view live preview (WhatsApp chat & Meta Ad feed simulation with OG previews and 1-click exporters), per-user team storage architecture, and zero-warning Source Guardian audit |
+| **v4.8.1** | 2026-09-10 | **Global Studio Command Palette (`Ctrl + K`), Art Director 60-30-10 Polish, Live Work Session Stopwatch, Real-Time Team Task Stream & Creative Operations Upgrade**: Universal keyboard quick-launcher for 15 modules, brand colors, and copy hooks; 60-30-10 Fluent 2 visual hierarchy; live stopwatch, project status pill, and crash-resilient session tracker drawer; real-time studio live tasks feed on Main Dashboard (`LiveTaskSyncService`); team task start/resume desktop toast notifications; comprehensive resolution of dropdown text cropping, baseline clipping, and mnemonic underscore stripping across all views; Creative Request low-priority intake tier (`tier_0`), contextual Digital vs. Print format & material architecture, full request editing, "Added to Backlog" intake refinement, and pure production queue cleanup |
 
 ---
 
-## 🎯 Active Milestone — v4.9.0: Global Studio Command Palette & Smart Ingester (Target: Q4 2026)
+## 🎯 Active Milestone — v4.9.0: Smart Ingester & Copywriting Diff Engine (Target: Q4 2026)
 
-### 1. Global Command Palette (`Ctrl + K`)
-* Universal keyboard launcher for jumping to projects, copying brand hex codes, searching copywriting snippets, or toggling radio stations without leaving the current view.
-
-### 2. Drag-and-Drop Folder Ingester
+### 1. Drag-and-Drop Folder Ingester
 * Drag external assets directly onto project cards in Project Creator or Search Copy to automatically ingest and organize into `01_BRIEF_ASSETS`, `02_SOURCE`, etc.
 
-### 3. Copywriting & Brief Revision Diff Engine
+### 2. Copywriting & Brief Revision Diff Engine
 * Visual color-coded diff viewer (green additions / red deletions) for `COPY.md` scripts and `README.md` project briefs across revision cycles.
+
+### 3. AI Brief Intelligence & Style Preflight Assistant
+* Integrated LLM assistant to validate brief completeness, detect tone deviations, and auto-suggest missing brand tokens.
 
 ---
 
@@ -84,7 +85,23 @@
 
 ---
 
-## 🔮 Future Exploration — v5.0.0: Enterprise Intelligence & Asset Versioning (Target: Q2 2027)
+## 🏥 Planned — v5.1.0: Clinic Operations & PERNAS Franchise Standardization (Target: Q1–Q2 2027)
+
+> **Strategic Alignment**: Directly aligns with the **PERNAS (Perbadanan Nasional Berhad)** Franchise Development Grant application for SuamiSihat Clinic (SSC).  
+> **Official Proposal Reference**: [`docs/KERTAS_CADANGAN_GERAN_PERNAS_SSCAM.md`](./docs/KERTAS_CADANGAN_GERAN_PERNAS_SSCAM.md) · [PDF Version](./docs/KERTAS_CADANGAN_GERAN_PERNAS_SSCAM.pdf)
+
+| Feature / Module | Target Platform | Description & Operational Impact |
+|---|---|---|
+| **In-Clinic Patient Consultation Suite** | Android Tablet (`SS-CAM.Android`) & Web (`SS-CAM.Web`) | Interactive 3D medical anatomy diagrams, treatment procedure simulations (ESWT Shockwave Therapy, TRT hormonal therapy, PE/ED treatment roadmaps), and recovery timelines used by doctors in consultation rooms. |
+| **Waiting Lounge TV Signage Engine** | Android TV (`SS-CAM.Android`) / Web Kiosk | Automated on-device digital signage player: dynamic doctor-on-duty schedules, queue announcements, and KKM-approved health literacy video loops running without internet buffering. |
+| **KKM Regulatory Compliance Gateway** | WPF Desktop (`SS-CAM`) & Web Admin | Single source of truth for Ministry of Health (KKM) / Medical Advertising Board (LIU/MAB) pre-approved claims, audit logs, and locked templates preventing unauthorized branch claims. |
+| **Branch Marketing & Patient Intake Kit** | Web Portal & Desktop (`QrCodePage`) | Dynamic branch QR code generator (touchless patient check-in, WhatsApp consult, Google reviews) and automated branch address/contact injection into HQ campaign templates. |
+| **Post-Treatment Digital Care Dispatcher** | Web Portal & Mobile Companion | 1-click WhatsApp/SMS aftercare guide generator delivering bilingual recovery leaflets, dosage precautions, and follow-up appointment reminders directly to patient smartphones. |
+| **Franchise SOP Knowledge Base** | Synology NAS Vault (`_Clinic/SOP_Manuals`) | Version-controlled clinical and operational Standard Operating Procedure (SOP) manuals ensuring uniform service delivery across all franchise clinic branches. |
+
+---
+
+## 🔮 Future Exploration — v5.2.0: Enterprise Intelligence & Asset Versioning (Target: Q3 2027)
 
 | Area | Idea |
 |------|------|

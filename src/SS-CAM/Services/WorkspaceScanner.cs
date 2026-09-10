@@ -17,13 +17,25 @@ namespace SS_CAM.Services
 
         private static readonly string[] ChartColors = new[] { "#21A1F7", "#043388", "#10B981", "#F59E0B", "#8B5CF6", "#EC4899" };
 
-        public static Task<DashboardSnapshot> ScanAsync(string root)
+        private static DashboardSnapshot _cachedSnapshot = null;
+        private static DateTime _lastScanTime = DateTime.MinValue;
+        private static string _lastScanRoot = null;
+        private static readonly object _cacheLock = new object();
+
+        public static Task<DashboardSnapshot> ScanAsync(string root, bool force = false)
         {
-            return Task.Factory.StartNew(() => Scan(root));
+            return Task.Factory.StartNew(() => Scan(root, force));
         }
 
-        public static DashboardSnapshot Scan(string root)
+        public static DashboardSnapshot Scan(string root, bool force = false)
         {
+            if (!force && _cachedSnapshot != null &&
+                string.Equals(root, _lastScanRoot, StringComparison.OrdinalIgnoreCase) &&
+                (DateTime.UtcNow - _lastScanTime).TotalSeconds < 45)
+            {
+                return _cachedSnapshot;
+            }
+
             DashboardSnapshot result = new DashboardSnapshot();
             if (string.IsNullOrWhiteSpace(root) || !Directory.Exists(root))
             {
@@ -206,6 +218,13 @@ namespace SS_CAM.Services
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine("[WorkspaceScanner] Workload/SLA compute warning: " + ex.Message);
+            }
+
+            lock (_cacheLock)
+            {
+                _cachedSnapshot = result;
+                _lastScanRoot = root;
+                _lastScanTime = DateTime.UtcNow;
             }
 
             return result;

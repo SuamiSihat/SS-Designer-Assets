@@ -2,6 +2,77 @@
 
 All notable SS-CAM changes are documented here.
 
+## [4.8.1] - 2026-09-10 (Global Studio Command Palette Ctrl+K, Art Director 60-30-10 Polish, Live Work Session Stopwatch & Status Indicator, Creative Operations Upgrade)
+
+### Added & Refined — Creative Request Architecture, Backlog Intake & Operations
+- **Low Priority / Pipeline Intake Tier (`tier_0`)**:
+  - Introduced strategic backlog tier for non-urgent briefs scheduled 2–4+ weeks or next month out without near-term deadline pressure.
+  - Automated +21 day minimum delivery date threshold preventing premature urgency flags.
+- **Contextual Format & Custom Physical Specifications Architecture**:
+  - Replaced legacy flat format list with a segmented 2-step channel architecture:
+    - **Digital Screen**: 9:16 Video, 1:1 Social Feed, 4:5 Portrait Feed, 16:9 Landscape HD, Digital Web Banners, and interactive Custom Screen Dimensions (`px`).
+    - **Print, Packaging & POSM**: Medicine boxes & sleeves, bottle/jar/vial labels, POSM posters, roll-up buntings, flyers, and Custom Print Dimensions (`mm`, `cm`, `inch`, `ft`).
+  - Standardized physical print substrate and lamination selector (Waterproof Synthetic Vinyl, Mirrorkote Gloss, Art Card with Gloss/Matte Lam & Spot UV, Tarpaulin, Simili Paper, Synthetic Paper, Rigid Board).
+- **Full Brief Editing Capability (Option A Permission Governance)**:
+  - Requesters and Designers/Admins can edit submitted briefs (`title`, `entity`, `priority`, `channel`, `format`, `dimensions`, `material`, `copy`, `targetDate`, `notes`).
+  - Automatic locking once an order is accepted into backlog or cancelled.
+- **Intake Status Refinement & Handover Cleanliness**:
+  - Renamed intake state from "Completed" to **"Added to Backlog"** across Web, Windows WPF, and Linux Avalonia clients to prevent requesters mistaking intake acceptance for artwork completion.
+  - Cleaned expanded request detail view by eliminating duplicate "Lifecycle Actions" buttons, consolidating lifecycle state progression into the table row's canonical `ACTIONS` column.
+  - Cleared all legacy demo seed orders from Synology NAS ledgers and temporary attachment storage for a pure production intake queue.
+- **Cross-Platform Node.js / .NET UTF-8 BOM Safety**:
+  - Stripped UTF-8 BOM byte order marks (`\uFEFF`) in server JSONL parsers (`OrderService.js`, `AuditService.js`, `CommentService.js`) to guarantee flawless bidirectional interoperability with Windows .NET desktop tools.
+
+### Added & Refined — Global Studio Command Palette, 60-30-10 Polish & Live Work Session Tracker
+- **Global Studio Command Palette (`Ctrl + K`) (`CommandPaletteService.cs`, `MainWindow.xaml`, `MainWindow.xaml.cs`)**:
+  - Universal keyboard-first launcher accessible anywhere via <kbd>Ctrl</kbd> + <kbd>K</kbd>, global header spotlight button, or sidebar search trigger.
+  - **Multi-Category Quick Launcher**:
+    - **Navigation Modules**: 1-click jump to any of the 15 studio modules (`Dashboard`, `Project Creator`, `Order Requests`, `Search & Copy`, `Copywriting Studio`, `Brand Assets`, `Task Manager`, `Big Calendar`, `Quick Notes`, `Creative Wellbeing`, `Waktu Solat`, `Radio Player`, `QR Code Studio`, `Workstation Health`, `Settings`).
+    - **Brand Color Tokens**: Instant search and 1-click copy for official Master Brand System v3.5.1 colors (Prussian Blue `#022057`, Brand Blue `#043388`, Azure `#21A1F7`, Malibu `#6DC6EC`, Lion Gold `#BD9A73`, Fawn `#CCAC8D`, Arylide Yellow `#E5D15C`, Banana Yellow `#FCE53D`, and corporate subsidiary hues) with real-time visual color swatch badges.
+    - **Copywriting Hooks & CTAs**: Pre-scaffolded direct-response marketing hooks and high-converting CTAs copied directly to the clipboard.
+    - **Live NAS Project Search**: Discovers and navigates directly to recent project folders on the Synology NAS / local workspace.
+    - **Studio Actions**: Immediate execution of system commands: Start/Pause Work Timer, Toggle Application Theme, Play/Pause Radio Stream, Rescan NAS Workspace, and Open in Explorer.
+  - **Fluid Keyboard Interaction**: Arrow keys (<kbd>↑</kbd> / <kbd>↓</kbd>) navigate results, <kbd>Enter</kbd> executes, <kbd>Esc</kbd> closes modal with backdrop fade.
+- **Art Director 60-30-10 Color Scheme & Layout Polish (`MainWindow.xaml`, Fluent 2 Styling)**:
+  - Adheres strictly to the 60:30:10 visual hierarchy rule:
+    - **60% Calm Canvas**: Deep neutral base (`ApplicationPageBackgroundThemeBrush`) providing optimal contrast and zero eye fatigue.
+    - **30% Structural Hierarchy**: Elevated card surfaces (`CardBackgroundFillColorDefaultBrush`), subtle borders (`CardStrokeColorDefaultBrush`), and sidebar chrome organizing dense workspace tools.
+    - **10% Intentional Brand Accents**: SuamiSihat Azure (`FluentBrand80`, `#21A1F7`) and Status Emerald (`#10B981`) reserved strictly for primary CTAs, active indicators, and focus badges.
+  - Redesigned `TitleBarStrip` center area with an integrated spotlight search box (`Ctrl + K`) and live work status pill.
+- **Live Designer Work Session Stopwatch & Status Indicator (`WorkSessionTrackerService.cs`, `MainWindow.xaml`, `MainWindow.xaml.cs`)**:
+  - Live activity stopwatch and project status pill integrated into the header bar: pulsing status dot + active project code (`0085D_SS_Rejal`) + live digital clock (`01:42:15`) + state indicator icon.
+  - **Interactive Timer Popover Drawer**:
+    - Displays big digital elapsed timer (`00 : 00 : 00`).
+    - **Active Project Filter by Designer**: Inline `CmbPopoverDesignerFilter` dropdown allowing instant filtering of the project picker by assigned designer, defaulting to the current user's profile for 1-click focus.
+    - Project selector ComboBox dynamically populated from workspace projects.
+    - Session notes scratchpad for logging active tasks.
+    - Play / Pause / Reset controls and 1-click "Jump to Project in Catalog" action.
+  - Synchronized with sidebar footer active work indicator and live studio team broadcaster.
+  - **Crash Recovery Checkpointing**: Auto-saves active session state every 60 seconds and on state changes to `%LOCALAPPDATA%\SS-CAM\work_session.json` with 16-hour session recovery on relaunch.
+- **Comprehensive Dropdown Overlap & Cropping Resolution across All Views**:
+  - Global `<Style TargetType="{x:Type ComboBox}">` and `ComboBoxItem` in `Styles/Fluent2Styles.xaml` with `MinHeight="36"` and `Padding="10,0"`.
+  - Replaced native access-key text presenters with explicit `<ItemTemplate>` featuring `<ui:TextBlock>` across `MainWindow.xaml` (`CmbPopoverProjectPicker`), eliminating mnemonic underscore stripping (e.g. `202609_0017W_SS_...` losing underscores and shifting baselines) and vertical text baseline cropping.
+  - Standardized height (`36px`) and comfortable padding (`10,0`) across `TaskManagerPage.xaml` (with horizontal `<ScrollViewer>` to prevent filter squishing on compact displays), `SearchCopyPage.xaml` (batch and inspector dropdowns), `CalendarPage.xaml` (designer and status filters), `WaktuSolatPage.xaml` (zone selector), `ProjectCreatorPage.xaml` (template extension), `OrderRequestsPage.xaml` (entity and assignee selectors), and `VisualDiffDialog.xaml` (asset pickers).
+- **Studio Real-Time Live Tasks & Work Telemetry (`LiveTaskSyncService.cs`)**:
+  - Multi-workstation synchronization via shared ledger at `<WorkspaceRoot>\_Team\live_tasks.json` with local `%LOCALAPPDATA%\SS-CAM\_Team\` fallback.
+  - 4-second non-blocking background polling and 15-second active heartbeat broadcasts.
+  - Instant studio desktop toast notification (`NotificationService.Show("Team Designer Active", "{Designer} has started working on '{Project}'")`) whenever another designer begins or resumes work on a project task.
+- **Main Dashboard Real-Time Live Task Stream (`DashboardPage.xaml`, `DashboardPage.xaml.cs`)**:
+  - Embedded "Live Studio Tasks (Real-Time Work Stream)" card container above Recent Projects.
+  - Pulsing emerald active indicator badge (`{N} Active`).
+  - Designer avatar circles with initials, formatted author and staff ID, status pills ("Working Now" in emerald, "Paused" in amber).
+  - 1-second live digital stopwatch ticker updating elapsed duration (`00 : 42 : 18`) without blocking UI.
+  - "View Project" direct navigation action into Project Catalog.
+  - Clean idle workstation card fallback when all team members are inactive.
+- **Release Packaging & Binary Verification**:
+  - Rebuilt WPF Desktop executable using MSBuild 4.8 in Release mode with Costura.Fody single-file embedding.
+  - Updated `dist/SS-CAM.exe` (AssemblyVersion and FileVersion `4.8.1.0`, 5.52 MB).
+
+| Asset / Artifact | Target Platform | Specification | Status |
+|---|---|---|---|
+| `dist/SS-CAM-v4.8.1.exe` | Windows 10/11 x64 | .NET Framework 4.8 Single-File Binary | **Verified** |
+| `dist/SS-CAM.exe` | Windows 10/11 x64 | Canonical Latest Executable Pointer | **Verified** |
+
 ## [4.8.0] - 2026-09-09 (Interactive Visual Asset Revision Diff Slider, Copywriting Studio Live Preview & Formatting Engine, Cross-Platform Avatar Sync)
 
 ### Added & Refined — Visual Diff Inspector, Copywriting Studio Live Mockups & Cross-Platform Team Identity

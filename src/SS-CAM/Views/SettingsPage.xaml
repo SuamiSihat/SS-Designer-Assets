@@ -641,6 +641,52 @@
                         </StackPanel>
                     </ui:Card>
 
+                    <!-- Workstation & Software Diagnostics Card -->
+                    <ui:Card Margin="0,0,0,16" Padding="20">
+                        <StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,14">
+                                <Border Width="32" Height="32" CornerRadius="8"
+                                        Background="{DynamicResource FluentBrandTint}"
+                                        Margin="0,0,10,0" VerticalAlignment="Center">
+                                    <ui:SymbolIcon Symbol="DeveloperBoard24" FontSize="16"
+                                                   Foreground="{DynamicResource FluentBrand80}"
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center"/>
+                                </Border>
+                                <StackPanel VerticalAlignment="Center">
+                                    <ui:TextBlock Text="Workstation &amp; Diagnostics"
+                                                   FontSize="14" FontWeight="Bold"
+                                                   Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                    <ui:TextBlock Text="Hardware telemetry, GPU OpenCL &amp; Creative Suite health"
+                                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                                   FontSize="11"/>
+                                </StackPanel>
+                            </StackPanel>
+                            <Border BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                                    BorderThickness="0,1,0,0" Padding="0,12,0,0">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel VerticalAlignment="Center">
+                                        <ui:TextBlock Text="Launch Diagnostics Studio" FontSize="13" FontWeight="SemiBold"
+                                                      Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                        <ui:TextBlock Text="View full hardware audit, GPU status, and software suite integrity"
+                                                      FontSize="11" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                    </StackPanel>
+                                    <ui:Button Grid.Column="1" Appearance="Secondary" Click="OnOpenWorkstationHealthClicked"
+                                               Height="32" Padding="12,0" Cursor="Hand" ToolTip="Open Workstation Health &amp; Diagnostics">
+                                        <StackPanel Orientation="Horizontal">
+                                            <ui:SymbolIcon Symbol="Open24" FontSize="12" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                            <ui:TextBlock Text="Open Diagnostics" FontSize="11" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </ui:Button>
+                                </Grid>
+                            </Border>
+                        </StackPanel>
+                    </ui:Card>
+
                     <!-- Reset and Maintenance Card -->
                     <ui:Card Padding="20">
                         <StackPanel>

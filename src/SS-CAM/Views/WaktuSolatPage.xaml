@@ -48,12 +48,13 @@
                         <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
                             <ui:TextBlock Text="Zon:" FontSize="12" VerticalAlignment="Center"
                                        Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,0,8,0"/>
-                            <ComboBox x:Name="ZoneCombo" Width="190" Height="34" FontSize="11.5"
+                            <ComboBox x:Name="ZoneCombo" Width="200" Height="36" FontSize="12"
+                                      Padding="10,0" VerticalContentAlignment="Center"
                                       SelectionChanged="OnZoneChanged" Margin="0,0,8,0"/>
 
                             <!-- 12H / 24H Toggle Button (Icon-Only) -->
                             <ui:Button x:Name="BtnFormatToggle" Click="OnFormatToggle"
-                                    Height="34" Width="34" Padding="0" Appearance="Secondary" Cursor="Hand" Margin="0,0,8,0"
+                                    Height="36" Width="36" Padding="0" Appearance="Secondary" Cursor="Hand" Margin="0,0,8,0"
                                     ToolTip="Format Masa: 12-Jam (Klik untuk 24-Jam)">
                                 <ui:TextBlock x:Name="TxtFormatIcon" Text="&#xE815;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="14"
                                            HorizontalAlignment="Center" VerticalAlignment="Center"/>

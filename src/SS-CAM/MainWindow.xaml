@@ -3,11 +3,12 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
         xmlns:views="clr-namespace:SS_CAM.Views"
-        Title="SuamiSihat Creative Assets Management v4.8.0" Height="820" Width="1280"
+        Title="SuamiSihat Creative Assets Management v4.8.1" Height="820" Width="1280"
         MinHeight="680" MinWidth="1024"
         WindowStartupLocation="CenterScreen"
         ExtendsContentIntoTitleBar="True"
-        WindowBackdropType="Mica">
+        WindowBackdropType="Mica"
+        PreviewKeyDown="OnWindowPreviewKeyDown">
 
     <ui:FluentWindow.Resources>
         <ResourceDictionary>
@@ -21,6 +22,32 @@
             <SolidColorBrush x:Key="TitleBarButtonPressedForeground" Color="#FFFFFF"/>
             <SolidColorBrush x:Key="TitleBarButtonInactiveBackground" Color="Transparent"/>
             <SolidColorBrush x:Key="TitleBarButtonInactiveForeground" Color="#8AAACF"/>
+
+            <!-- Command Palette Result Item Hover & Selection Style -->
+            <Style x:Key="CommandPaletteItemStyle" TargetType="ListBoxItem">
+                <Setter Property="Padding" Value="0"/>
+                <Setter Property="Margin" Value="0,1"/>
+                <Setter Property="Background" Value="Transparent"/>
+                <Setter Property="BorderThickness" Value="0"/>
+                <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="ListBoxItem">
+                            <Border x:Name="ItemBorder" Background="{TemplateBinding Background}" CornerRadius="6" Padding="4,2">
+                                <ContentPresenter />
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="ItemBorder" Property="Background" Value="{DynamicResource ControlFillColorSecondaryBrush}"/>
+                                </Trigger>
+                                <Trigger Property="IsSelected" Value="True">
+                                    <Setter TargetName="ItemBorder" Property="Background" Value="{DynamicResource ControlFillColorTertiaryBrush}"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
         </ResourceDictionary>
     </ui:FluentWindow.Resources>
 
@@ -55,10 +82,13 @@
                               Foreground="{DynamicResource TextFillColorPrimaryBrush}" VerticalAlignment="Center"/>
             </StackPanel>
 
-            <!-- 2. Centered Global Search Box -->
-            <Grid Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Center" Width="340">
+            <!-- 2. Centered Area: Spotlight Search Launcher (Ctrl+K) & Live Work Status Pill -->
+            <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <!-- Spotlight Search Trigger Box -->
                 <Border x:Name="SidebarSearchBorder" Background="{DynamicResource TextControlBackground}"
-                        BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="6" Padding="8,4" Height="28">
+                        BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="6"
+                        Padding="8,3" Height="28" Width="240" Margin="0,0,10,0" Cursor="Hand"
+                        MouseLeftButtonDown="OnSearchTriggerClicked" ToolTip="Global Command Palette (Ctrl+K)">
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto"/>
@@ -74,12 +104,43 @@
                                  GotFocus="OnSearchBoxGotFocus"
                                  LostFocus="OnSearchBoxLostFocus"
                                  TextChanged="OnSearchBoxTextChanged"/>
-                        <Border Grid.Column="2" Background="{DynamicResource ControlFillColorSecondaryBrush}" CornerRadius="3" Padding="4,1" VerticalAlignment="Center">
+                        <Border Grid.Column="2" Background="{DynamicResource ControlFillColorSecondaryBrush}"
+                                BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" BorderThickness="1"
+                                CornerRadius="3" Padding="4,1" VerticalAlignment="Center">
                             <ui:TextBlock Text="Ctrl+K" FontSize="8.5" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontWeight="SemiBold"/>
                         </Border>
                     </Grid>
                 </Border>
-            </Grid>
+
+                <!-- Live Work Progress Status Pill -->
+                <Border x:Name="WorkStatusPillBorder" Height="28" CornerRadius="6"
+                        Background="{DynamicResource ControlFillColorSecondaryBrush}"
+                        BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" BorderThickness="1"
+                        Padding="8,2" Cursor="Hand" MouseLeftButtonDown="OnWorkStatusPillClicked"
+                        ToolTip="Live Work Tracker (Click to view session, pause/resume, or pick project)">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <!-- Pulsing Status Indicator -->
+                        <Ellipse x:Name="WorkStatusDot" Width="8" Height="8" Margin="0,0,6,0"
+                                 Fill="#94A3B8" VerticalAlignment="Center"/>
+                        <!-- Active Project Identifier -->
+                        <ui:TextBlock x:Name="TxtWorkStatusProject" Text="No Active Project"
+                                      FontSize="11.5" FontWeight="SemiBold"
+                                      Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                                      MaxWidth="150" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                        <!-- Divider -->
+                        <Border Width="1" Height="12" Background="{DynamicResource CardStrokeColorDefaultBrush}" Margin="6,0"/>
+                        <!-- Digital Clock -->
+                        <ui:TextBlock x:Name="TxtWorkStatusTimer" Text="00:00:00"
+                                      FontFamily="Consolas, Segoe UI Variable Display" FontSize="11.5" FontWeight="Bold"
+                                      Foreground="{DynamicResource TextFillColorPrimaryBrush}" VerticalAlignment="Center"/>
+                        <!-- State Mini Icon -->
+                        <ui:TextBlock x:Name="TxtWorkStatusStateIcon" Text="&#xE916;" FontFamily="Segoe Fluent Icons"
+                                      FontSize="10" Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                      Margin="6,0,2,0" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Border>
+
+            </StackPanel>
 
             <!-- 3. Profile Pill Card & Window Controls -->
             <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
@@ -172,36 +233,33 @@
                 <Grid Height="14"/>
             </ui:NavigationView.PaneHeader>
 
-            <!-- MENU ITEMS (Grouped by Separators) -->
+            <!-- MENU ITEMS (Grouped into 3 Clean Studio Hubs) -->
             <ui:NavigationView.MenuItems>
                 <ui:NavigationViewItem Content="Dashboard"          Icon="{ui:SymbolIcon Home24}"        TargetPageType="{x:Type views:DashboardPage}" NavigationCacheMode="Required" />
 
+                <!-- 1. Creative Studio Hub -->
                 <ui:NavigationViewItemSeparator />
+                <ui:NavigationViewItem Content="Project Creator"    Icon="{ui:SymbolIcon Folder24}"      TargetPageType="{x:Type views:ProjectCreatorPage}" NavigationCacheMode="Required" ToolTip="Scaffold brand projects &amp; folder structures" />
+                <ui:NavigationViewItem Content="Project Catalog"    Icon="{ui:SymbolIcon FolderSearch24}" TargetPageType="{x:Type views:SearchCopyPage}" NavigationCacheMode="Required" ToolTip="Browse workspace projects, assets &amp; briefs" />
+                <ui:NavigationViewItem Content="Copywriting Studio" Icon="{ui:SymbolIcon Edit24}"        TargetPageType="{x:Type views:CopywritingPage}" NavigationCacheMode="Required" ToolTip="Persist ad scripts, WhatsApp &amp; Meta copy" />
+                <ui:NavigationViewItem Content="Brand Assets"       Icon="{ui:SymbolIcon Library24}"     TargetPageType="{x:Type views:BrandAssetsPage}" NavigationCacheMode="Required" ToolTip="Brand tokens, colors, logos &amp; typography" />
 
-                <ui:NavigationViewItem Content="Project Creator"    Icon="{ui:SymbolIcon Folder24}"      TargetPageType="{x:Type views:ProjectCreatorPage}" NavigationCacheMode="Required" />
-                <ui:NavigationViewItem Content="Order Requests"     Icon="{ui:SymbolIcon ClipboardTask24}" TargetPageType="{x:Type views:OrderRequestsPage}" NavigationCacheMode="Required" />
-                <ui:NavigationViewItem Content="Search &amp; Copy"  Icon="{ui:SymbolIcon Search24}"      TargetPageType="{x:Type views:SearchCopyPage}" NavigationCacheMode="Required" />
-                <ui:NavigationViewItem Content="Copywriting Studio" Icon="{ui:SymbolIcon Edit24}"        TargetPageType="{x:Type views:CopywritingPage}" NavigationCacheMode="Required" />
-                <ui:NavigationViewItem Content="Brand Assets"       Icon="{ui:SymbolIcon Library24}"     TargetPageType="{x:Type views:BrandAssetsPage}" NavigationCacheMode="Required" />
+                <!-- 2. Operations & Delivery Hub -->
+                <ui:NavigationViewItemSeparator />
+                <ui:NavigationViewItem Content="Order Requests"     Icon="{ui:SymbolIcon ClipboardTask24}" TargetPageType="{x:Type views:OrderRequestsPage}" NavigationCacheMode="Required" ToolTip="Intake creative orders &amp; client requests" />
+                <ui:NavigationViewItem Content="Task Manager"       Icon="{ui:SymbolIcon Checkmark24}"   TargetPageType="{x:Type views:TaskManagerPage}" NavigationCacheMode="Required" ToolTip="Kanban production board &amp; handovers" />
+                <ui:NavigationViewItem Content="Project Timeline"   Icon="{ui:SymbolIcon CalendarMonth24}" TargetPageType="{x:Type views:CalendarPage}" NavigationCacheMode="Required" ToolTip="Visual project calendar, Gantt &amp; deadlines" />
+                <ui:NavigationViewItem Content="Studio Notes"       Icon="{ui:SymbolIcon Document24}"    TargetPageType="{x:Type views:QuickNotePage}" NavigationCacheMode="Required" ToolTip="Quick scratchpad, briefs &amp; Markdown notes" />
+
+                <!-- 3. Studio Tools & Utilities -->
+                <ui:NavigationViewItemSeparator />
+                <ui:NavigationViewItem Content="QR Code Studio"     Icon="{ui:SymbolIcon QrCode24}"      TargetPageType="{x:Type views:QrCodePage}" NavigationCacheMode="Required" ToolTip="Vector QR codes for packaging &amp; marketing" />
+                <ui:NavigationViewItem Content="Waktu Solat"        Icon="{ui:SymbolIcon Clock24}"       TargetPageType="{x:Type views:WaktuSolatPage}" NavigationCacheMode="Required" ToolTip="Prayer times &amp; Islamic calendar" />
+                <ui:NavigationViewItem Content="Radio Player"       Icon="{ui:SymbolIcon MusicNote224}"  TargetPageType="{x:Type views:RadioPage}" NavigationCacheMode="Required" ToolTip="Ambient radio streams &amp; focus audio" />
+                <ui:NavigationViewItem Content="Creative Wellbeing" Icon="{ui:SymbolIcon Heart24}"       TargetPageType="{x:Type views:WellbeingPage}" NavigationCacheMode="Required" ToolTip="Ergonomics, breaks &amp; focus analytics" />
 
                 <ui:NavigationViewItemSeparator />
-
-                <ui:NavigationViewItem Content="Task Manager"       Icon="{ui:SymbolIcon Checkmark24}"   TargetPageType="{x:Type views:TaskManagerPage}" NavigationCacheMode="Required" />
-                <ui:NavigationViewItem Content="Big Calendar"       Icon="{ui:SymbolIcon CalendarMonth24}"   TargetPageType="{x:Type views:CalendarPage}" NavigationCacheMode="Required" />
-                <ui:NavigationViewItem Content="Quick Notes"        Icon="{ui:SymbolIcon Document24}"    TargetPageType="{x:Type views:QuickNotePage}" NavigationCacheMode="Required" />
-
-                <ui:NavigationViewItemSeparator />
-
-                <ui:NavigationViewItem Content="Creative Wellbeing" Icon="{ui:SymbolIcon Heart24}"       TargetPageType="{x:Type views:WellbeingPage}" NavigationCacheMode="Required" />
-                <ui:NavigationViewItem Content="Waktu Solat"        Icon="{ui:SymbolIcon Clock24}"       TargetPageType="{x:Type views:WaktuSolatPage}" NavigationCacheMode="Required" />
-                <ui:NavigationViewItem Content="Radio Player"       Icon="{ui:SymbolIcon MusicNote224}"  TargetPageType="{x:Type views:RadioPage}" NavigationCacheMode="Required" />
-                <ui:NavigationViewItem Content="QR Code Studio"     Icon="{ui:SymbolIcon QrCode24}"      TargetPageType="{x:Type views:QrCodePage}" NavigationCacheMode="Required" />
-
-                <ui:NavigationViewItemSeparator />
-
-                <ui:NavigationViewItem Content="Workstation Health" Icon="{ui:SymbolIcon Important24}"   TargetPageType="{x:Type views:WorkstationHealthPage}" NavigationCacheMode="Required" />
-                <ui:NavigationViewItemSeparator />
-                <ui:NavigationViewItem Content="Settings &amp; Profile" Icon="{ui:SymbolIcon Settings24}" TargetPageType="{x:Type views:SettingsPage}" NavigationCacheMode="Required" />
+                <ui:NavigationViewItem Content="Settings &amp; Profile" Icon="{ui:SymbolIcon Settings24}" TargetPageType="{x:Type views:SettingsPage}" NavigationCacheMode="Required" ToolTip="Designer preferences, NAS &amp; diagnostics" />
             </ui:NavigationView.MenuItems>
 
             <!-- PANE FOOTER: Status rows -->
@@ -223,8 +281,17 @@
                                 ToolTip="Open Wellbeing &amp; Focus Timer">
                         <ui:TextBlock x:Name="StatusTimerIcon" Text="&#xE916;" FontFamily="Segoe Fluent Icons" Foreground="{DynamicResource SidebarTextSecondaryBrush}"
                                    FontSize="12" VerticalAlignment="Center" Margin="0,0,7,0"/>
-                        <ui:TextBlock x:Name="StatusTimerText" Text="Focus Timer: Ready" Foreground="{DynamicResource SidebarTextSecondaryBrush}"
+                        <ui:TextBlock x:Name="StatusTimerText" Text="Ready" Foreground="{DynamicResource SidebarTextSecondaryBrush}"
                                    FontSize="11" VerticalAlignment="Center"/>
+                    </StackPanel>
+                    <!-- Ambient Audio (Radio) Footer Widget (Option B) -->
+                    <StackPanel x:Name="FooterRadioPanel" Orientation="Horizontal" Margin="16,4" Cursor="Hand"
+                                MouseLeftButtonDown="OnFooterRadioClicked"
+                                ToolTip="Studio Audio (Click to open controls)">
+                        <ui:TextBlock x:Name="StatusRadioIcon" Text="&#xE767;" FontFamily="Segoe Fluent Icons" Foreground="{DynamicResource SidebarTextSecondaryBrush}"
+                                   FontSize="12" VerticalAlignment="Center" Margin="0,0,7,0"/>
+                        <ui:TextBlock x:Name="StatusRadioText" Text="Ready" Foreground="{DynamicResource SidebarTextSecondaryBrush}"
+                                   FontSize="11" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="150"/>
                     </StackPanel>
                     <!-- Active theme - click to cycle -->
                     <StackPanel x:Name="FooterThemePanel" Orientation="Horizontal" Margin="16,4" Cursor="Hand"
@@ -234,13 +301,67 @@
                         <ui:TextBlock x:Name="StatusThemeIcon" Text="&#xE790;" FontFamily="Segoe Fluent Icons" Foreground="{DynamicResource SidebarTextSecondaryBrush}"
                                    FontSize="12" VerticalAlignment="Center" Margin="0,0,7,0"
                                    Focusable="False"/>
-                        <ui:TextBlock x:Name="StatusThemeText" Text="Theme: SuamiSihat Light" Foreground="{DynamicResource SidebarTextSecondaryBrush}"
+                        <ui:TextBlock x:Name="StatusThemeText" Text="SuamiSihat Light" Foreground="{DynamicResource SidebarTextSecondaryBrush}"
                                    FontSize="11" VerticalAlignment="Center"
                                    Focusable="False"/>
                     </StackPanel>
                 </StackPanel>
             </ui:NavigationView.PaneFooter>
         </ui:NavigationView>
+
+        <!-- Ambient Audio Flyout Popover (Option B) -->
+        <Popup x:Name="RadioFlyoutPopup" PlacementTarget="{Binding ElementName=FooterRadioPanel}"
+               Placement="Right" VerticalOffset="-80" HorizontalOffset="12"
+               StaysOpen="False" AllowsTransparency="True" PopupAnimation="Fade">
+            <Border Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1" CornerRadius="8" Padding="14,12"
+                    Width="270">
+                <Border.Effect>
+                    <DropShadowEffect BlurRadius="20" ShadowDepth="4" Direction="270" Color="#000000" Opacity="0.3"/>
+                </Border.Effect>
+                <StackPanel>
+                    <!-- Header: Station Title & Open Full Radio Page Button -->
+                    <DockPanel LastChildFill="False" Margin="0,0,0,8">
+                        <StackPanel Orientation="Horizontal" DockPanel.Dock="Left" VerticalAlignment="Center">
+                            <ui:SymbolIcon Symbol="MusicNote224" FontSize="14" Foreground="{DynamicResource FluentBrand80}" Margin="0,0,6,0"/>
+                            <ui:TextBlock x:Name="TxtFlyoutStation" Text="SuamiSihat Radio" FontWeight="SemiBold" FontSize="12.5"
+                                          Foreground="{DynamicResource TextFillColorPrimaryBrush}" MaxWidth="175" TextTrimming="CharacterEllipsis"/>
+                        </StackPanel>
+                        <ui:Button DockPanel.Dock="Right" Appearance="Transparent" Padding="4,2" Click="OnFlyoutOpenFullRadioPage" ToolTip="Open Full Radio Page">
+                            <ui:SymbolIcon Symbol="Open24" FontSize="12"/>
+                        </ui:Button>
+                    </DockPanel>
+
+                    <!-- Stream Status / Track Info -->
+                    <ui:TextBlock x:Name="TxtFlyoutStatus" Text="Ready to stream" FontSize="11"
+                                  Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,0,0,10"
+                                  TextTrimming="CharacterEllipsis"/>
+
+                    <!-- Controls Row: Play/Pause & Volume Slider -->
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <ui:Button x:Name="BtnFlyoutPlayToggle" Grid.Column="0" Click="OnFlyoutPlayToggleClicked"
+                                   Appearance="Primary" Padding="12,6" Margin="0,0,10,0" ToolTip="Play / Pause">
+                            <ui:TextBlock x:Name="TxtFlyoutPlayIcon" Text="&#xE768;" FontFamily="Segoe Fluent Icons" FontSize="12" Foreground="White"/>
+                        </ui:Button>
+
+                        <!-- Volume Slider -->
+                        <DockPanel Grid.Column="1" VerticalAlignment="Center">
+                            <ui:TextBlock Text="&#xE767;" FontFamily="Segoe Fluent Icons" FontSize="12"
+                                          Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                          VerticalAlignment="Center" Margin="0,0,6,0"/>
+                            <Slider x:Name="SliderFlyoutVolume" Minimum="0" Maximum="100" Value="80"
+                                    ValueChanged="OnFlyoutVolumeChanged" VerticalAlignment="Center" ToolTip="Volume"/>
+                        </DockPanel>
+                    </Grid>
+                </StackPanel>
+            </Border>
+        </Popup>
 
         <!-- PERSISTENT BOTTOM RADIO PLAYER BAR (Full SuamiSihat Deep Blue + Faded Background Wave Visualizer) -->
         <Border x:Name="BottomRadioPlayerBar" Grid.Row="3"
@@ -380,6 +501,271 @@
                 </ScrollViewer>
             </Grid>
         </Border>
+
+        <!-- LIVE WORK TIMER POPOVER OVERLAY -->
+        <Grid x:Name="WorkTimerPopoverOverlay" Grid.RowSpan="4" Panel.ZIndex="19000" Visibility="Collapsed"
+              Background="#30000000" MouseLeftButtonDown="OnWorkTimerPopoverBackdropClicked">
+            <Border Width="380" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="140,50,0,0"
+                    Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" BorderThickness="1"
+                    CornerRadius="10" Padding="16" ClipToBounds="True">
+                <Border.Effect>
+                    <DropShadowEffect BlurRadius="24" ShadowDepth="6" Direction="270" Color="#000000" Opacity="0.25"/>
+                </Border.Effect>
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Row 0: Header -->
+                    <Grid Grid.Row="0" Margin="0,0,0,12">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <ui:SymbolIcon Symbol="Timer24" FontSize="16" Foreground="{DynamicResource FluentBrand80}" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                            <ui:TextBlock Text="Project Work Progress Tracker" FontSize="13" FontWeight="Bold" Foreground="{DynamicResource TextFillColorPrimaryBrush}" VerticalAlignment="Center"/>
+                        </StackPanel>
+                        <ui:Button HorizontalAlignment="Right" Appearance="Secondary" Width="24" Height="24" Padding="0" Click="OnCloseWorkTimerPopoverClicked" Cursor="Hand" ToolTip="Close">
+                            <ui:SymbolIcon Symbol="Dismiss24" FontSize="11"/>
+                        </ui:Button>
+                    </Grid>
+
+                    <!-- Row 1: Big Stopwatch Display -->
+                    <Border Grid.Row="1" Background="{DynamicResource ControlFillColorSecondaryBrush}" CornerRadius="8" Padding="16,10" Margin="0,0,0,12">
+                        <StackPanel HorizontalAlignment="Center">
+                            <ui:TextBlock x:Name="TxtPopoverBigTimer" Text="00 : 00 : 00"
+                                          FontFamily="Consolas, Segoe UI Variable Display" FontSize="26" FontWeight="Bold"
+                                          Foreground="{DynamicResource TextFillColorPrimaryBrush}" HorizontalAlignment="Center"/>
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,4,0,0">
+                                <Ellipse x:Name="PopoverStatusDot" Width="7" Height="7" Fill="#94A3B8" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                <ui:TextBlock x:Name="TxtPopoverStatusState" Text="Idle / Ready" FontSize="10.5" FontWeight="SemiBold"
+                                              Foreground="{DynamicResource TextFillColorSecondaryBrush}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Row 2: Active Project Selector with Designer Filter -->
+                    <StackPanel Grid.Row="2" Margin="0,0,0,12">
+                        <Grid Margin="0,0,0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <ui:TextBlock Text="ACTIVE PROJECT" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorSecondaryBrush}" VerticalAlignment="Center"/>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                <ui:SymbolIcon Symbol="Person24" FontSize="11" Foreground="{DynamicResource FluentBrand80}" Margin="0,0,4,0" VerticalAlignment="Center"/>
+                                <ui:TextBlock Text="Designer:" FontSize="10" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,0,4,0" VerticalAlignment="Center"/>
+                                <ComboBox x:Name="CmbPopoverDesignerFilter" SelectionChanged="OnPopoverDesignerFilterChanged"
+                                          Height="26" FontSize="10.5" Width="135" Padding="6,0" VerticalContentAlignment="Center"
+                                          ToolTip="Filter projects by assigned designer">
+                                    <ComboBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <ui:TextBlock Text="{Binding}" VerticalAlignment="Center"/>
+                                        </DataTemplate>
+                                    </ComboBox.ItemTemplate>
+                                </ComboBox>
+                            </StackPanel>
+                        </Grid>
+                        <ComboBox x:Name="CmbPopoverProjectPicker" SelectionChanged="OnPopoverProjectPickerChanged"
+                                  Height="36" FontSize="12" VerticalAlignment="Center" VerticalContentAlignment="Center" Padding="10,0"
+                                  ToolTip="Select active project to track">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate>
+                                    <ui:TextBlock Text="{Binding}" VerticalAlignment="Center" Margin="2,0"/>
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                    </StackPanel>
+
+                    <!-- Row 3: Session Notes Input -->
+                    <StackPanel Grid.Row="3" Margin="0,0,0,14">
+                        <ui:TextBlock Text="SESSION ACTIVITY / NOTES" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,0,0,4"/>
+                        <TextBox x:Name="TxtPopoverSessionNotes" Height="32" FontSize="11.5"
+                                 Background="{DynamicResource TextControlBackground}" BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                                 Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                                 TextChanged="OnPopoverSessionNotesChanged"
+                                 VerticalContentAlignment="Center" Padding="8,0"/>
+                    </StackPanel>
+
+                    <!-- Row 4: Action Buttons -->
+                    <Grid Grid.Row="4">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <ui:Button x:Name="BtnPopoverToggle" Grid.Column="0" Appearance="Primary" Margin="0,0,6,0"
+                                   Click="OnPopoverToggleTimerClicked" Cursor="Hand" Height="32">
+                            <StackPanel Orientation="Horizontal">
+                                <ui:TextBlock x:Name="TxtPopoverToggleIcon" Text="&#xE768;" FontFamily="Segoe Fluent Icons" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                <ui:TextBlock x:Name="TxtPopoverToggleText" Text="Start Timer" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </ui:Button>
+
+                        <ui:Button x:Name="BtnPopoverReset" Grid.Column="1" Appearance="Secondary" Margin="0,0,6,0"
+                                   Click="OnPopoverResetTimerClicked" Cursor="Hand" Height="32" Content="Reset Timer"/>
+
+                        <ui:Button x:Name="BtnPopoverJumpProject" Grid.Column="2" Appearance="Secondary"
+                                   Click="OnPopoverJumpToProjectClicked" Cursor="Hand" Height="32" ToolTip="Open Project in Search &amp; Copy" Padding="8,0">
+                            <ui:SymbolIcon Symbol="Open24" FontSize="13"/>
+                        </ui:Button>
+                    </Grid>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- GLOBAL COMMAND PALETTE SPOTLIGHT MODAL OVERLAY (Ctrl + K) -->
+        <Grid x:Name="CommandPaletteOverlay" Grid.RowSpan="4" Panel.ZIndex="20000" Visibility="Collapsed"
+              Background="#70000000" MouseLeftButtonDown="OnCommandPaletteBackdropClicked">
+            <Border Width="640" MaxHeight="490" VerticalAlignment="Top" Margin="0,60,0,0"
+                    Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" BorderThickness="1"
+                    CornerRadius="10" ClipToBounds="True">
+                <Border.Effect>
+                    <DropShadowEffect BlurRadius="30" ShadowDepth="12" Direction="270" Color="#000000" Opacity="0.38"/>
+                </Border.Effect>
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Row 0: Search Box -->
+                    <Grid Grid.Row="0" Margin="16,14,16,12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <ui:SymbolIcon Symbol="Search24" FontSize="18" Foreground="{DynamicResource FluentBrand80}"
+                                       Margin="0,0,12,0" VerticalAlignment="Center"/>
+                        <TextBox x:Name="CommandPaletteSearchBox" Grid.Column="1"
+                                 Background="Transparent" BorderThickness="0"
+                                 FontSize="15" FontWeight="SemiBold"
+                                 Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                                 CaretBrush="{DynamicResource TextFillColorPrimaryBrush}"
+                                 VerticalAlignment="Center"
+                                 TextChanged="OnCommandPaletteSearchTextChanged"
+                                 PreviewKeyDown="OnCommandPaletteSearchPreviewKeyDown"/>
+                        <ui:Button Grid.Column="2" Appearance="Secondary" Width="26" Height="26" Padding="0"
+                                   Click="OnCloseCommandPaletteClicked" Cursor="Hand" ToolTip="Close (Esc)">
+                            <ui:SymbolIcon Symbol="Dismiss24" FontSize="12"/>
+                        </ui:Button>
+                    </Grid>
+
+                    <Separator Grid.Row="0" VerticalAlignment="Bottom" Margin="0" Background="{DynamicResource CardStrokeColorDefaultBrush}"/>
+
+                    <!-- Row 1: Category Filter Chips -->
+                    <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="16,8,16,6">
+                        <ui:Button x:Name="ChipCategoryAll" Content="All" Appearance="Primary" Tag="All"
+                                   Click="OnCommandPaletteCategoryChipClicked" Height="24" Padding="10,0" Margin="0,0,6,0" FontSize="10.5" Cursor="Hand"/>
+                        <ui:Button x:Name="ChipCategoryModules" Content="Modules" Appearance="Secondary" Tag="Navigation"
+                                   Click="OnCommandPaletteCategoryChipClicked" Height="24" Padding="10,0" Margin="0,0,6,0" FontSize="10.5" Cursor="Hand"/>
+                        <ui:Button x:Name="ChipCategoryProjects" Content="Projects" Appearance="Secondary" Tag="Projects"
+                                   Click="OnCommandPaletteCategoryChipClicked" Height="24" Padding="10,0" Margin="0,0,6,0" FontSize="10.5" Cursor="Hand"/>
+                        <ui:Button x:Name="ChipCategoryColors" Content="Brand Colors" Appearance="Secondary" Tag="Brand Colors"
+                                   Click="OnCommandPaletteCategoryChipClicked" Height="24" Padding="10,0" Margin="0,0,6,0" FontSize="10.5" Cursor="Hand"/>
+                        <ui:Button x:Name="ChipCategoryCopy" Content="Copywriting" Appearance="Secondary" Tag="Copywriting"
+                                   Click="OnCommandPaletteCategoryChipClicked" Height="24" Padding="10,0" Margin="0,0,6,0" FontSize="10.5" Cursor="Hand"/>
+                        <ui:Button x:Name="ChipCategoryActions" Content="Actions" Appearance="Secondary" Tag="Actions"
+                                   Click="OnCommandPaletteCategoryChipClicked" Height="24" Padding="10,0" FontSize="10.5" Cursor="Hand"/>
+                    </StackPanel>
+
+                    <!-- Row 2: Results ListBox -->
+                    <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                                  MaxHeight="310" Margin="8,2,8,6">
+                        <ListBox x:Name="CommandPaletteResultsList"
+                                 Background="Transparent" BorderThickness="0"
+                                 ItemContainerStyle="{StaticResource CommandPaletteItemStyle}"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                 SelectionMode="Single"
+                                 MouseDoubleClick="OnCommandPaletteItemDoubleClicked"
+                                 PreviewKeyDown="OnCommandPaletteListPreviewKeyDown">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Padding="10,7" CornerRadius="6" Background="Transparent">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+
+                                            <!-- Icon / Swatch -->
+                                            <Grid Grid.Column="0" Width="28" Height="28" Margin="0,0,10,0" VerticalAlignment="Center">
+                                                <Border CornerRadius="6" Background="{DynamicResource ControlFillColorSecondaryBrush}"
+                                                        BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" BorderThickness="1"
+                                                        Visibility="{Binding IconVisibility}">
+                                                    <ui:TextBlock Text="{Binding IconGlyph}" FontFamily="Segoe Fluent Icons"
+                                                               FontSize="13" Foreground="{DynamicResource FluentBrand80}"
+                                                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                </Border>
+
+                                                <Border Width="22" Height="22" CornerRadius="11" BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                                                        BorderThickness="1.5" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                        Visibility="{Binding SwatchVisibility}">
+                                                    <Border.Background>
+                                                        <SolidColorBrush Color="{Binding SwatchHex}"/>
+                                                    </Border.Background>
+                                                </Border>
+                                            </Grid>
+
+                                            <!-- Title & Subtitle -->
+                                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                <ui:TextBlock Text="{Binding Title}" FontSize="12.5" FontWeight="SemiBold"
+                                                              Foreground="{DynamicResource TextFillColorPrimaryBrush}" TextTrimming="CharacterEllipsis"/>
+                                                <ui:TextBlock Text="{Binding Subtitle}" FontSize="10.5"
+                                                              Foreground="{DynamicResource TextFillColorSecondaryBrush}" TextTrimming="CharacterEllipsis" Margin="0,2,0,0"/>
+                                            </StackPanel>
+
+                                            <!-- Badge -->
+                                            <Border Grid.Column="2" Background="{DynamicResource ControlFillColorSecondaryBrush}"
+                                                    BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" BorderThickness="1"
+                                                    CornerRadius="4" Padding="6,2" VerticalAlignment="Center" Margin="8,0,0,0">
+                                                <ui:TextBlock Text="{Binding BadgeText}" FontSize="9" FontWeight="Bold"
+                                                              Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                            </Border>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </ScrollViewer>
+
+                    <!-- Row 3: Keyboard Shortcuts Footer Bar -->
+                    <Border Grid.Row="3" Background="{DynamicResource ControlFillColorSecondaryBrush}"
+                            BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" BorderThickness="0,1,0,0"
+                            Padding="16,8">
+                        <Grid>
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <Border Background="{DynamicResource CardBackgroundFillColorDefaultBrush}" BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="3" Padding="4,1" Margin="0,0,4,0">
+                                    <ui:TextBlock Text="&#x2191;&#x2193;" FontSize="9.5" FontWeight="Bold" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                </Border>
+                                <ui:TextBlock Text="Navigate" FontSize="10.5" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,0,12,0" VerticalAlignment="Center"/>
+
+                                <Border Background="{DynamicResource CardBackgroundFillColorDefaultBrush}" BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="3" Padding="4,1" Margin="0,0,4,0">
+                                    <ui:TextBlock Text="&#x21B5; Enter" FontSize="9.5" FontWeight="Bold" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                </Border>
+                                <ui:TextBlock Text="Select / Execute" FontSize="10.5" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,0,12,0" VerticalAlignment="Center"/>
+
+                                <Border Background="{DynamicResource CardBackgroundFillColorDefaultBrush}" BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="3" Padding="4,1" Margin="0,0,4,0">
+                                    <ui:TextBlock Text="Esc" FontSize="9.5" FontWeight="Bold" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                </Border>
+                                <ui:TextBlock Text="Close" FontSize="10.5" Foreground="{DynamicResource TextFillColorSecondaryBrush}" VerticalAlignment="Center"/>
+                            </StackPanel>
+
+                            <ui:TextBlock x:Name="TxtCommandPaletteCount" HorizontalAlignment="Right"
+                                          Text="15 results" FontSize="10.5" Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                          VerticalAlignment="Center"/>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </Border>
+        </Grid>
 
         <!-- Hidden elements (kept for backward compatibility) -->
         <Canvas x:Name="HeaderCanvas" Grid.Row="0" IsHitTestVisible="False" Visibility="Collapsed"/>

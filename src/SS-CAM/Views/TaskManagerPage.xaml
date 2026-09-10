@@ -159,46 +159,48 @@
                 </Grid.ColumnDefinitions>
 
                 <!-- Search & Filters -->
-                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                    <!-- Real-time Search Input -->
-                    <ui:TextBox x:Name="TxtSearchQuery" Width="220" Height="32" Padding="8,4" VerticalContentAlignment="Center" PlaceholderText="Search project or client..." Icon="Search24" TextChanged="OnTMSearchQueryChanged" FontSize="11" Margin="0,0,12,0"/>
+                <ScrollViewer Grid.Column="0" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" Focusable="False" Margin="0,0,12,0">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <!-- Real-time Search Input -->
+                        <ui:TextBox x:Name="TxtSearchQuery" Width="200" Height="36" Padding="10,0" VerticalContentAlignment="Center" PlaceholderText="Search project or client..." Icon="Search24" TextChanged="OnTMSearchQueryChanged" FontSize="11.5" Margin="0,0,10,0"/>
 
-                    <ui:TextBlock Text="Designer:" FontSize="11" Foreground="{DynamicResource TextFillColorSecondaryBrush}" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                    <ComboBox x:Name="DesignerFilterTM" Width="130" Height="32" Padding="8,4" VerticalContentAlignment="Center" SelectionChanged="OnTMFilterChanged" FontSize="11" Margin="0,0,12,0"/>
+                        <ui:TextBlock Text="Designer:" FontSize="11" Foreground="{DynamicResource TextFillColorSecondaryBrush}" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <ComboBox x:Name="DesignerFilterTM" Width="140" Height="36" Padding="10,0" VerticalContentAlignment="Center" SelectionChanged="OnTMFilterChanged" FontSize="11.5" Margin="0,0,10,0"/>
 
-                    <ui:TextBlock Text="Status:" FontSize="11" Foreground="{DynamicResource TextFillColorSecondaryBrush}" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                    <ComboBox x:Name="StatusFilter" Width="120" Height="32" Padding="8,4" VerticalContentAlignment="Center" SelectionChanged="OnTMFilterChanged" FontSize="11" Margin="0,0,12,0">
-                        <ComboBoxItem Content="All Statuses" IsSelected="True" VerticalContentAlignment="Center"/>
-                        <ComboBoxItem Content="backlog" VerticalContentAlignment="Center"/>
-                        <ComboBoxItem Content="in-progress" VerticalContentAlignment="Center"/>
-                        <ComboBoxItem Content="review" VerticalContentAlignment="Center"/>
-                        <ComboBoxItem Content="revision" VerticalContentAlignment="Center"/>
-                        <ComboBoxItem Content="approved" VerticalContentAlignment="Center"/>
-                        <ComboBoxItem Content="done" VerticalContentAlignment="Center"/>
-                        <ComboBoxItem Content="on-hold" VerticalContentAlignment="Center"/>
-                    </ComboBox>
+                        <ui:TextBlock Text="Status:" FontSize="11" Foreground="{DynamicResource TextFillColorSecondaryBrush}" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <ComboBox x:Name="StatusFilter" Width="130" Height="36" Padding="10,0" VerticalContentAlignment="Center" SelectionChanged="OnTMFilterChanged" FontSize="11.5" Margin="0,0,10,0">
+                            <ComboBoxItem Content="All Statuses" IsSelected="True" VerticalContentAlignment="Center"/>
+                            <ComboBoxItem Content="backlog" VerticalContentAlignment="Center"/>
+                            <ComboBoxItem Content="in-progress" VerticalContentAlignment="Center"/>
+                            <ComboBoxItem Content="review" VerticalContentAlignment="Center"/>
+                            <ComboBoxItem Content="revision" VerticalContentAlignment="Center"/>
+                            <ComboBoxItem Content="approved" VerticalContentAlignment="Center"/>
+                            <ComboBoxItem Content="done" VerticalContentAlignment="Center"/>
+                            <ComboBoxItem Content="on-hold" VerticalContentAlignment="Center"/>
+                        </ComboBox>
 
-                    <ui:TextBlock Text="Priority:" FontSize="11" Foreground="{DynamicResource TextFillColorSecondaryBrush}" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                    <ComboBox x:Name="PriorityFilter" Width="125" Height="32" Padding="8,4" VerticalContentAlignment="Center" SelectionChanged="OnTMFilterChanged" FontSize="11" Margin="0,0,12,0">
-                        <ComboBoxItem Content="All Priorities" Tag="all" IsSelected="True" VerticalContentAlignment="Center"/>
-                        <ComboBoxItem Content="P3 (Urgent)" Tag="urgent" VerticalContentAlignment="Center"/>
-                        <ComboBoxItem Content="P2 (High)" Tag="high" VerticalContentAlignment="Center"/>
-                        <ComboBoxItem Content="P1 (Medium)" Tag="medium" VerticalContentAlignment="Center"/>
-                        <ComboBoxItem Content="Low" Tag="low" VerticalContentAlignment="Center"/>
-                    </ComboBox>
+                        <ui:TextBlock Text="Priority:" FontSize="11" Foreground="{DynamicResource TextFillColorSecondaryBrush}" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <ComboBox x:Name="PriorityFilter" Width="130" Height="36" Padding="10,0" VerticalContentAlignment="Center" SelectionChanged="OnTMFilterChanged" FontSize="11.5" Margin="0,0,10,0">
+                            <ComboBoxItem Content="All Priorities" Tag="all" IsSelected="True" VerticalContentAlignment="Center"/>
+                            <ComboBoxItem Content="P3 (Urgent)" Tag="urgent" VerticalContentAlignment="Center"/>
+                            <ComboBoxItem Content="P2 (High)" Tag="high" VerticalContentAlignment="Center"/>
+                            <ComboBoxItem Content="P1 (Medium)" Tag="medium" VerticalContentAlignment="Center"/>
+                            <ComboBoxItem Content="Low" Tag="low" VerticalContentAlignment="Center"/>
+                        </ComboBox>
 
-                    <ui:TextBlock Text="Sort:" FontSize="11" Foreground="{DynamicResource TextFillColorSecondaryBrush}" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                    <ComboBox x:Name="SortFilter" Width="160" Height="32" Padding="8,4" VerticalContentAlignment="Center" SelectionChanged="OnTMFilterChanged" FontSize="11" Margin="0,0,12,0">
-                        <ComboBoxItem Content="Oldest First (Queue)" IsSelected="True" VerticalContentAlignment="Center"/>
-                        <ComboBoxItem Content="Newest First" VerticalContentAlignment="Center"/>
-                        <ComboBoxItem Content="Deadline (Urgent)" VerticalContentAlignment="Center"/>
-                        <ComboBoxItem Content="Priority" VerticalContentAlignment="Center"/>
-                    </ComboBox>
+                        <ui:TextBlock Text="Sort:" FontSize="11" Foreground="{DynamicResource TextFillColorSecondaryBrush}" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <ComboBox x:Name="SortFilter" Width="165" Height="36" Padding="10,0" VerticalContentAlignment="Center" SelectionChanged="OnTMFilterChanged" FontSize="11.5" Margin="0,0,10,0">
+                            <ComboBoxItem Content="Oldest First (Queue)" IsSelected="True" VerticalContentAlignment="Center"/>
+                            <ComboBoxItem Content="Newest First" VerticalContentAlignment="Center"/>
+                            <ComboBoxItem Content="Deadline (Urgent)" VerticalContentAlignment="Center"/>
+                            <ComboBoxItem Content="Priority" VerticalContentAlignment="Center"/>
+                        </ComboBox>
 
-                    <ui:Button Appearance="Secondary" Click="OnTMResetFiltersClicked" Width="32" Height="32" Padding="0" Cursor="Hand" ToolTip="Clear Search &amp; Filters">
-                        <ui:SymbolIcon Symbol="Dismiss24" FontSize="14" VerticalAlignment="Center"/>
-                    </ui:Button>
-                </StackPanel>
+                        <ui:Button Appearance="Secondary" Click="OnTMResetFiltersClicked" Width="36" Height="36" Padding="0" Cursor="Hand" ToolTip="Clear Search &amp; Filters">
+                            <ui:SymbolIcon Symbol="Dismiss24" FontSize="14" VerticalAlignment="Center"/>
+                        </ui:Button>
+                    </StackPanel>
+                </ScrollViewer>
 
                 <!-- Actions & Count -->
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">

@@ -29,6 +29,8 @@ namespace SS_CAM
         private DispatcherTimer headerAnimTimer;
         private List<AnimShapeItem> animItems;
         private UserProfile currentProfile;
+        private List<DesignerFolderItem> _popoverCachedProjects;
+        private bool _popoverUpdating = false;
 
         public MainWindow()
         {
@@ -93,6 +95,14 @@ namespace SS_CAM
                     }
                 }
                 catch (Exception ex) { App.LogTrace("MainWindow: WorkspaceWatcher error: " + ex.Message); }
+
+                // 6b. Initialize Live Work Session Tracker
+                try
+                {
+                    InitWorkSessionTracker();
+                    App.LogTrace("MainWindow: WorkSessionTracker initialized");
+                }
+                catch (Exception ex) { App.LogTrace("MainWindow: WorkSessionTracker error: " + ex.Message); }
 
                 // 7. Navigate to Dashboard on startup
                 try { RootNavigation.Navigate(typeof(DashboardPage)); App.LogTrace("MainWindow: Navigated to DashboardPage"); }
@@ -189,15 +199,113 @@ namespace SS_CAM
                 var radio = RadioStreamService.Instance;
                 if (radio == null) return;
 
-                bool isPlayingOrBuffering = (radio.State == RadioPlaybackState.Playing || radio.State == RadioPlaybackState.Buffering || radio.State == RadioPlaybackState.Paused);
+                bool isPlaying = (radio.State == RadioPlaybackState.Playing);
+                bool isBuffering = (radio.State == RadioPlaybackState.Buffering);
+                bool isPaused = (radio.State == RadioPlaybackState.Paused);
+
+                string stationName = radio.CurrentStation != null ? radio.CurrentStation.Name : "Radio Stream";
+                string streamTitle = radio.LocalProxy != null ? radio.LocalProxy.CurrentStreamTitle : null;
+                string nowPlayingTitle = !string.IsNullOrWhiteSpace(streamTitle) ? streamTitle.Trim() : stationName;
+
+                // Option B: Footer Mini-Widget Status - displays Now Playing Title only
+                if (StatusRadioText != null)
+                {
+                    if (isPlaying)
+                        StatusRadioText.Text = nowPlayingTitle;
+                    else if (isBuffering)
+                        StatusRadioText.Text = "Connecting...";
+                    else if (isPaused)
+                        StatusRadioText.Text = "Paused";
+                    else
+                        StatusRadioText.Text = "Ready";
+                }
+
+                if (FooterRadioPanel != null)
+                {
+                    if (isPlaying)
+                    {
+                        if (!string.IsNullOrWhiteSpace(streamTitle) && !string.Equals(streamTitle.Trim(), stationName, StringComparison.OrdinalIgnoreCase))
+                            FooterRadioPanel.ToolTip = "Now Playing: " + streamTitle.Trim() + "\nStation: " + stationName + "\nClick to open audio controls";
+                        else
+                            FooterRadioPanel.ToolTip = "Now Playing: " + stationName + "\nClick to open audio controls";
+                    }
+                    else
+                    {
+                        FooterRadioPanel.ToolTip = "Studio Audio (Click to open controls)";
+                    }
+                }
+
+                if (StatusRadioIcon != null)
+                {
+                    if (isPlaying)
+                    {
+                        StatusRadioIcon.Text = "\uE767";
+                        var brandBrush = TryFindResource("FluentBrand80") as Brush;
+                        if (brandBrush != null) StatusRadioIcon.Foreground = brandBrush;
+                    }
+                    else if (isBuffering)
+                    {
+                        StatusRadioIcon.Text = "\uE823";
+                        var secBrush = TryFindResource("TextFillColorSecondaryBrush") as Brush;
+                        if (secBrush != null) StatusRadioIcon.Foreground = secBrush;
+                    }
+                    else
+                    {
+                        StatusRadioIcon.Text = "\uE767";
+                        var defaultBrush = TryFindResource("SidebarTextSecondaryBrush") as Brush;
+                        if (defaultBrush != null) StatusRadioIcon.Foreground = defaultBrush;
+                    }
+                }
+
+                // Option B: Flyout Popover Status
+                if (TxtFlyoutStation != null)
+                {
+                    TxtFlyoutStation.Text = stationName;
+                }
+                if (TxtFlyoutStatus != null)
+                {
+                    if (isPlaying)
+                    {
+                        TxtFlyoutStatus.Text = !string.IsNullOrWhiteSpace(streamTitle) ? "♫ " + streamTitle.Trim() : "Streaming: " + stationName;
+                    }
+                    else if (isBuffering)
+                    {
+                        TxtFlyoutStatus.Text = "Connecting to stream...";
+                    }
+                    else if (isPaused)
+                    {
+                        TxtFlyoutStatus.Text = "Playback paused";
+                    }
+                    else
+                    {
+                        TxtFlyoutStatus.Text = "Ready to stream";
+                    }
+                }
+                if (TxtFlyoutPlayIcon != null)
+                {
+                    if (isPlaying)
+                        TxtFlyoutPlayIcon.Text = "\uE769"; // Pause icon
+                    else if (isBuffering)
+                        TxtFlyoutPlayIcon.Text = "\uE823"; // Buffering
+                    else
+                        TxtFlyoutPlayIcon.Text = "\uE768"; // Play icon
+                }
+                if (SliderFlyoutVolume != null)
+                {
+                    double volPercent = radio.Volume * 100.0;
+                    if (Math.Abs(SliderFlyoutVolume.Value - volPercent) > 1.0)
+                    {
+                        SliderFlyoutVolume.Value = volPercent;
+                    }
+                }
+
                 if (BottomRadioPlayerBar != null)
                 {
-                    BottomRadioPlayerBar.Visibility = isPlayingOrBuffering ? Visibility.Visible : Visibility.Collapsed;
+                    // Reclaim vertical canvas space: keep bottom bar collapsed by default
+                    BottomRadioPlayerBar.Visibility = Visibility.Collapsed;
                 }
                 
-                string stationName = radio.CurrentStation != null ? radio.CurrentStation.Name : "Radio Stream";
                 string emoji = radio.CurrentStation != null ? radio.CurrentStation.IconEmoji : "📻";
-                string streamTitle = radio.LocalProxy != null ? radio.LocalProxy.CurrentStreamTitle : null;
                 
                 if (TxtBottomRadioTitle != null) TxtBottomRadioTitle.Text = stationName;
 
@@ -266,9 +374,61 @@ namespace SS_CAM
             e.Handled = true;
         }
 
+
         private void OnFooterRadioClicked(object sender, MouseButtonEventArgs e)
         {
-            RootNavigation.Navigate(typeof(RadioPage));
+            try
+            {
+                if (RadioFlyoutPopup != null)
+                {
+                    RadioFlyoutPopup.IsOpen = !RadioFlyoutPopup.IsOpen;
+                }
+                e.Handled = true;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("[MainWindow] OnFooterRadioClicked: " + ex.Message);
+            }
+        }
+
+        private void OnFlyoutOpenFullRadioPage(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (RadioFlyoutPopup != null)
+                {
+                    RadioFlyoutPopup.IsOpen = false;
+                }
+                RootNavigation.Navigate(typeof(RadioPage));
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("[MainWindow] OnFlyoutOpenFullRadioPage: " + ex.Message);
+            }
+        }
+
+        private void OnFlyoutPlayToggleClicked(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                RadioStreamService.Instance.TogglePlayPause();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("[MainWindow] OnFlyoutPlayToggleClicked: " + ex.Message);
+            }
+        }
+
+        private void OnFlyoutVolumeChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            try
+            {
+                RadioStreamService.Instance.Volume = e.NewValue / 100.0;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("[MainWindow] OnFlyoutVolumeChanged: " + ex.Message);
+            }
         }
 
         private void OnTitleBarNavToggleClicked(object sender, RoutedEventArgs e)
@@ -300,6 +460,7 @@ namespace SS_CAM
             {
                 if (StatusNasText != null) StatusNasText.Visibility = isPaneOpen ? Visibility.Visible : Visibility.Collapsed;
                 if (StatusTimerText != null) StatusTimerText.Visibility = isPaneOpen ? Visibility.Visible : Visibility.Collapsed;
+                if (StatusRadioText != null) StatusRadioText.Visibility = isPaneOpen ? Visibility.Visible : Visibility.Collapsed;
                 if (StatusThemeText != null) StatusThemeText.Visibility = isPaneOpen ? Visibility.Visible : Visibility.Collapsed;
 
                 if (FooterNasPanel != null)
@@ -320,6 +481,16 @@ namespace SS_CAM
                 if (StatusTimerIcon != null)
                 {
                     StatusTimerIcon.Margin = isPaneOpen ? new Thickness(0, 0, 7, 0) : new Thickness(0);
+                }
+
+                if (FooterRadioPanel != null)
+                {
+                    FooterRadioPanel.Margin = isPaneOpen ? new Thickness(16, 4, 16, 4) : new Thickness(0, 6, 0, 6);
+                    FooterRadioPanel.HorizontalAlignment = isPaneOpen ? HorizontalAlignment.Left : HorizontalAlignment.Center;
+                }
+                if (StatusRadioIcon != null)
+                {
+                    StatusRadioIcon.Margin = isPaneOpen ? new Thickness(0, 0, 7, 0) : new Thickness(0);
                 }
 
                 if (FooterThemePanel != null)
@@ -511,6 +682,9 @@ namespace SS_CAM
 
         private void InitHeaderAnimation()
         {
+            if (HeaderCanvas == null || HeaderCanvas.Visibility != Visibility.Visible)
+                return;
+
             animItems = new List<AnimShapeItem>();
             visBars = new List<Rectangle>();
             visGlowDots = new List<Ellipse>();
@@ -772,7 +946,7 @@ namespace SS_CAM
             if (StatusThemeText != null)
             {
                 string themeName = (theme == AppTheme.Metamorphosis) ? "Metamorphosis" : (theme == AppTheme.Catppuccin ? "Catppuccin" : (theme == AppTheme.RosePine ? "Rosé Pine" : (theme == AppTheme.Nord ? "Nord Light" : "SuamiSihat Light")));
-                StatusThemeText.Text = "Theme: " + themeName;
+                StatusThemeText.Text = themeName;
             }
 
             // -- Nav item foreground --
@@ -1034,34 +1208,727 @@ namespace SS_CAM
             return json.Substring(open + 1, close - open - 1);
         }
 
-        // ─── Sidebar Search Box ─────────────────────────────────────────────────
-        // Filters nav items by label text (case-insensitive substring match).
-        private static readonly string SearchPlaceholder = "Search modules...";
+        // ─── Global Keyboard Shortcuts & Command Palette (Ctrl + K) ─────────
+        private void OnWindowPreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.K && (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
+            {
+                e.Handled = true;
+                if (CommandPaletteOverlay != null && CommandPaletteOverlay.Visibility == Visibility.Visible)
+                {
+                    CloseCommandPalette();
+                }
+                else
+                {
+                    OpenCommandPalette("All");
+                }
+            }
+            else if (e.Key == Key.Escape)
+            {
+                if (CommandPaletteOverlay != null && CommandPaletteOverlay.Visibility == Visibility.Visible)
+                {
+                    e.Handled = true;
+                    CloseCommandPalette();
+                }
+                else if (WorkTimerPopoverOverlay != null && WorkTimerPopoverOverlay.Visibility == Visibility.Visible)
+                {
+                    e.Handled = true;
+                    WorkTimerPopoverOverlay.Visibility = Visibility.Collapsed;
+                }
+            }
+        }
+
+        private string GetWorkspaceRoot()
+        {
+            if (currentProfile != null && !string.IsNullOrWhiteSpace(currentProfile.WorkspaceRoot))
+            {
+                return currentProfile.WorkspaceRoot;
+            }
+            try
+            {
+                currentProfile = UserProfileService.LoadProfile();
+                if (currentProfile != null && !string.IsNullOrWhiteSpace(currentProfile.WorkspaceRoot))
+                {
+                    return currentProfile.WorkspaceRoot;
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("[MainWindow] GetWorkspaceRoot: " + ex.Message);
+            }
+            return string.Empty;
+        }
+
+        // ─── Live Work Progress Tracker & Status Indicator ───────────────────────
+        private DispatcherTimer _workSessionTimer;
+
+        private void InitWorkSessionTracker()
+        {
+            try
+            {
+                _workSessionTimer = new DispatcherTimer();
+                _workSessionTimer.Interval = TimeSpan.FromSeconds(1);
+                _workSessionTimer.Tick += (s, ev) =>
+                {
+                    WorkSessionTrackerService.Instance.Tick();
+                    UpdateWorkStatusUI();
+                };
+                _workSessionTimer.Start();
+
+                WorkSessionTrackerService.Instance.StateChanged += (s, ev) =>
+                {
+                    if (Dispatcher.CheckAccess()) UpdateWorkStatusUI();
+                    else Dispatcher.BeginInvoke(new Action(UpdateWorkStatusUI));
+                };
+
+                UpdateWorkStatusUI();
+                LiveTaskSyncService.Instance.Initialize(GetWorkspaceRoot());
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("[MainWindow] InitWorkSessionTracker: " + ex.Message);
+            }
+        }
+
+        private void UpdateWorkStatusUI()
+        {
+            try
+            {
+                var tracker = WorkSessionTrackerService.Instance;
+                string timeText = tracker.FormattedTime;
+                string projectName = !string.IsNullOrWhiteSpace(tracker.ActiveProjectId) ? tracker.ActiveProjectId : "No Active Project";
+
+                if (TxtWorkStatusTimer != null) TxtWorkStatusTimer.Text = timeText;
+                if (TxtPopoverBigTimer != null) TxtPopoverBigTimer.Text = timeText;
+                if (TxtWorkStatusProject != null) TxtWorkStatusProject.Text = projectName;
+
+                Color dotColor;
+                string stateIcon;
+                string statusText;
+                string toggleText;
+                string toggleIcon;
+
+                switch (tracker.State)
+                {
+                    case WorkSessionState.Running:
+                        dotColor = (Color)ColorConverter.ConvertFromString("#10B981"); // Success Green
+                        stateIcon = "\uE769"; // Pause glyph
+                        statusText = string.Format("Active • Working on {0}", tracker.ActiveClient);
+                        toggleText = "Pause Timer";
+                        toggleIcon = "\uE769";
+                        break;
+                    case WorkSessionState.Paused:
+                        dotColor = (Color)ColorConverter.ConvertFromString("#F59E0B"); // Caution Amber
+                        stateIcon = "\uE768"; // Play glyph
+                        statusText = "Paused";
+                        toggleText = "Resume Timer";
+                        toggleIcon = "\uE768";
+                        break;
+                    case WorkSessionState.Idle:
+                    default:
+                        dotColor = (Color)ColorConverter.ConvertFromString("#94A3B8"); // Muted Slate
+                        stateIcon = "\uE916"; // Timer glyph
+                        statusText = "Idle / Ready";
+                        toggleText = "Start Timer";
+                        toggleIcon = "\uE768";
+                        break;
+                }
+
+                SolidColorBrush dotBrush = new SolidColorBrush(dotColor);
+                if (WorkStatusDot != null) WorkStatusDot.Fill = dotBrush;
+                if (PopoverStatusDot != null) PopoverStatusDot.Fill = dotBrush;
+                if (TxtWorkStatusStateIcon != null) TxtWorkStatusStateIcon.Text = stateIcon;
+                if (TxtPopoverStatusState != null) TxtPopoverStatusState.Text = statusText;
+                if (TxtPopoverToggleText != null) TxtPopoverToggleText.Text = toggleText;
+                if (TxtPopoverToggleIcon != null) TxtPopoverToggleIcon.Text = toggleIcon;
+
+                // Sidebar footer timer synchronization - status only
+                if (StatusTimerText != null)
+                {
+                    if (tracker.State == WorkSessionState.Running)
+                        StatusTimerText.Text = tracker.FormattedShortTime;
+                    else if (tracker.State == WorkSessionState.Paused)
+                        StatusTimerText.Text = tracker.FormattedShortTime + " (Paused)";
+                    else
+                        StatusTimerText.Text = "Ready";
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("[MainWindow] UpdateWorkStatusUI: " + ex.Message);
+            }
+        }
+
+        private void OnWorkStatusPillClicked(object sender, MouseButtonEventArgs e)
+        {
+            if (WorkTimerPopoverOverlay == null) return;
+
+            if (WorkTimerPopoverOverlay.Visibility == Visibility.Visible)
+            {
+                WorkTimerPopoverOverlay.Visibility = Visibility.Collapsed;
+            }
+            else
+            {
+                PopulatePopoverProjects();
+                if (TxtPopoverSessionNotes != null)
+                    TxtPopoverSessionNotes.Text = WorkSessionTrackerService.Instance.SessionNotes ?? string.Empty;
+                WorkTimerPopoverOverlay.Visibility = Visibility.Visible;
+            }
+        }
+
+        private void OnWorkTimerPopoverBackdropClicked(object sender, MouseButtonEventArgs e)
+        {
+            if (e.OriginalSource == WorkTimerPopoverOverlay)
+            {
+                WorkTimerPopoverOverlay.Visibility = Visibility.Collapsed;
+            }
+        }
+
+        private void OnCloseWorkTimerPopoverClicked(object sender, RoutedEventArgs e)
+        {
+            if (WorkTimerPopoverOverlay != null)
+                WorkTimerPopoverOverlay.Visibility = Visibility.Collapsed;
+        }
+
+        private void PopulatePopoverProjects()
+        {
+            try
+            {
+                _popoverUpdating = true;
+                string root = GetWorkspaceRoot();
+                _popoverCachedProjects = new List<DesignerFolderItem>();
+
+                if (!string.IsNullOrWhiteSpace(root) && Directory.Exists(root))
+                {
+                    var projects = WorkspaceScanner.ListDesignerFolders(root, string.Empty, string.Empty, 100);
+                    if (projects != null)
+                    {
+                        _popoverCachedProjects = projects;
+                    }
+                }
+
+                // Populate Designer Filter
+                if (CmbPopoverDesignerFilter != null)
+                {
+                    string previousSelection = CmbPopoverDesignerFilter.SelectedItem != null 
+                        ? CmbPopoverDesignerFilter.SelectedItem.ToString() 
+                        : null;
+
+                    CmbPopoverDesignerFilter.Items.Clear();
+                    CmbPopoverDesignerFilter.Items.Add("All Designers");
+
+                    HashSet<string> designerSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+                    // Add from staff directory
+                    if (!string.IsNullOrWhiteSpace(root))
+                    {
+                        var staffList = WorkspaceScanner.GetDesignerFolders(root);
+                        if (staffList != null)
+                        {
+                            foreach (var s in staffList)
+                            {
+                                if (s != null && !string.IsNullOrWhiteSpace(s.Name) && designerSet.Add(s.Name.Trim()))
+                                {
+                                    CmbPopoverDesignerFilter.Items.Add(s.Name.Trim());
+                                }
+                            }
+                        }
+                    }
+
+                    // Add any designers detected from projects that weren't in directory
+                    if (_popoverCachedProjects != null)
+                    {
+                        foreach (var p in _popoverCachedProjects)
+                        {
+                            if (!string.IsNullOrWhiteSpace(p.Designer) && 
+                                !string.Equals(p.Designer, "Shared", StringComparison.OrdinalIgnoreCase) && 
+                                designerSet.Add(p.Designer.Trim()))
+                            {
+                                CmbPopoverDesignerFilter.Items.Add(p.Designer.Trim());
+                            }
+                        }
+                    }
+
+                    // Determine default selected designer:
+                    // 1. Previous selection if still valid
+                    // 2. Currently logged-in profile designer
+                    // 3. "All Designers"
+                    int selectedIdx = 0;
+                    if (!string.IsNullOrEmpty(previousSelection))
+                    {
+                        for (int i = 0; i < CmbPopoverDesignerFilter.Items.Count; i++)
+                        {
+                            if (string.Equals(CmbPopoverDesignerFilter.Items[i].ToString(), previousSelection, StringComparison.OrdinalIgnoreCase))
+                            {
+                                selectedIdx = i;
+                                break;
+                            }
+                        }
+                    }
+                    else if (currentProfile != null && !string.IsNullOrWhiteSpace(currentProfile.DesignerName))
+                    {
+                        for (int i = 0; i < CmbPopoverDesignerFilter.Items.Count; i++)
+                        {
+                            string item = CmbPopoverDesignerFilter.Items[i].ToString();
+                            if (string.Equals(item, currentProfile.DesignerName, StringComparison.OrdinalIgnoreCase) ||
+                                item.IndexOf(currentProfile.DesignerName, StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                currentProfile.DesignerName.IndexOf(item, StringComparison.OrdinalIgnoreCase) >= 0)
+                            {
+                                selectedIdx = i;
+                                break;
+                            }
+                        }
+                    }
+
+                    CmbPopoverDesignerFilter.SelectedIndex = selectedIdx;
+                }
+
+                ApplyPopoverProjectFilter();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("[MainWindow] PopulatePopoverProjects: " + ex.Message);
+            }
+            finally
+            {
+                _popoverUpdating = false;
+            }
+        }
+
+        private void OnPopoverDesignerFilterChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_popoverUpdating) return;
+
+            try
+            {
+                _popoverUpdating = true;
+                ApplyPopoverProjectFilter();
+            }
+            finally
+            {
+                _popoverUpdating = false;
+            }
+        }
+
+        private void ApplyPopoverProjectFilter()
+        {
+            try
+            {
+                if (CmbPopoverProjectPicker == null) return;
+                CmbPopoverProjectPicker.Items.Clear();
+
+                string selectedDesigner = "All Designers";
+                if (CmbPopoverDesignerFilter != null && CmbPopoverDesignerFilter.SelectedItem != null)
+                {
+                    selectedDesigner = CmbPopoverDesignerFilter.SelectedItem.ToString();
+                }
+
+                if (_popoverCachedProjects != null && _popoverCachedProjects.Count > 0)
+                {
+                    foreach (var p in _popoverCachedProjects)
+                    {
+                        if (p == null || string.IsNullOrWhiteSpace(p.Project)) continue;
+
+                        if (selectedDesigner != "All Designers" && !string.IsNullOrWhiteSpace(selectedDesigner))
+                        {
+                            bool match = false;
+                            if (!string.IsNullOrWhiteSpace(p.Designer))
+                            {
+                                if (string.Equals(p.Designer, selectedDesigner, StringComparison.OrdinalIgnoreCase) ||
+                                    p.Designer.IndexOf(selectedDesigner, StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                    selectedDesigner.IndexOf(p.Designer, StringComparison.OrdinalIgnoreCase) >= 0)
+                                {
+                                    match = true;
+                                }
+                            }
+                            if (!match && !string.IsNullOrWhiteSpace(p.FullPath))
+                            {
+                                if (p.FullPath.IndexOf(selectedDesigner, StringComparison.OrdinalIgnoreCase) >= 0)
+                                {
+                                    match = true;
+                                }
+                            }
+                            if (!match) continue;
+                        }
+
+                        CmbPopoverProjectPicker.Items.Add(p.Project);
+                    }
+                }
+
+                string activeId = WorkSessionTrackerService.Instance.ActiveProjectId;
+                if (!string.IsNullOrEmpty(activeId))
+                {
+                    int idx = CmbPopoverProjectPicker.Items.IndexOf(activeId);
+                    if (idx >= 0)
+                    {
+                        CmbPopoverProjectPicker.SelectedIndex = idx;
+                    }
+                    else
+                    {
+                        CmbPopoverProjectPicker.Items.Insert(0, activeId);
+                        CmbPopoverProjectPicker.SelectedIndex = 0;
+                    }
+                }
+                else if (CmbPopoverProjectPicker.Items.Count > 0)
+                {
+                    CmbPopoverProjectPicker.SelectedIndex = 0;
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("[MainWindow] ApplyPopoverProjectFilter: " + ex.Message);
+            }
+        }
+
+        private void OnPopoverProjectPickerChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_popoverUpdating) return;
+            if (CmbPopoverProjectPicker == null || CmbPopoverProjectPicker.SelectedItem == null) return;
+
+            string selected = CmbPopoverProjectPicker.SelectedItem.ToString();
+            var tracker = WorkSessionTrackerService.Instance;
+            if (!string.IsNullOrEmpty(selected) && !string.Equals(selected, tracker.ActiveProjectId, StringComparison.OrdinalIgnoreCase))
+            {
+                tracker.SwitchProject(selected, selected, "SS", string.Empty);
+                UpdateWorkStatusUI();
+            }
+        }
+
+        private void OnPopoverSessionNotesChanged(object sender, TextChangedEventArgs e)
+        {
+            if (TxtPopoverSessionNotes != null)
+            {
+                WorkSessionTrackerService.Instance.SessionNotes = TxtPopoverSessionNotes.Text;
+            }
+        }
+
+        private void OnPopoverToggleTimerClicked(object sender, RoutedEventArgs e)
+        {
+            var tracker = WorkSessionTrackerService.Instance;
+            if (tracker.State == WorkSessionState.Running)
+            {
+                tracker.Pause();
+            }
+            else if (tracker.State == WorkSessionState.Paused)
+            {
+                tracker.Resume();
+            }
+            else
+            {
+                string project = (CmbPopoverProjectPicker != null && CmbPopoverProjectPicker.SelectedItem != null)
+                    ? CmbPopoverProjectPicker.SelectedItem.ToString()
+                    : "Creative Work Session";
+                tracker.StartOrResume(project, project, "SS", string.Empty);
+            }
+            UpdateWorkStatusUI();
+        }
+
+        private void OnPopoverResetTimerClicked(object sender, RoutedEventArgs e)
+        {
+            WorkSessionTrackerService.Instance.StopAndReset();
+            UpdateWorkStatusUI();
+        }
+
+        private void OnPopoverJumpToProjectClicked(object sender, RoutedEventArgs e)
+        {
+            if (WorkTimerPopoverOverlay != null)
+                WorkTimerPopoverOverlay.Visibility = Visibility.Collapsed;
+
+            if (RootNavigation != null)
+            {
+                RootNavigation.Navigate(typeof(SearchCopyPage));
+            }
+        }
+
+        // ─── Global Command Palette (Ctrl + K) ──────────────────────────────────
+        private string _currentPaletteCategory = "All";
+
+        private void OnSearchTriggerClicked(object sender, MouseButtonEventArgs e)
+        {
+            OpenCommandPalette("All");
+        }
 
         private void OnSearchBoxGotFocus(object sender, RoutedEventArgs e)
         {
-            if (SidebarSearchBox.Text == SearchPlaceholder)
-            {
-                SidebarSearchBox.Text = "";
-                SidebarSearchBox.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#C8D8E8"));
-            }
+            OpenCommandPalette("All");
         }
 
         private void OnSearchBoxLostFocus(object sender, RoutedEventArgs e)
         {
-            if (string.IsNullOrWhiteSpace(SidebarSearchBox.Text))
-            {
-                SidebarSearchBox.Text = SearchPlaceholder;
-                SidebarSearchBox.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#5A7FA8"));
-            }
-            FilterNavItems("");
+            // Handled via Command Palette
         }
 
-        private void OnSearchBoxTextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
+        private void OnSearchBoxTextChanged(object sender, TextChangedEventArgs e)
         {
-            string q = SidebarSearchBox.Text.Trim();
-            if (q == SearchPlaceholder) q = "";
-            FilterNavItems(q);
+            // Handled via Command Palette
+        }
+
+        private void OpenCommandPalette(string category)
+        {
+            try
+            {
+                _currentPaletteCategory = string.IsNullOrWhiteSpace(category) ? "All" : category;
+                UpdateCategoryChipAppearance();
+
+                if (CommandPaletteOverlay != null)
+                {
+                    CommandPaletteOverlay.Visibility = Visibility.Visible;
+                }
+
+                if (CommandPaletteSearchBox != null)
+                {
+                    CommandPaletteSearchBox.Text = string.Empty;
+                    CommandPaletteSearchBox.Focus();
+                }
+
+                PerformCommandPaletteSearch(string.Empty);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("[MainWindow] OpenCommandPalette: " + ex.Message);
+            }
+        }
+
+        private void CloseCommandPalette()
+        {
+            if (CommandPaletteOverlay != null)
+            {
+                CommandPaletteOverlay.Visibility = Visibility.Collapsed;
+            }
+        }
+
+        private void OnCommandPaletteBackdropClicked(object sender, MouseButtonEventArgs e)
+        {
+            if (e.OriginalSource == CommandPaletteOverlay)
+            {
+                CloseCommandPalette();
+            }
+        }
+
+        private void OnCloseCommandPaletteClicked(object sender, RoutedEventArgs e)
+        {
+            CloseCommandPalette();
+        }
+
+        private void OnCommandPaletteCategoryChipClicked(object sender, RoutedEventArgs e)
+        {
+            FrameworkElement btn = sender as FrameworkElement;
+            if (btn != null && btn.Tag != null)
+            {
+                _currentPaletteCategory = btn.Tag.ToString();
+                UpdateCategoryChipAppearance();
+                PerformCommandPaletteSearch(CommandPaletteSearchBox != null ? CommandPaletteSearchBox.Text : string.Empty);
+            }
+        }
+
+        private void UpdateCategoryChipAppearance()
+        {
+            SetChipAppearance(ChipCategoryAll, "All");
+            SetChipAppearance(ChipCategoryModules, "Navigation");
+            SetChipAppearance(ChipCategoryProjects, "Projects");
+            SetChipAppearance(ChipCategoryColors, "Brand Colors");
+            SetChipAppearance(ChipCategoryCopy, "Copywriting");
+            SetChipAppearance(ChipCategoryActions, "Actions");
+        }
+
+        private void SetChipAppearance(Wpf.Ui.Controls.Button btn, string category)
+        {
+            if (btn == null) return;
+            bool isActive = string.Equals(_currentPaletteCategory, category, StringComparison.OrdinalIgnoreCase);
+            btn.Appearance = isActive ? Wpf.Ui.Controls.ControlAppearance.Primary : Wpf.Ui.Controls.ControlAppearance.Secondary;
+        }
+
+        private void OnCommandPaletteSearchTextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (CommandPaletteSearchBox != null)
+            {
+                PerformCommandPaletteSearch(CommandPaletteSearchBox.Text);
+            }
+        }
+
+        private void PerformCommandPaletteSearch(string query)
+        {
+            try
+            {
+                string root = GetWorkspaceRoot();
+                List<CommandPaletteItem> results = CommandPaletteService.Search(query, _currentPaletteCategory, root, 35);
+
+                if (CommandPaletteResultsList != null)
+                {
+                    CommandPaletteResultsList.ItemsSource = results;
+                    if (results.Count > 0)
+                    {
+                        CommandPaletteResultsList.SelectedIndex = 0;
+                    }
+                }
+
+                if (TxtCommandPaletteCount != null)
+                {
+                    TxtCommandPaletteCount.Text = string.Format("{0} result{1}", results.Count, results.Count == 1 ? "" : "s");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("[MainWindow] PerformCommandPaletteSearch: " + ex.Message);
+            }
+        }
+
+        private void OnCommandPaletteSearchPreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            if (CommandPaletteResultsList == null) return;
+
+            if (e.Key == Key.Down)
+            {
+                e.Handled = true;
+                int current = CommandPaletteResultsList.SelectedIndex;
+                if (current < CommandPaletteResultsList.Items.Count - 1)
+                {
+                    CommandPaletteResultsList.SelectedIndex = current + 1;
+                    CommandPaletteResultsList.ScrollIntoView(CommandPaletteResultsList.SelectedItem);
+                }
+            }
+            else if (e.Key == Key.Up)
+            {
+                e.Handled = true;
+                int current = CommandPaletteResultsList.SelectedIndex;
+                if (current > 0)
+                {
+                    CommandPaletteResultsList.SelectedIndex = current - 1;
+                    CommandPaletteResultsList.ScrollIntoView(CommandPaletteResultsList.SelectedItem);
+                }
+            }
+            else if (e.Key == Key.Enter)
+            {
+                e.Handled = true;
+                ExecuteCommandPaletteItem(CommandPaletteResultsList.SelectedItem as CommandPaletteItem);
+            }
+        }
+
+        private void OnCommandPaletteListPreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Enter)
+            {
+                e.Handled = true;
+                ExecuteCommandPaletteItem(CommandPaletteResultsList.SelectedItem as CommandPaletteItem);
+            }
+        }
+
+        private void OnCommandPaletteItemDoubleClicked(object sender, MouseButtonEventArgs e)
+        {
+            ExecuteCommandPaletteItem(CommandPaletteResultsList.SelectedItem as CommandPaletteItem);
+        }
+
+        private void ExecuteCommandPaletteItem(CommandPaletteItem item)
+        {
+            if (item == null) return;
+
+            CloseCommandPalette();
+
+            try
+            {
+                if (item.TargetPageType != null)
+                {
+                    if (RootNavigation != null)
+                    {
+                        RootNavigation.Navigate(item.TargetPageType);
+                    }
+                }
+                else if (string.Equals(item.Category, "Projects", StringComparison.OrdinalIgnoreCase))
+                {
+                    // Start or resume work session on this project and jump to Search & Copy
+                    WorkSessionTrackerService.Instance.StartOrResume(item.Title, item.Title, "SS", item.Payload);
+                    UpdateWorkStatusUI();
+
+                    if (RootNavigation != null)
+                    {
+                        RootNavigation.Navigate(typeof(SearchCopyPage));
+                    }
+                    NotificationService.ShowSuccess("Working on Project", string.Format("Started work session timer for '{0}'.", item.Title));
+                }
+                else if (string.Equals(item.Category, "Brand Colors", StringComparison.OrdinalIgnoreCase))
+                {
+                    ClipboardService.SetText(item.Payload);
+                    NotificationService.ShowSuccess("Copied Brand Color", string.Format("Copied {0} ({1}) to clipboard.", item.Title, item.Payload));
+                }
+                else if (string.Equals(item.Category, "Copywriting", StringComparison.OrdinalIgnoreCase))
+                {
+                    ClipboardService.SetText(item.Payload);
+                    NotificationService.ShowSuccess("Copied Copywriting Snippet", string.Format("Copied {0} to clipboard.", item.Title));
+                }
+                else if (string.Equals(item.Category, "Actions", StringComparison.OrdinalIgnoreCase))
+                {
+                    ExecuteActionCommand(item.Payload);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("[MainWindow] ExecuteCommandPaletteItem: " + ex.Message);
+            }
+        }
+
+        private void ExecuteActionCommand(string actionId)
+        {
+            if (string.IsNullOrEmpty(actionId)) return;
+
+            if (actionId == "ACTION_TIMER_TOGGLE")
+            {
+                var tracker = WorkSessionTrackerService.Instance;
+                if (tracker.State == WorkSessionState.Running)
+                {
+                    tracker.Pause();
+                    NotificationService.ShowInfo("Work Timer Paused", string.Format("Paused session at {0}.", tracker.FormattedTime));
+                }
+                else if (tracker.State == WorkSessionState.Paused)
+                {
+                    tracker.Resume();
+                    NotificationService.ShowSuccess("Work Timer Resumed", string.Format("Resumed tracking for '{0}'.", tracker.ActiveProjectName));
+                }
+                else
+                {
+                    tracker.StartOrResume("Creative Work Session", "Creative Work Session", "SS", string.Empty);
+                    NotificationService.ShowSuccess("Work Timer Started", "Started new creative work session.");
+                }
+                UpdateWorkStatusUI();
+            }
+            else if (actionId == "ACTION_THEME_TOGGLE")
+            {
+                OnStatusThemeToggle(null, null);
+                NotificationService.ShowInfo("Theme Switched", string.Format("Theme switched to {0}.", ThemeService.CurrentTheme));
+            }
+            else if (actionId == "ACTION_RADIO_TOGGLE")
+            {
+                OnStatusRadioPlayToggle(null, null);
+            }
+            else if (actionId == "ACTION_RESCAN_NAS")
+            {
+                TriggerNasHealthCheck();
+                string root = GetWorkspaceRoot();
+                if (!string.IsNullOrWhiteSpace(root) && Directory.Exists(root))
+                {
+                    WorkspaceScanner.ScanAsync(root);
+                    NotificationService.ShowSuccess("Workspace Rescanned", "Initiated background scan of Synology NAS vaults.");
+                }
+                else
+                {
+                    NotificationService.ShowWarning("Workspace Offline", "Synology NAS workspace path is not currently accessible.");
+                }
+            }
+            else if (actionId == "ACTION_OPEN_WORKSPACE")
+            {
+                string root = GetWorkspaceRoot();
+                if (!string.IsNullOrWhiteSpace(root) && Directory.Exists(root))
+                {
+                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                    {
+                        FileName = root,
+                        UseShellExecute = true
+                    });
+                }
+                else
+                {
+                    NotificationService.ShowWarning("Folder Not Found", "Workspace directory not configured or offline.");
+                }
+            }
         }
 
         private void FilterNavItems(string query)

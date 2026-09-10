@@ -37,7 +37,6 @@ namespace SS_CAM
                 {
                     LogTrace("Step 1: Initializing");
                     splash.UpdateStatus("Initializing SuamiSihat CAM...");
-                    System.Threading.Thread.Sleep(200);
 
                     LogTrace("Step 2: RegisterUserAppPlacement");
                     splash.UpdateStatus("Deploying brand assets & fonts...");
@@ -50,7 +49,6 @@ namespace SS_CAM
 
                     LogTrace("Step 4: Preparing workstation shell");
                     splash.UpdateStatus("Preparing workstation shell...");
-                    System.Threading.Thread.Sleep(150);
 
                     LogTrace("Step 5: Invoking MainWindow creation on UI thread");
                     Dispatcher.Invoke(new Action(() =>

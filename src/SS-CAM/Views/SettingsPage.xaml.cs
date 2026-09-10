@@ -546,6 +546,22 @@ namespace SS_CAM.Views
                 MessageBox.Show("All local data & cache have been cleared, and profile has been reset to default SS Branding credentials.", "Data Cleared", MessageBoxButton.OK, MessageBoxImage.Information);
             }
         }
+
+        private void OnOpenWorkstationHealthClicked(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (Application.Current != null && Application.Current.MainWindow is MainWindow)
+                {
+                    MainWindow mainWin = Application.Current.MainWindow as MainWindow;
+                    mainWin.NavigateTo(typeof(WorkstationHealthPage));
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("[SettingsPage] OnOpenWorkstationHealthClicked: " + ex.Message);
+            }
+        }
     }
 }
 

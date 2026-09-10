@@ -17,11 +17,9 @@ namespace SS_CAM.Views
         private string workspaceRoot = string.Empty;
         private DispatcherTimer _tipTimer;
         private int _tipIndex = 0;
-        private bool _articlesVisible = false;
-        private bool _articlesFetched = false;
-
-        // Singleton HttpClient — avoids socket exhaustion on repeated use
-        private static readonly HttpClient _httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(6) };
+        private DispatcherTimer _liveTasksTickerTimer;
+        private List<LiveTaskEntry> _currentLiveTasks;
+        private bool _liveFilterUpdating = false;
 
         // ────────────────────────────────────────────────
         // Design Tip data class (C#5 compatible — no tuples)
@@ -105,10 +103,12 @@ namespace SS_CAM.Views
             // Initialise tip widget with a random starting tip
             _tipIndex = new Random().Next(0, _tips.Length);
             ShowCurrentTip();
-            StartTipTimer();
 
             // Initialise Team Board with 30-second polling
             InitTeamBoard();
+
+            // Initialise Live Studio Tasks stream & ticker
+            InitLiveTasks();
         }
 
         private void OnScrollViewerPreviewMouseWheel(object sender, System.Windows.Input.MouseWheelEventArgs e)
@@ -140,11 +140,24 @@ namespace SS_CAM.Views
                 _tipTimer = null;
             }
             StopTeamBoard();
+            StopLiveTasks();
+        }
+
+        private void OnQuickNewProjectClicked(object sender, RoutedEventArgs e)
+        {
+            MainWindow mainWin = Application.Current != null ? Application.Current.MainWindow as MainWindow : null;
+            if (mainWin != null) mainWin.NavigateTo(typeof(ProjectCreatorPage));
+        }
+
+        private void OnQuickCatalogClicked(object sender, RoutedEventArgs e)
+        {
+            MainWindow mainWin = Application.Current != null ? Application.Current.MainWindow as MainWindow : null;
+            if (mainWin != null) mainWin.NavigateTo(typeof(SearchCopyPage));
         }
 
         private async void OnRefreshClicked(object sender, RoutedEventArgs e)
         {
-            await RefreshDashboard();
+            await RefreshDashboard(force: true);
         }
 
         private void OnVersionBadgeClicked(object sender, MouseButtonEventArgs e)
@@ -162,11 +175,11 @@ namespace SS_CAM.Views
             }
         }
 
-        private async System.Threading.Tasks.Task RefreshDashboard()
+        private async System.Threading.Tasks.Task RefreshDashboard(bool force = false)
         {
-            TxtStatus.Text = "Scanning workspace folders...";
+            TxtStatus.Text = force ? "Rescanning workspace folders..." : "Scanning workspace folders...";
 
-            DashboardSnapshot snapshot = await WorkspaceScanner.ScanAsync(workspaceRoot);
+            DashboardSnapshot snapshot = await WorkspaceScanner.ScanAsync(workspaceRoot, force);
 
             MetricTotalProjects.Text = snapshot.TotalProjects.ToString();
             
@@ -232,13 +245,6 @@ namespace SS_CAM.Views
         // Designer Inspiration Widget
         // ─────────────────────────────────────────────────────────────────────
 
-        private void StartTipTimer()
-        {
-            _tipTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(60) };
-            _tipTimer.Tick += delegate { AdvanceTip(); };
-            _tipTimer.Start();
-        }
-
         private void ShowCurrentTip()
         {
             DesignTip tip = _tips[_tipIndex];
@@ -256,99 +262,6 @@ namespace SS_CAM.Views
         private void OnNextTipClicked(object sender, RoutedEventArgs e)
         {
             AdvanceTip();
-        }
-
-        private void OnToggleArticlesClicked(object sender, RoutedEventArgs e)
-        {
-            _articlesVisible = !_articlesVisible;
-
-            if (_articlesVisible)
-            {
-                PanelArticles.Visibility = Visibility.Visible;
-                TxtArticlesBtn.Text = "Hide";
-                TxtInsightMode.Text = "Latest Design Articles";
-                TxtInsightIcon.Text = "\uE774"; // Globe icon
-
-                if (!_articlesFetched)
-                {
-                    _articlesFetched = true;
-                    FetchDesignArticlesAsync();
-                }
-            }
-            else
-            {
-                PanelArticles.Visibility = Visibility.Collapsed;
-                TxtArticlesBtn.Text = "Articles";
-                TxtInsightMode.Text = "Tip of the Day";
-                TxtInsightIcon.Text = "\uE82F"; // Info icon
-            }
-        }
-
-        private async void FetchDesignArticlesAsync()
-        {
-            try
-            {
-                TxtArticlesStatus.Text = "Fetching latest design articles...";
-                ArticlesList.ItemsSource = null;
-
-                _httpClient.DefaultRequestHeaders.UserAgent.Clear();
-                _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("SS-CAM/2.6 (+SuamiSihat)");
-
-                string xml = await _httpClient.GetStringAsync("https://www.smashingmagazine.com/feed/");
-                    XDocument doc = XDocument.Parse(xml);
-
-                    List<DesignArticleItem> items = new List<DesignArticleItem>();
-
-                    // RSS 2.0 channel/item format
-                    foreach (XElement item in doc.Descendants("item"))
-                    {
-                        string title = item.Element("title") != null ? item.Element("title").Value : "Untitled";
-                        string link = item.Element("link") != null ? item.Element("link").Value : "";
-                        string pubDate = item.Element("pubDate") != null ? item.Element("pubDate").Value : "";
-
-                        DateTime parsed;
-                        string formattedDate = DateTime.TryParse(pubDate, out parsed)
-                            ? parsed.ToString("dd MMM yyyy")
-                            : pubDate;
-
-                        items.Add(new DesignArticleItem { Title = title, Url = link, PublishedDate = formattedDate });
-
-                        if (items.Count >= 5) break;
-                    }
-
-                    if (items.Count > 0)
-                    {
-                        ArticlesList.ItemsSource = items;
-                        TxtArticlesStatus.Text = "Smashing Magazine — latest articles:";
-                    }
-                    else
-                    {
-                        TxtArticlesStatus.Text = "No articles found in feed. Check network connection.";
-                    }
-            }
-            catch
-            {
-                TxtArticlesStatus.Text = "Could not reach article feed. Showing offline tips.";
-                _articlesVisible = false;
-                PanelArticles.Visibility = Visibility.Collapsed;
-                TxtArticlesBtn.Text = "Articles";
-                TxtInsightMode.Text = "Tip of the Day";
-                TxtInsightIcon.Text = "\uE82F";
-            }
-        }
-
-        private void OnArticleClicked(object sender, RoutedEventArgs e)
-        {
-            FrameworkElement border = sender as FrameworkElement;
-            if (border != null)
-            {
-                DesignArticleItem article = border.DataContext as DesignArticleItem;
-                if (article != null && !string.IsNullOrWhiteSpace(article.Url))
-                {
-                    try { System.Diagnostics.Process.Start(article.Url); }
-                    catch (Exception ex) { System.Diagnostics.Debug.WriteLine(ex); }
-                }
-            }
         }
 
         // ─── Team Board ───────────────────────────────────────────────────────
@@ -424,12 +337,235 @@ namespace SS_CAM.Views
             TeamBoardService.DeleteNote(workspaceRoot, id);
             LoadTeamBoard();
         }
-    }
 
-    public class DesignArticleItem
-    {
-        public string Title { get; set; }
-        public string Url { get; set; }
-        public string PublishedDate { get; set; }
+        // ─── Live Tasks Stream (Real-Time Work Telemetry) ────────────────────
+
+        private void InitLiveTasks()
+        {
+            LiveTaskSyncService.Instance.LiveTasksChanged += OnLiveTasksSyncChanged;
+            LoadLiveTasks();
+
+            if (_liveTasksTickerTimer == null)
+            {
+                _liveTasksTickerTimer = new DispatcherTimer();
+                _liveTasksTickerTimer.Interval = TimeSpan.FromSeconds(1);
+                _liveTasksTickerTimer.Tick += OnLiveTasksTickerTick;
+                _liveTasksTickerTimer.Start();
+            }
+        }
+
+        private void StopLiveTasks()
+        {
+            LiveTaskSyncService.Instance.LiveTasksChanged -= OnLiveTasksSyncChanged;
+            if (_liveTasksTickerTimer != null)
+            {
+                _liveTasksTickerTimer.Stop();
+                _liveTasksTickerTimer = null;
+            }
+        }
+
+        private void OnLiveTasksSyncChanged(object sender, EventArgs e)
+        {
+            Dispatcher.Invoke(new Action(delegate { LoadLiveTasks(); }));
+        }
+
+        private void OnLiveTasksTickerTick(object sender, EventArgs e)
+        {
+            if (_currentLiveTasks != null && _currentLiveTasks.Count > 0)
+            {
+                bool hasRunning = false;
+                for (int i = 0; i < _currentLiveTasks.Count; i++)
+                {
+                    LiveTaskEntry task = _currentLiveTasks[i];
+                    if (task.IsRunning)
+                    {
+                        task.ElapsedSeconds++;
+                        hasRunning = true;
+                    }
+                }
+                if (hasRunning && LiveTasksControl != null && LiveTasksControl.Items != null)
+                {
+                    LiveTasksControl.Items.Refresh();
+                }
+            }
+        }
+
+        private void OnLiveDesignerFilterChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_liveFilterUpdating) return;
+            LoadLiveTasks();
+        }
+
+        private void LoadLiveTasks()
+        {
+            try
+            {
+                List<LiveTaskEntry> rawTasks = LiveTaskSyncService.Instance.GetLiveTasks();
+                _currentLiveTasks = rawTasks != null ? new List<LiveTaskEntry>(rawTasks) : new List<LiveTaskEntry>();
+
+                // Populate / update designer filter dropdown
+                if (CmbLiveDesignerFilter != null && !_liveFilterUpdating)
+                {
+                    try
+                    {
+                        _liveFilterUpdating = true;
+                        string previous = CmbLiveDesignerFilter.SelectedItem != null 
+                            ? CmbLiveDesignerFilter.SelectedItem.ToString() 
+                            : "All Designers";
+
+                        CmbLiveDesignerFilter.Items.Clear();
+                        CmbLiveDesignerFilter.Items.Add("All Designers");
+
+                        HashSet<string> designerSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+                        // 1. Designers from staff directory
+                        if (!string.IsNullOrWhiteSpace(workspaceRoot))
+                        {
+                            var staff = WorkspaceScanner.GetDesignerFolders(workspaceRoot);
+                            if (staff != null)
+                            {
+                                foreach (var s in staff)
+                                {
+                                    if (s != null && !string.IsNullOrWhiteSpace(s.Name) && designerSet.Add(s.Name.Trim()))
+                                    {
+                                        CmbLiveDesignerFilter.Items.Add(s.Name.Trim());
+                                    }
+                                }
+                            }
+                        }
+
+                        // 2. Designers from active live tasks
+                        if (_currentLiveTasks != null)
+                        {
+                            foreach (var t in _currentLiveTasks)
+                            {
+                                if (!string.IsNullOrWhiteSpace(t.DesignerName) && designerSet.Add(t.DesignerName.Trim()))
+                                {
+                                    CmbLiveDesignerFilter.Items.Add(t.DesignerName.Trim());
+                                }
+                            }
+                        }
+
+                        // Restore previous selection
+                        int selIdx = 0;
+                        for (int i = 0; i < CmbLiveDesignerFilter.Items.Count; i++)
+                        {
+                            if (string.Equals(CmbLiveDesignerFilter.Items[i].ToString(), previous, StringComparison.OrdinalIgnoreCase))
+                            {
+                                selIdx = i;
+                                break;
+                            }
+                        }
+                        CmbLiveDesignerFilter.SelectedIndex = selIdx;
+                    }
+                    finally
+                    {
+                        _liveFilterUpdating = false;
+                    }
+                }
+
+                // Filter tasks by selected designer
+                string selectedDesigner = "All Designers";
+                if (CmbLiveDesignerFilter != null && CmbLiveDesignerFilter.SelectedItem != null)
+                {
+                    selectedDesigner = CmbLiveDesignerFilter.SelectedItem.ToString();
+                }
+
+                List<LiveTaskEntry> displayTasks = new List<LiveTaskEntry>();
+                if (_currentLiveTasks != null)
+                {
+                    foreach (var t in _currentLiveTasks)
+                    {
+                        if (t == null) continue;
+                        if (selectedDesigner != "All Designers" && !string.IsNullOrWhiteSpace(selectedDesigner))
+                        {
+                            bool match = false;
+                            if (!string.IsNullOrWhiteSpace(t.DesignerName))
+                            {
+                                if (string.Equals(t.DesignerName, selectedDesigner, StringComparison.OrdinalIgnoreCase) ||
+                                    t.DesignerName.IndexOf(selectedDesigner, StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                    selectedDesigner.IndexOf(t.DesignerName, StringComparison.OrdinalIgnoreCase) >= 0)
+                                {
+                                    match = true;
+                                }
+                            }
+                            if (!match && !string.IsNullOrWhiteSpace(t.StaffId))
+                            {
+                                if (string.Equals(t.StaffId, selectedDesigner, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    match = true;
+                                }
+                            }
+                            if (!match) continue;
+                        }
+                        displayTasks.Add(t);
+                    }
+                }
+
+                if (LiveTasksControl != null)
+                {
+                    LiveTasksControl.ItemsSource = displayTasks;
+                }
+
+                int activeCount = 0;
+                for (int i = 0; i < displayTasks.Count; i++)
+                {
+                    if (displayTasks[i].IsRunning)
+                    {
+                        activeCount++;
+                    }
+                }
+
+                if (TxtLiveActiveCount != null)
+                {
+                    TxtLiveActiveCount.Text = string.Format("{0} Active", activeCount);
+                }
+
+                if (PanelNoLiveTasks != null && LiveTasksControl != null)
+                {
+                    if (displayTasks.Count == 0)
+                    {
+                        PanelNoLiveTasks.Visibility = Visibility.Visible;
+                        LiveTasksControl.Visibility = Visibility.Collapsed;
+                    }
+                    else
+                    {
+                        PanelNoLiveTasks.Visibility = Visibility.Collapsed;
+                        LiveTasksControl.Visibility = Visibility.Visible;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("[DashboardPage] LoadLiveTasks: " + ex.Message);
+            }
+        }
+
+        private void OnRefreshLiveTasksClicked(object sender, RoutedEventArgs e)
+        {
+            LiveTaskSyncService.Instance.RefreshLiveTasks();
+            LoadLiveTasks();
+        }
+
+        private void OnLiveTaskOpenProjectClicked(object sender, RoutedEventArgs e)
+        {
+            FrameworkElement btn = sender as FrameworkElement;
+            if (btn == null) return;
+            string projectId = btn.Tag as string;
+            if (string.IsNullOrWhiteSpace(projectId)) return;
+
+            try
+            {
+                MainWindow mainWin = Application.Current != null ? Application.Current.MainWindow as MainWindow : null;
+                if (mainWin != null)
+                {
+                    mainWin.NavigateTo(typeof(SearchCopyPage));
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("[DashboardPage] OnLiveTaskOpenProjectClicked: " + ex.Message);
+            }
+        }
     }
 }

@@ -234,7 +234,7 @@
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
                                     <CheckBox x:Name="InjectCanvasCheck" Content="Generate Starter Canvas File" IsChecked="True" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}" VerticalAlignment="Center" Click="OnFormInputChanged"/>
-                                    <ComboBox x:Name="TemplateExtensionComboBox" Grid.Column="2" Width="140" Height="34" IsEditable="True" SelectionChanged="OnFormInputChanged" TextBoxBase.TextChanged="OnFormInputChanged"/>
+                                    <ComboBox x:Name="TemplateExtensionComboBox" Grid.Column="2" Width="150" Height="36" IsEditable="True" Padding="8,0" VerticalContentAlignment="Center" SelectionChanged="OnFormInputChanged" TextBoxBase.TextChanged="OnFormInputChanged"/>
                                 </Grid>
 
                                 <!-- Canva Cloud Bridge Section -->

@@ -55,16 +55,6 @@ function getSeedOrders() {
 function getOrdersFilePath() {
   const nasOrdersFile = path.join(getOrdersVaultDir(), 'creative-orders.jsonl');
   if (fs.existsSync(nasOrdersFile)) {
-    // If the file exists but has no records (e.g. 0-3 bytes BOM), and legacy _Team/Orders file exists with content, copy it over!
-    try {
-      const stats = fs.statSync(nasOrdersFile);
-      if (stats.size <= 3 && config && config.WORKSPACE_ROOT) {
-        const wsTeamOrders = path.join(config.WORKSPACE_ROOT, '_Team', 'Orders', 'creative-orders.jsonl');
-        if (fs.existsSync(wsTeamOrders) && fs.statSync(wsTeamOrders).size > 3) {
-          fs.copyFileSync(wsTeamOrders, nasOrdersFile);
-        }
-      }
-    } catch (e) {}
     return nasOrdersFile;
   }
 

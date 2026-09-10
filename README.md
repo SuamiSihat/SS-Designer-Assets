@@ -4,7 +4,7 @@
 
 Standardized Project Vaults · ClickUp 3.0 Workspace · Copywriting Studio · Brand Asset Inspector · Synology NAS Native · Multi-Platform
 
-[![Release](https://img.shields.io/badge/release-v4.8.0-blue?style=flat-square)](https://github.com/SuamiSihat/ss_cam/releases/tag/v4.8.0)
+[![Release](https://img.shields.io/badge/release-v4.8.1-blue?style=flat-square)](https://github.com/SuamiSihat/ss_cam/releases/tag/v4.8.1)
 [![Platform](https://img.shields.io/badge/platform-Windows%2010%2F11%20%7C%20Linux%20%7C%20Android%20%7C%20Docker-blue?style=flat-square)](https://github.com/SuamiSihat/ss_cam)
 [![Framework](https://img.shields.io/badge/.NET%20Framework-4.8%20%7C%20.NET%208.0%20%7C%20Compose-purple?style=flat-square)](https://dotnet.microsoft.com)
 [![Web Stack](https://img.shields.io/badge/web-Svelte%205%20%2B%20Node.js%2020-ff3e00?style=flat-square)](https://svelte.dev)
@@ -12,6 +12,28 @@ Standardized Project Vaults · ClickUp 3.0 Workspace · Copywriting Studio · Br
 [![License](https://img.shields.io/badge/licence-Internal%20Use-orange?style=flat-square)](./installer/EULA.txt)
 
 ---
+
+## 🚀 What's New in v4.8.1 ("Command Palette, 60-30-10 Polish, Live Work Stopwatch & Creative Operations")
+
+* **⚡ Global Studio Command Palette (`Ctrl + K`) ([CommandPaletteService.cs](file:///e:/Dev/Projects/SS-Brand-Assets/src/SS-CAM/Services/CommandPaletteService.cs))**:
+  * Universal keyboard-first launcher accessible anywhere via <kbd>Ctrl</kbd> + <kbd>K</kbd>, global header spotlight button, or sidebar search trigger.
+  * Instant access to 15 studio modules, official Master Brand System v3.5.1 color tokens with real-time swatches, pre-scaffolded marketing hooks & CTAs, live NAS project folders, and immediate execution of studio actions.
+* **🎨 Art Director 60-30-10 Visual Hierarchy Polish**:
+  * Strict adherence to 60% calm neutral canvas, 30% structural hierarchy surfaces, and 10% intentional brand/status accents (`#21A1F7` Azure & `#10B981` Emerald).
+  * Redesigned `TitleBarStrip` with spotlight search box and live work status pill.
+* **⏱️ Live Designer Work Session Stopwatch & Status Indicator ([WorkSessionTrackerService.cs](file:///e:/Dev/Projects/SS-Brand-Assets/src/SS-CAM/Services/WorkSessionTrackerService.cs))**:
+  * Pulsing status dot, active project code, live digital clock (`01:42:15`), and interactive timer popover drawer with designer filter and crash-resilient auto-recovery.
+* **📡 Real-Time Live Studio Tasks & Work Stream ([LiveTaskSyncService.cs](file:///e:/Dev/Projects/SS-Brand-Assets/src/SS-CAM/Services/LiveTaskSyncService.cs))**:
+  * Multi-workstation synchronization via shared ledger at `<WorkspaceRoot>\_Team\live_tasks.json`, embedded dashboard live task stream with 1-second live digital tickers, and instant desktop toast alerts when team members begin or resume project tasks.
+* **📋 Creative Request Operations Architecture & Intake Backlog Upgrade**:
+  * Added strategic **Low / Pipeline (`tier_0`)** intake tier with automated 21-day minimum delivery threshold.
+  * Segmented 2-step **Digital Screen vs. Print, Packaging & POSM** channel selectors with interactive custom dimensions and physical print substrate specifications.
+  * Full request editing with Option A permission governance and automatic locking once accepted or cancelled.
+  * Renamed intake status from "Completed" to **"Added to Backlog"** across Web, Windows, and Linux to ensure clear requester communication.
+  * Removed duplicate "Lifecycle Actions" from expanded detail views, cleanly unifying all actions into the canonical table row.
+  * Stripped UTF-8 BOM (`\uFEFF`) in Node.js backend parsers for seamless cross-platform .NET desktop interoperability, and purged all legacy demo orders from NAS storage.
+* **🔧 Universal Dropdown Polish**:
+  * Comprehensive resolution of dropdown text cropping, baseline clipping, and mnemonic underscore stripping across all 15 views in the desktop application.
 
 ## 🚀 What's New in v4.8.0 ("Visual Revision Diff & Copywriting Studio Live Preview")
 
@@ -102,7 +124,7 @@ SS-CAM provides a comprehensive multi-client ecosystem to support diverse creati
 
 | Target Platform | Package / Variant | Deployment / Execution | Role in Ecosystem |
 |---|---|---|---|
-| 🪟 **Windows 10 / 11** | **Native WPF Single-File (`src/SS-CAM`)** | Portable executable: `.\dist\SS-CAM-v4.8.0.exe` | **Flagship Designer Client**: Offline-first, full Post Haste template generator, Preflight Quality Auditor, Direct Synology Drive I/O. |
+| 🪟 **Windows 10 / 11** | **Native WPF Single-File (`src/SS-CAM`)** | Portable executable: `.\dist\SS-CAM-v4.8.1.exe` | **Flagship Designer Client**: Offline-first, full Post Haste template generator, Preflight Quality Auditor, Direct Synology Drive I/O. |
 | 🐧 **Linux Desktop (Fedora/Ubuntu)** | **Native Avalonia UI (`src/SS-CAM.Linux`)** | Standalone Tarball: `.\dist\SS-CAM-v4.6.2-linux-x64.tar.gz`<br>1-Command: `curl -fsSL https://raw.githubusercontent.com/SuamiSihat/ss_cam/SS-Master/installer/install-linux.sh \| sudo bash` | **Native Linux Desktop Client**: Skia graphics engine, GNOME/KDE `.desktop` integration, direct `~/SynologyDrive/` I/O. |
 | 📱 **Android Native** | **Native Android App (`src/SS-CAM.Android`)** | [Google Play Store](https://play.google.com/store/apps/details?id=com.suamisihat.creative&hl=en-US&ah=4fxu9FCVL39aFVxQdNL2fGvtHd4&pli=1)<br>Direct APK: `.\dist\SS-CAM-v4.6.2-android-release.apk` | **Mobile Studio Companion**: 2×2 Bento KPI telemetry, 1-tap deliverable approvals, live ICY radio streaming, desk standby clock, push alerts. |
 | 🌐 **Admin Web Portal** | **Docker Web Container (`src/SS-CAM.Web`)** | Deploy on Synology NAS / Linux Server: `cd src/SS-CAM.Web && docker compose up -d` | **Admin & Central Control Plane**: User provisioning, holding switcher (SSH/SSC/SSW/SSE/SST), audit logs, API hub. |
@@ -228,9 +250,11 @@ SS-CAM adheres to the **Microsoft Fluent 2** design language and the **SuamiSiha
 
 ## 📄 License & Governance
 
-SS-CAM is an internal digital assets management platform created for **SuamiSihat™ Holding Sdn. Bhd.**
+SS-CAM is an internal digital assets & clinic operations management platform created for **SuamiSihat™ Holding Sdn. Bhd.** and **SuamiSihat Clinic (SSC)** franchise network.
 
 * **Organization**: SuamiSihat Digital & Creative Production Division
-* **Documentation**: [GitHub Pages Landing Page](https://suamisihat.github.io/ss_cam/)
+* **Documentation**: [Master Ecosystem Specification](./docs/SS_CAM_ECOSYSTEM_MASTER_SPECIFICATION.md) · [GitHub Pages Landing Page](https://suamisihat.github.io/ss_cam/)
+* **Franchise & Clinic Operations**: [PERNAS Grant Proposal](./docs/KERTAS_CADANGAN_GERAN_PERNAS_SSCAM.md) · [Official PDF Proposal](./docs/KERTAS_CADANGAN_GERAN_PERNAS_SSCAM.pdf)
+* **Roadmap**: [Project Development Roadmap](./ROADMAP.md)
 * **Repository**: [SuamiSihat/ss_cam](https://github.com/SuamiSihat/ss_cam)
 * **License**: Internal Commercial Use Only — see [EULA](./installer/EULA.txt)

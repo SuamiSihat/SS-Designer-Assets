@@ -232,6 +232,9 @@
     <Compile Include="Services\WorkloadSlaService.cs" />
     <Compile Include="Services\MalaysiaHolidayService.cs" />
     <Compile Include="Services\VisualDiffService.cs" />
+    <Compile Include="Services\WorkSessionTrackerService.cs" />
+    <Compile Include="Services\CommandPaletteService.cs" />
+    <Compile Include="Services\LiveTaskSyncService.cs" />
     <Compile Include="Views\SplashWindow.xaml.cs">
       <DependentUpon>SplashWindow.xaml</DependentUpon>
       <SubType>Code</SubType>

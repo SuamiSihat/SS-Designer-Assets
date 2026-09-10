@@ -16,34 +16,34 @@ The ecosystem operates on an **Offline-First Markdown-as-Database** architecture
 - **Bi-directional Real-Time Sync**: Changes made in the desktop app reflect on the web portal in ~500ms via `chokidar` + Server-Sent Events (SSE). Actions taken on the web portal trigger real-time updates in the desktop app via .NET `FileSystemWatcher`.
 
 ```text
-┌─────────────────────────────────────────────────────────────────────────────────────────────┐
-│                                 SYNOLOGY NAS / LOCAL VAULT ROOT                             │
-│                  (README.md Frontmatter, 05_DELIVERABLES, _comments.jsonl)                  │
-└───────────────────────────────┬─────────────────────────────┬───────────────────────────────┘
-                                │ (Real-time FileSystemEvents)│ (chokidar file watcher)
-                                ▼                             ▼
-      ┌────────────────────────────────────┐    ┌────────────────────────────────────┐
-      │      SS-CAM Desktop App (WPF)      │    │     SS-CAM Web Portal (Svelte)     │
-      │    PERSONA: Designers & Creators   │    │  PERSONA: Managers & Art Directors │
-      ├────────────────────────────────────┤    ├────────────────────────────────────┤
-      │ • Personal daily focus & execution │    │ • Studio oversight & SLA velocity  │
-      │ • Quick file launch (PSD/AI/AF)    │    │ • Quality gatekeeping (Approvals)  │
-      │ • Workstation health & wellbeing   │    │ • Team capacity & workload balance │
-      │ • Design tips & creative rules     │    │ • Multi-brand holding analytics    │
-      └────────────────────────────────────┘    └────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                                     SYNOLOGY NAS / LOCAL VAULT ROOT                                     │
+│               (README.md Frontmatter, 05_DELIVERABLES, _comments.jsonl, _Clinic Vault)                  │
+└───────────────────────────────┬─────────────────────────────┬───────────────────────────┬───────────────┘
+                                │ (Real-time FileSystemEvents)│ (chokidar file watcher)   │ (REST API / SSE)
+                                ▼                             ▼                           ▼
+      ┌────────────────────────────────────┐    ┌────────────────────────────────────┐    ┌────────────────────────────────────┐
+      │      SS-CAM Desktop App (WPF)      │    │     SS-CAM Web Portal (Svelte)     │    │   SS-CAM Mobile/Tablet (Android)   │
+      │    PERSONA: Designers & Creators   │    │  PERSONA: Managers & Art Directors │    │    PERSONA: Doctors & Signage TV   │
+      ├────────────────────────────────────┤    ├────────────────────────────────────┤    ├────────────────────────────────────┤
+      │ • Personal daily focus & execution │    │ • Studio oversight & SLA velocity  │    │ • In-clinic patient visual consult │
+      │ • Quick file launch (PSD/AI/AF)    │    │ • Quality gatekeeping (Approvals)  │    │ • Waiting room digital signage TV  │
+      │ • Workstation health & wellbeing   │    │ • Branch marketing & campaign kits │    │ • 1-tap mobile review & approvals  │
+      │ • KKM compliance & SOP master      │    │ • Multi-brand holding analytics    │    │ • Post-treatment aftercare dispatch│
+      └────────────────────────────────────┘    └────────────────────────────────────┘    └────────────────────────────────────┘
 ```
 
 ---
 
 ## 2. Role Specialization Matrix
 
-| Dimension | SS-CAM Desktop App (WPF) | SS-CAM Web Portal (Svelte 5 / Node.js) |
-| :--- | :--- | :--- |
-| **Target User** | **Production Designers, Video Editors, 3D Artists** | **Art Directors, Creative Managers, Executives** |
-| **Primary Environment**| Windows Workstations (Affinity Designer, Adobe Photoshop, Premiere) | Web Browsers, Tablets, Remote Access (`creative.suamisihat.myds.me`) |
-| **Core Goal** | High-velocity task execution, template scaffolding, asset creation | Quality assurance, bottleneck diagnosis, SLA tracking, formal sign-off |
-| **Key Actions** | Scaffolds vaults, opens master canvas, exports proof renders | Inspects 4K renders, scrubs 9:16 videos, requests revisions, approves |
-| **Dashboard Focus** | Daily sprint queue, queue age, design inspiration, wellbeing (Waktu Solat) | Department KPIs, capacity heatmaps, First-Time-Right (FTR %), SLA turnaround |
+| Dimension | SS-CAM Desktop App (WPF) | SS-CAM Web Portal (Svelte 5 / Node.js) | SS-CAM Mobile / Tablet (Android Native) |
+| :--- | :--- | :--- | :--- |
+| **Target User** | **Production Designers, Video Editors, 3D Artists** | **Art Directors, Creative Managers, Branch Managers** | **Consulting Doctors, Clinic Staff, Android Smart TVs** |
+| **Primary Environment**| Windows Workstations (Affinity Designer, Photoshop, Premiere) | Web Browsers, Tablets, Remote Access (`creative.suamisihat.myds.me`) | Android Tablets (Consultation Room), Android TV (Waiting Room) |
+| **Core Goal** | High-velocity task execution, template scaffolding, asset creation | Quality assurance, SLA tracking, branch marketing kit distribution | Patient visual consultation, dynamic waiting lounge signage |
+| **Key Actions** | Scaffolds vaults, opens master canvas, exports proof renders | Inspects deliverables, requests revisions, approves, injects branch data | Shows 3D anatomy diagrams, streams signage playlist, sends aftercare |
+| **Dashboard Focus** | Daily sprint queue, queue age, design tips, wellbeing (Waktu Solat) | Department KPIs, capacity heatmaps, FTR %, SLA turnaround, branch kits | Consultation visual kits, TV playlist status, mobile SLA badges |
 
 ---
 
@@ -128,6 +128,12 @@ sequenceDiagram
 ├── _Team/
 │   ├── team-notes.json             <-- Shared bulletin, notices, revision alerts
 │   └── comments/                   <-- Fallback comments store
+├── _Clinic/                        <-- Clinic Operations & Franchise Vault
+│   ├── Consultation_Kits/          <-- 3D anatomy, procedure simulations, roadmaps
+│   ├── Signage_Playlists/          <-- Waiting lounge TV video loops & doctor rosters
+│   ├── KKM_Approved_Library/       <-- Pre-approved collaterals with LIU/MAB codes
+│   ├── SOP_Manuals/                <-- Clinical & front desk standard operating procedures
+│   └── Aftercare_Cards/            <-- Post-treatment recovery instruction templates
 ├── 2026/                           <-- Year root (or Designer/SS-2026)
 │   └── 202608_August/              <-- Month folder
 │       └── 202608_0085D_SS_Rejal_Packaging/   <-- Canonical Project Root
@@ -232,3 +238,56 @@ Both desktop and web generate identical handover ZIP files:
 2. **Dynamic Theming**: All desktop XAML controls must use `{DynamicResource ...}` tokens (`FluentBrand80`, `CardBackgroundFillColorDefaultBrush`, `TextFillColorPrimaryBrush`) to support runtime theme switching.
 3. **No UI Thread Blocking**: All NAS scanning, file reads, and ZIP packing must execute via asynchronous patterns (`Task.Factory.StartNew`, `async/await`, Node.js streaming).
 4. **Safety & Data Integrity**: Non-destructive operations only; atomic writes using temporary files and OCC (Optimistic Concurrency Control) hash checking.
+
+---
+
+## 8. Clinic Operations & Franchise Standardization (PERNAS Alignment)
+
+> **Strategic Purpose**: Establishes SS-CAM as the unified digital operations and compliance backbone for the **SuamiSihat Clinic (SSC)** franchise network under the **PERNAS (Perbadanan Nasional Berhad)** Franchise Development Framework.  
+> **Official Proposal Reference**: [`docs/KERTAS_CADANGAN_GERAN_PERNAS_SSCAM.md`](./KERTAS_CADANGAN_GERAN_PERNAS_SSCAM.md) · [PDF Version](./KERTAS_CADANGAN_GERAN_PERNAS_SSCAM.pdf)
+
+### 8.1. Operational Core Modules
+
+```text
+┌─────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                           CLINIC OPERATIONS ARCHITECTURE (SS-CAM)                               │
+├─────────────────────────────────────────────────────────────────────────────────────────────────┤
+│                                 HQ COMMAND CENTER (WPF C# DESKTOP)                              │
+│             Medical Director & Brand Custodian: KKM Verification, SOP Updates, Brand Tokens     │
+└─────────────────────────────────┬───────────────────────────────┬───────────────────────────────┘
+                                  │                               │ (Sync Enjin / REST API)
+                                  ▼                               ▼
+      ┌─────────────────────────────────────────┐   ┌───────────────────────────────────────────┐
+      │  MODULE 1: IN-CLINIC CONSULTATION SUITE │   │  MODULE 2: CLINIC DIGITAL SIGNAGE ENGINE  │
+      │   (Consultation Room / Doctor's Tablet) │   │     (Waiting Lounge / Android Smart TV)   │
+      ├─────────────────────────────────────────┤   ├───────────────────────────────────────────┤
+      │ • 3D anatomy charts & medical models    │   │ • Automated doctor-on-duty daily roster   │
+      │ • Procedure simulators (ESWT, TRT, PE)  │   │ • Health education video loops (buffered) │
+      │ • Treatment recovery timeline roadmaps  │   │ • Real-time queue and package announcements│
+      └─────────────────────────────────────────┘   └───────────────────────────────────────────┘
+                                  │                               │
+                                  ▼                               ▼
+      ┌─────────────────────────────────────────┐   ┌───────────────────────────────────────────┐
+      │ MODULE 3: POST-TREATMENT CARE DISPATCH  │   │ MODULE 4: BRANCH LOCAL MARKETING & INTAKE │
+      │   (Front-Desk / Clinical Assistant)     │   │      (Branch Manager / Web Portal)        │
+      ├─────────────────────────────────────────┤   ├───────────────────────────────────────────┤
+      │ • Digital recovery infographics & dos   │   │ • Localized dynamic QR code generator     │
+      │ • 1-Click WhatsApp direct patient link  │   │ • Auto-injection of branch address/contact│
+      │ • Warning signs & follow-up scheduling  │   │ • Google Review & patient intake forms    │
+      └─────────────────────────────────────────┘   └───────────────────────────────────────────┘
+```
+
+### 8.2. Operational Roles & Permissions (Franchise Tier)
+
+| Operational Role | Access Client | Primary Workflow & Permissions |
+| :--- | :--- | :--- |
+| **Medical Director (HQ)** | Desktop (WPF) / Web Admin | Audits medical accuracy, approves KKM/LIU registration numbers, locks patient consultation kits, publishes clinical SOPs. |
+| **Consulting Doctor** | Android Tablet (`SS-CAM.Android`) | Accesses point-of-care visual consultation suite, presents treatment timelines and 3D anatomy models to patients in consultation rooms. |
+| **Clinic Branch Manager** | Web Portal (`SS-CAM.Web`) | Generates localized branch marketing collaterals, downloads KKM-approved campaign packs, monitors branch TV signage playlists. |
+| **Front Desk / Nurse** | Web / Mobile Companion | Generates touchless patient check-in QR codes, sends 1-click WhatsApp post-treatment care leaflets to discharged patients. |
+| **Waiting Room Smart TV** | Android TV (`SS-CAM.Android`) | Dedicated kiosk/signage mode playing cached video loops, doctor schedules, and clinic operating notices without buffering. |
+
+### 8.3. Regulatory & KKM Compliance Gate
+* **Strict Medical Advertising Board (LIU/MAB) Alignment**: All branch promotional collaterals distributed through SS-CAM require a registered KKM/LIU approval number and expiration timestamp stored in YAML frontmatter.
+* **Tamper-Resistant Collaterals**: Branch managers can only inject contact/address parameters into locked layout regions; core medical claims and drug schedules cannot be modified at branch level.
+* **Audit Trail**: Every asset download and distribution is logged in `_Clinic/audit-log.jsonl` for regulatory review.

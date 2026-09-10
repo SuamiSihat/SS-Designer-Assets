@@ -261,6 +261,13 @@ namespace SS_CAM.Services
             {
                 try
                 {
+                    // Guard against wiping the ledger file if orders list is empty and an existing file already has records
+                    if (orders == null || (orders.Count == 0 && File.Exists(filePath) && new FileInfo(filePath).Length > 3))
+                    {
+                        Debug.WriteLine("[CreativeOrderService] SaveOrdersInternal skipping empty save to prevent overwriting existing ledger.");
+                        return;
+                    }
+
                     string dir = Path.GetDirectoryName(filePath);
                     if (!Directory.Exists(dir))
                     {

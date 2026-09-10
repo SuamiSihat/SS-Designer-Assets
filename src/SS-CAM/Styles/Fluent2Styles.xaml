@@ -83,6 +83,17 @@
     <DropShadowEffect x:Key="FluentDepth8" BlurRadius="12" ShadowDepth="4" Direction="270" Color="#000000" Opacity="0.20"/>
     <DropShadowEffect x:Key="FluentDepth16" BlurRadius="24" ShadowDepth="8" Direction="270" Color="#000000" Opacity="0.28"/>
     <DropShadowEffect x:Key="FluentCyberGlow" BlurRadius="16" ShadowDepth="0" Color="#00CFFF" Opacity="0.45"/>
-    <SolidColorBrush x:Key="FluentGlassBorder" Color="#28FFFFFF"/>
+    <!-- Global ComboBox Baseline Standards (Prevents Text Clipping & Descender Cropping) -->
+    <Style TargetType="{x:Type ComboBox}">
+        <Setter Property="MinHeight" Value="36"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+        <Setter Property="Padding" Value="10,0"/>
+    </Style>
+
+    <Style TargetType="{x:Type ComboBoxItem}">
+        <Setter Property="MinHeight" Value="32"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+        <Setter Property="Padding" Value="10,6"/>
+    </Style>
 
 </ResourceDictionary>
