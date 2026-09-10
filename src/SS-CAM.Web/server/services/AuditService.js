@@ -56,10 +56,10 @@ class AuditService {
     }
 
     try {
-      const content = fs.readFileSync(logPath, 'utf8');
+      const content = fs.readFileSync(logPath, 'utf8').replace(/^\uFEFF/, '');
       const lines = content.split('\n').filter(l => l.trim().length > 0);
       let events = lines.map(line => {
-        try { return JSON.parse(line); } catch (e) { return null; }
+        try { return JSON.parse(line.replace(/^\uFEFF/, '').trim()); } catch (e) { return null; }
       }).filter(Boolean);
 
       if (entityId) {

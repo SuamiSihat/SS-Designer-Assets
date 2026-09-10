@@ -591,7 +591,7 @@ namespace SS_CAM.Views
                 "done"
             );
 
-            ShowStatusMessage("Order marked as Completed.");
+            ShowStatusMessage("Order accepted into Backlog.");
             await ReloadOrdersQueueAsync();
         }
 

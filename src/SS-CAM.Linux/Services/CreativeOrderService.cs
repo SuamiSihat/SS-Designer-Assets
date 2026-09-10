@@ -204,6 +204,12 @@ public static class CreativeOrderService
             {
                 try
                 {
+                    if (orders == null || (orders.Count == 0 && File.Exists(filePath) && new FileInfo(filePath).Length > 3))
+                    {
+                        Debug.WriteLine("[CreativeOrderService.Linux] SaveOrdersAsync skipping empty save to prevent overwriting existing ledger.");
+                        return;
+                    }
+
                     string? dir = Path.GetDirectoryName(filePath);
                     if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
                     {

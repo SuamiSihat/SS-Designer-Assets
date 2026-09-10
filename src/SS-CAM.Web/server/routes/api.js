@@ -1645,12 +1645,15 @@ router.post('/orders', authenticateToken, (req, res) => {
     const requester     = req.user?.name     || req.body.requester || 'Unknown';
     const requesterRole = req.user?.role     || req.body.requesterRole || '';
     const order = OrderService.submitOrder({ ...req.body, requester, requesterRole });
+    if (!order) {
+      return res.status(500).json({ error: 'Failed to create or persist creative order.' });
+    }
     AuditService.logEvent({
       action:     'order.submitted',
       actor:      requester,
       role:       requesterRole,
       entityType: 'order',
-      entityId:   order.id,
+      entityId:   order.id || 'UNKNOWN',
       details:    { title: order.title, entity: order.entity, priority: order.priority }
     });
     SseService.broadcast('order:new', { order });
@@ -1661,10 +1664,43 @@ router.post('/orders', authenticateToken, (req, res) => {
   }
 });
 
-// PATCH /api/orders/:id — Update order (status, assignment, etc.)
+// PATCH /api/orders/:id — Update order (status, assignment, brief fields, etc.)
 router.patch('/orders/:id', authenticateToken, (req, res) => {
   try {
+    const existing = OrderService.getOrder(req.params.id);
+    if (!existing) {
+      return res.status(404).json({ error: `Order "${req.params.id}" not found.` });
+    }
+
+    const userName    = (req.user?.name || '').trim().toLowerCase();
+    const userRole    = (req.user?.role || '').toLowerCase();
+    const userRoles   = ((req.user?.roles || []).map(r => String(r).toLowerCase()));
+    const isPrivileged = /admin|director|designer/i.test(userRole) || userRoles.some(r => /admin|director|designer/i.test(r));
+    const orderReq    = (existing.requester || '').trim().toLowerCase();
+    const isOwner     = userName && orderReq && (userName === orderReq || orderReq.includes(userName) || userName.includes(orderReq));
+
+    // Rule 2: Locked once done (Added to Backlog) or cancelled (unless privileged designer reopening)
+    const isContentEdit = req.body.title !== undefined || req.body.copy !== undefined || req.body.format !== undefined ||
+                          req.body.priority !== undefined || req.body.customSize !== undefined || req.body.material !== undefined;
+
+    if ((existing.status === 'done' || existing.status === 'cancelled') && !isPrivileged) {
+      return res.status(403).json({ error: 'This request has already been added to the backlog or cancelled and cannot be edited.' });
+    }
+
+    // Rule 1: Only original requester or design team can edit brief details
+    if (isContentEdit && !isPrivileged && !isOwner) {
+      return res.status(403).json({ error: 'Only the original requester or design team can edit this creative request brief.' });
+    }
+
     const updated = OrderService.updateOrder(req.params.id, req.body);
+    AuditService.logEvent({
+      action:     'order.updated',
+      actor:      req.user?.name || 'User',
+      role:       req.user?.role || '',
+      entityType: 'order',
+      entityId:   req.params.id,
+      details:    { patch: Object.keys(req.body) }
+    });
     SseService.broadcast('order:updated', { order: updated });
     res.json({ success: true, order: updated });
   } catch (err) {

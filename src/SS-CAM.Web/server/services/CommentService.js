@@ -35,11 +35,11 @@ class CommentService {
     }
 
     try {
-      const content = fs.readFileSync(filePath, 'utf8');
+      const content = fs.readFileSync(filePath, 'utf8').replace(/^\uFEFF/, '');
       const lines = content.split('\n').filter(l => l.trim().length > 0);
       return lines.map(line => {
         try {
-          return JSON.parse(line);
+          return JSON.parse(line.replace(/^\uFEFF/, '').trim());
         } catch (e) {
           return null;
         }
@@ -122,12 +122,12 @@ class CommentService {
     }
 
     try {
-      const content = fs.readFileSync(filePath, 'utf8');
+      const content = fs.readFileSync(filePath, 'utf8').replace(/^\uFEFF/, '');
       const lines = content.split('\n').filter(l => l.trim().length > 0);
       let found = false;
       const updatedLines = lines.map(line => {
         try {
-          const item = JSON.parse(line);
+          const item = JSON.parse(line.replace(/^\uFEFF/, '').trim());
           if (item.id === commentId) {
             item.resolved = resolved;
             item.resolvedBy = resolved ? actor : null;
@@ -172,12 +172,12 @@ class CommentService {
     }
 
     try {
-      const content = fs.readFileSync(filePath, 'utf8');
+      const content = fs.readFileSync(filePath, 'utf8').replace(/^\uFEFF/, '');
       const lines = content.split('\n').filter(l => l.trim().length > 0);
       let deleted = false;
       const filteredLines = lines.filter(line => {
         try {
-          const item = JSON.parse(line);
+          const item = JSON.parse(line.replace(/^\uFEFF/, '').trim());
           if (item.id === commentId) {
             // Verify permission: Author or Admin
             if (role !== 'Admin' && item.author !== actor) {

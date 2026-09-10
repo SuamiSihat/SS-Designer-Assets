@@ -8,7 +8,11 @@ namespace SS_CAM.Linux.Models
         public string Title { get; set; } = "";
         public string Entity { get; set; } = "SSH";
         public string Priority { get; set; } = "tier_1";
+        public string Channel { get; set; } = "digital";
         public string Format { get; set; } = "1_1_feed";
+        public string CustomSize { get; set; } = "";
+        public string Material { get; set; } = "";
+        public string MaterialType { get; set; } = "";
         public string Copy { get; set; } = "";
         public string TargetDate { get; set; } = "";
         public string AttachmentNote { get; set; } = "";
@@ -51,6 +55,7 @@ namespace SS_CAM.Linux.Models
                 string p = (Priority ?? "").ToLowerInvariant();
                 if (p.Contains("3") || p.Contains("urgent")) return "P3";
                 if (p.Contains("2") || p.Contains("fast") || p.Contains("high")) return "P2";
+                if (p.Contains("0") || p.Contains("low") || p.Contains("pipeline")) return "P0";
                 return "P1";
             }
         }
@@ -59,6 +64,7 @@ namespace SS_CAM.Linux.Models
         {
             "P3" => "P3 (Urgent)",
             "P2" => "P2 (Fast-Track)",
+            "P0" => "P0 (Low / Pipeline)",
             _    => "P1 (Standard)"
         };
 
@@ -66,25 +72,48 @@ namespace SS_CAM.Linux.Models
         {
             "P3" => "#EF4444",
             "P2" => "#F59E0B",
+            "P0" => "#64748B",
             _    => "#10B981"
         };
 
-        public string FormatLabel => (Format ?? "").ToLowerInvariant() switch
+        public string FormatLabel
         {
-            "9_16_video"     => "9:16 Video / Reels",
-            "1_1_feed"       => "1:1 Feed Post",
-            "16_9_landscape" => "16:9 Landscape HD",
-            "print_posm"     => "Print / POSM Poster",
-            "print_digital"  => "Digital Banner / Web",
-            _ => string.IsNullOrWhiteSpace(Format) ? "Standard Asset" : Format.Replace('_', ' ')
-        };
+            get
+            {
+                string label = (Format ?? "").ToLowerInvariant() switch
+                {
+                    "9_16_video"          => "9:16 Video / Reels",
+                    "1_1_feed"            => "1:1 Feed Post",
+                    "4_5_portrait"        => "4:5 Portrait Feed",
+                    "16_9_landscape"      => "16:9 Landscape HD",
+                    "print_digital"       => "Digital Banner / Web",
+                    "custom_digital"      => "Custom Screen",
+                    "print_packaging_box" => "Packaging Box & Sleeve",
+                    "print_label"         => "Bottle / Jar Label",
+                    "print_posm"          => "Print / POSM Poster",
+                    "print_banner_rollup" => "Roll-Up / Bunting",
+                    "print_flyer"         => "Flyer / Leaflet",
+                    "custom_print"        => "Custom Print",
+                    _ => string.IsNullOrWhiteSpace(Format) ? "Standard Asset" : Format.Replace('_', ' ')
+                };
+
+                if (!string.IsNullOrWhiteSpace(CustomSize))
+                    label += $" ({CustomSize.Trim()})";
+
+                string mat = !string.IsNullOrWhiteSpace(Material) ? Material : MaterialType;
+                if (!string.IsNullOrWhiteSpace(mat))
+                    label += $" · {mat.Replace('_', ' ')}";
+
+                return label;
+            }
+        }
 
         public string StatusLabel => (Status ?? "").ToLowerInvariant() switch
         {
             "pending"      => "Pending Review",
             "in_progress"  => "In Progress",
             "for_approval" => "For Approval",
-            "done" or "completed" => "Completed",
+            "done" or "completed" => "Added to Backlog",
             "cancelled"    => "Cancelled",
             _ => Status ?? "Pending"
         };

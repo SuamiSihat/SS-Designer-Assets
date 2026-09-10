@@ -10,6 +10,8 @@ const AuditService = require('../services/AuditService');
 const DeliverableService = require('../services/DeliverableService');
 const WorkspaceService = require('../services/WorkspaceService');
 const ApprovalService = require('../services/ApprovalService');
+const OrderService = require('../services/OrderService');
+const config = require('../config');
 
 console.log('🧪 Starting SS-CAM Web Management Portal Verification Suite...\n');
 
@@ -992,6 +994,149 @@ This is the project brief content.
       } finally {
         WorkspaceService.workspaceRoot = origWsRoot;
       }
+    } finally {
+      config.WORKSPACE_ROOT = origRoot;
+      try { fs.rmSync(testDir, { recursive: true, force: true }); } catch (e) {}
+    }
+  });
+
+  // ─── TEST 31: OrderService UTF-8 BOM and Windows Ledger Interop ──
+  test('OrderService transparently strips UTF-8 BOM from JSON-Lines ledgers', async () => {
+    const OrderService = require('../services/OrderService');
+    const testDir = path.join(__dirname, 'temp-orders-bom-test');
+    const origRoot = config.WORKSPACE_ROOT;
+    config.WORKSPACE_ROOT = testDir;
+
+    try {
+      const ordersVault = path.join(testDir, '_Orders');
+      fs.mkdirSync(ordersVault, { recursive: true });
+      const ledgerPath = path.join(ordersVault, 'creative-orders.jsonl');
+
+      // Write a BOM header (EF BB BF) followed by JSON lines
+      const bomBuffer = Buffer.from([0xEF, 0xBB, 0xBF]);
+      const lineData = Buffer.from(JSON.stringify({
+        id: 'ORD-260901-BOMTEST',
+        title: 'BOM Test Campaign',
+        entity: 'SSC',
+        priority: 'tier_1',
+        format: 'print_posm',
+        copy: 'Testing BOM',
+        targetDate: '2026-09-30',
+        status: 'pending',
+        submittedAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        attachments: []
+      }) + '\n', 'utf8');
+
+      fs.writeFileSync(ledgerPath, Buffer.concat([bomBuffer, lineData]));
+
+      // 1. Verify readAllOrders parses despite BOM
+      const list = OrderService.listOrders({});
+      assert.strictEqual(list.length, 1, 'Must parse 1 order despite UTF-8 BOM');
+      assert.strictEqual(list[0].id, 'ORD-260901-BOMTEST');
+
+      // 2. Verify submitOrder with attachment succeeds on top of BOM ledger
+      const newOrder = OrderService.submitOrder({
+        title: 'New Order After BOM',
+        entity: 'SSE',
+        priority: 'tier_2',
+        format: '9_16_video',
+        copy: 'Hook copy',
+        targetDate: '2026-09-30',
+        requester: 'Test Author',
+        attachments: [
+          { filename: 'attached.png', fileData: 'data:image/png;base64,ZmFrZQ==' }
+        ]
+      });
+
+      assert.ok(newOrder && newOrder.id.startsWith('ORD-'), 'New order must be generated and returned');
+      assert.strictEqual(newOrder.attachmentCount, 1, 'Must count 1 attachment');
+    } finally {
+      config.WORKSPACE_ROOT = origRoot;
+      try { fs.rmSync(testDir, { recursive: true, force: true }); } catch (e) {}
+    }
+  });
+
+  // --- TEST 32: Creative Order Tier 0 & Digital/Print Channel Architecture ---
+  test('OrderService persists tier_0 priority, print/digital channel, material, and custom dimensions', () => {
+    const origRoot = config.WORKSPACE_ROOT;
+    const testDir = path.join(__dirname, 'temp-order-channels-test');
+
+    try {
+      config.WORKSPACE_ROOT = testDir;
+      const ordersVault = path.join(testDir, '_Orders');
+      fs.mkdirSync(ordersVault, { recursive: true });
+
+      // 1. Submit a Print order with tier_0 (Low/Pipeline), material, and custom dimensions
+      const printOrder = OrderService.submitOrder({
+        title: 'Compounding Pharmacy Medicine Box 2026',
+        entity: 'SSC',
+        priority: 'tier_0',
+        channel: 'print',
+        format: 'print_packaging_box',
+        customSize: '150 x 85 x 45 mm',
+        material: 'waterproof_vinyl',
+        copy: 'Batch compounding label specs and safety instructions',
+        targetDate: '2026-10-15',
+        requester: 'Dr. Afiq'
+      });
+
+      assert.ok(printOrder && printOrder.id.startsWith('ORD-'), 'Print order must be created');
+      assert.strictEqual(printOrder.priority, 'tier_0', 'Priority must be tier_0');
+      assert.strictEqual(printOrder.channel, 'print', 'Channel must be print');
+      assert.strictEqual(printOrder.format, 'print_packaging_box', 'Format must match');
+      assert.strictEqual(printOrder.material, 'waterproof_vinyl', 'Material must match');
+      assert.strictEqual(printOrder.customSize, '150 x 85 x 45 mm', 'Custom size must match');
+
+      // 2. Submit a Digital order with custom screen size
+      const digitalOrder = OrderService.submitOrder({
+        title: 'Hero Screen LED Display',
+        entity: 'SSH',
+        priority: 'tier_1',
+        channel: 'digital',
+        format: 'custom_digital',
+        customSize: '3840 x 1080 px',
+        copy: 'Grand opening digital billboard loop',
+        targetDate: '2026-09-25',
+        requester: 'Marketing'
+      });
+
+      assert.strictEqual(digitalOrder.channel, 'digital');
+      assert.strictEqual(digitalOrder.format, 'custom_digital');
+      assert.strictEqual(digitalOrder.customSize, '3840 x 1080 px');
+
+      // 3. Test updateOrder with material & custom dimensions
+      const patched = OrderService.updateOrder(printOrder.id, {
+        material: 'artcard_matte_spotuv',
+        customSize: '160 x 90 x 50 mm'
+      });
+
+      assert.strictEqual(patched.material, 'artcard_matte_spotuv');
+      assert.strictEqual(patched.materialType, 'artcard_matte_spotuv');
+      assert.strictEqual(patched.customSize, '160 x 90 x 50 mm');
+
+      // 4. Verify listOrders includes enriched properties
+      const allOrders = OrderService.listOrders({});
+      assert.strictEqual(allOrders.length, 2);
+      const retrieved = allOrders.find(o => o.id === printOrder.id);
+      assert.strictEqual(retrieved.material, 'artcard_matte_spotuv');
+      assert.strictEqual(retrieved.priority, 'tier_0');
+
+      // 5. Test full creative brief editing via updateOrder (Option A)
+      const edited = OrderService.updateOrder(digitalOrder.id, {
+        title: 'Hero Screen LED Display (Revised Edition)',
+        copy: 'Updated opening headline loop with promotion prices',
+        priority: 'tier_2',
+        targetDate: '2026-10-01'
+      });
+      assert.strictEqual(edited.title, 'Hero Screen LED Display (Revised Edition)');
+      assert.strictEqual(edited.copy, 'Updated opening headline loop with promotion prices');
+      assert.strictEqual(edited.priority, 'tier_2');
+      assert.strictEqual(edited.targetDate, '2026-10-01');
+
+      const fetchedEdited = OrderService.getOrder(digitalOrder.id);
+      assert.strictEqual(fetchedEdited.title, 'Hero Screen LED Display (Revised Edition)');
+      assert.strictEqual(fetchedEdited.copy, 'Updated opening headline loop with promotion prices');
     } finally {
       config.WORKSPACE_ROOT = origRoot;
       try { fs.rmSync(testDir, { recursive: true, force: true }); } catch (e) {}

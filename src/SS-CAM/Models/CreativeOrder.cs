@@ -15,7 +15,11 @@ namespace SS_CAM.Models
         public string Title { get; set; }
         public string Entity { get; set; }
         public string Priority { get; set; }
+        public string Channel { get; set; }
         public string Format { get; set; }
+        public string CustomSize { get; set; }
+        public string Material { get; set; }
+        public string MaterialType { get; set; }
         public string Copy { get; set; }
         public string TargetDate { get; set; }
         public string AttachmentNote { get; set; }
@@ -34,7 +38,11 @@ namespace SS_CAM.Models
             Title = string.Empty;
             Entity = "SSH";
             Priority = "tier_1";
+            Channel = "digital";
             Format = "1_1_feed";
+            CustomSize = string.Empty;
+            Material = string.Empty;
+            MaterialType = string.Empty;
             Copy = string.Empty;
             TargetDate = DateTime.Now.AddDays(3).ToString("yyyy-MM-dd");
             AttachmentNote = string.Empty;
@@ -100,6 +108,7 @@ namespace SS_CAM.Models
                 string p = (Priority ?? "").ToLowerInvariant();
                 if (p.Contains("3") || p.Contains("urgent")) return "P3";
                 if (p.Contains("2") || p.Contains("fast") || p.Contains("high")) return "P2";
+                if (p.Contains("0") || p.Contains("low") || p.Contains("pipeline")) return "P0";
                 return "P1";
             }
         }
@@ -111,6 +120,7 @@ namespace SS_CAM.Models
                 string p = (Priority ?? "").ToLowerInvariant();
                 if (p.Contains("3") || p.Contains("urgent")) return "P3 (Urgent)";
                 if (p.Contains("2") || p.Contains("fast") || p.Contains("high")) return "P2 (Fast-Track)";
+                if (p.Contains("0") || p.Contains("low") || p.Contains("pipeline")) return "P0 (Low / Pipeline)";
                 return "P1 (Standard)";
             }
         }
@@ -124,6 +134,8 @@ namespace SS_CAM.Models
                     return new SolidColorBrush((Color)ColorConverter.ConvertFromString("#EF4444")); // Red
                 if (p.Contains("2") || p.Contains("fast") || p.Contains("high"))
                     return new SolidColorBrush((Color)ColorConverter.ConvertFromString("#F59E0B")); // Amber
+                if (p.Contains("0") || p.Contains("low") || p.Contains("pipeline"))
+                    return new SolidColorBrush((Color)ColorConverter.ConvertFromString("#64748B")); // Slate / Low
                 return new SolidColorBrush((Color)ColorConverter.ConvertFromString("#10B981")); // Green
             }
         }
@@ -132,17 +144,38 @@ namespace SS_CAM.Models
         {
             get
             {
+                string label;
                 switch ((Format ?? "").ToLowerInvariant())
                 {
-                    case "9_16_video":     return "9:16 Video / Reels";
-                    case "1_1_feed":       return "1:1 Feed Post";
-                    case "16_9_landscape": return "16:9 Landscape HD";
-                    case "print_posm":     return "Print / POSM Poster";
-                    case "print_digital":  return "Digital Banner / Web";
+                    case "9_16_video":          label = "9:16 Video / Reels"; break;
+                    case "1_1_feed":            label = "1:1 Feed Post"; break;
+                    case "4_5_portrait":        label = "4:5 Portrait Feed"; break;
+                    case "16_9_landscape":      label = "16:9 Landscape HD"; break;
+                    case "print_digital":       label = "Digital Banner / Web"; break;
+                    case "custom_digital":      label = "Custom Screen"; break;
+                    case "print_packaging_box": label = "Packaging Box & Sleeve"; break;
+                    case "print_label":         label = "Bottle / Jar Label"; break;
+                    case "print_posm":          label = "Print / POSM Poster"; break;
+                    case "print_banner_rollup": label = "Roll-Up / Bunting"; break;
+                    case "print_flyer":         label = "Flyer / Leaflet"; break;
+                    case "custom_print":        label = "Custom Print"; break;
                     default:
-                        if (string.IsNullOrWhiteSpace(Format)) return "Standard Asset";
-                        return Format.Replace('_', ' ');
+                        label = string.IsNullOrWhiteSpace(Format) ? "Standard Asset" : Format.Replace('_', ' ');
+                        break;
                 }
+
+                if (!string.IsNullOrWhiteSpace(CustomSize))
+                {
+                    label += string.Format(" ({0})", CustomSize.Trim());
+                }
+
+                string mat = !string.IsNullOrWhiteSpace(Material) ? Material : MaterialType;
+                if (!string.IsNullOrWhiteSpace(mat))
+                {
+                    label += string.Format(" · {0}", mat.Replace('_', ' '));
+                }
+
+                return label;
             }
         }
 
@@ -156,7 +189,7 @@ namespace SS_CAM.Models
                     case "in_progress":  return "In Progress";
                     case "for_approval": return "For Approval";
                     case "done":
-                    case "completed":    return "Completed";
+                    case "completed":    return "Added to Backlog";
                     case "cancelled":    return "Cancelled";
                     default:             return Status ?? "Pending";
                 }

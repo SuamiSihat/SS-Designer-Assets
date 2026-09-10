@@ -18,7 +18,11 @@
     title: string;
     entity: string;
     priority: string;
+    channel?: 'digital' | 'print';
     format: string;
+    customSize?: string;
+    material?: string;
+    materialType?: string;
     copy: string;
     targetDate: string;
     attachmentNote?: string;
@@ -47,12 +51,16 @@
   let showForm      = $state(false);
   let filterStatus  = $state('all');
   let activeOrderId = $state<string | null>(null);
+  let editingOrderId = $state<string | null>(null);
 
   // Form fields
   let f_title          = $state('');
   let f_entity         = $state('');
-  let f_priority       = $state('');
-  let f_format         = $state('');
+  let f_priority       = $state('tier_1');
+  let f_channel        = $state<'digital' | 'print'>('digital');
+  let f_format         = $state('9_16_video');
+  let f_customSize     = $state('');
+  let f_material       = $state('');
   let f_copy           = $state('');
   let f_targetDate     = $state('');
   let f_attachmentNote = $state('');
@@ -70,6 +78,12 @@
   ];
 
   const PRIORITIES = [
+    {
+      id: 'tier_0',
+      label: 'Low / Pipeline',
+      window: '2 – 4+ weeks / Next month',
+      note: 'Strategic backlog, future campaign, or brand prep. No immediate rush.',
+    },
     {
       id: 'tier_1',
       label: 'Standard',
@@ -90,27 +104,53 @@
     },
   ];
 
-  const FORMATS = [
-    { id: '9_16_video',     label: '9:16 Video',        sub: 'TikTok · Reels · Story'     },
-    { id: '1_1_feed',       label: '1:1 Social Feed',   sub: 'Instagram · Facebook · LinkedIn' },
-    { id: '16_9_landscape', label: '16:9 Landscape',    sub: 'YouTube · Slides · Display'  },
-    { id: 'print_posm',     label: 'Print / POSM',      sub: 'A3 · A2 · X-Banner · Rollup'  },
-    { id: 'print_digital',  label: 'Digital Banner',    sub: 'Web · Email · Paid Ads'      },
-    { id: 'other',          label: 'Other',             sub: 'Specify in the brief field'  },
+  const DIGITAL_FORMATS = [
+    { id: '9_16_video',     label: '9:16 Video',        sub: 'TikTok · Reels · Story (1080×1920)'     },
+    { id: '1_1_feed',       label: '1:1 Social Feed',   sub: 'Instagram · Facebook · LinkedIn (1080×1080)' },
+    { id: '4_5_portrait',   label: '4:5 Portrait Feed', sub: 'Meta / IG Recommended Feed (1080×1350)' },
+    { id: '16_9_landscape', label: '16:9 Landscape',    sub: 'YouTube · Slides · LED / TV (1920×1080)' },
+    { id: 'print_digital',  label: 'Digital Banner',    sub: 'Website Hero · Email · Google Display' },
+    { id: 'custom_digital', label: 'Custom Screen Size', sub: 'Specify width × height in px' },
+  ];
+
+  const PRINT_FORMATS = [
+    { id: 'print_packaging_box', label: 'Packaging Box & Sleeve', sub: 'Medicine box · Supplement carton · Sleeve' },
+    { id: 'print_label',         label: 'Bottle / Jar / Vial Label', sub: 'Product sticker · Vial · Tamper seal' },
+    { id: 'print_posm',          label: 'POSM Poster',            sub: 'A4 · A3 · A2 · A1 Posters' },
+    { id: 'print_banner_rollup', label: 'Roll-Up / Bunting',      sub: '2.5×6 ft · 2×5 ft · Pull-up banner' },
+    { id: 'print_flyer',         label: 'Flyer / Leaflet',        sub: 'A4 Tri-fold · A5 Handout' },
+    { id: 'custom_print',        label: 'Custom Print Size',      sub: 'Specify dimensions (mm / cm / inch / ft)' },
+  ];
+
+  const LEGACY_FORMATS = [
+    { id: 'other', label: 'Other', sub: 'Specify in the brief field' }
+  ];
+
+  const PRINT_MATERIALS = [
+    { id: 'waterproof_vinyl',     label: 'Waterproof Vinyl / Synthetic Sticker', desc: 'Moisture-resistant (Compounding Pharmacy bottle labels)' },
+    { id: 'mirrorkote_paper',     label: 'Mirrorkote Gloss Paper Sticker',       desc: 'Standard box seals & dry product labels' },
+    { id: 'artcard_gloss',        label: 'Art Card 260/310gsm (Gloss Lam)',      desc: 'Standard packaging boxes & marketing cards' },
+    { id: 'artcard_matte_spotuv', label: 'Art Card 260/310gsm (Matte Lam + Spot UV)', desc: 'Premium branded packaging boxes' },
+    { id: 'simili_paper',         label: 'Simili Paper 80/100gsm',               desc: 'Prescription pads, clinic forms & letterheads' },
+    { id: 'tarpaulin',            label: 'Tarpaulin 380/440gsm',                 desc: 'Outdoor clinic banners & signage' },
+    { id: 'synthetic_paper',      label: 'Synthetic Paper',                      desc: 'Indoor roll-up banners & tear-resistant posters' },
+    { id: 'rigid_box',            label: 'Rigid Box / Hard Board',               desc: 'Luxury gift sets & premium clinic kits' },
+    { id: 'other_material',       label: 'Custom / Other Material',              desc: 'Specify in brief or size field' },
   ];
 
   const PRIORITY_COLOR: Record<string, { fg: string; bg: string; border: string }> = {
+    tier_0: { fg: '#475569', bg: '#F8FAFC', border: '#CBD5E1' },
     tier_1: { fg: '#065F46', bg: '#ECFDF5', border: '#A7F3D0' },
     tier_2: { fg: '#92400E', bg: '#FFFBEB', border: '#FDE68A' },
     tier_3: { fg: '#991B1B', bg: '#FEF2F2', border: '#FECACA' },
   };
 
   const STATUS_META: Record<string, { label: string; fg: string; bg: string }> = {
-    pending:      { label: 'Pending',       fg: '#475569', bg: '#F1F5F9' },
-    in_progress:  { label: 'In Progress',   fg: '#1D4ED8', bg: '#EFF6FF' },
-    for_approval: { label: 'For Approval',  fg: '#92400E', bg: '#FFFBEB' },
-    done:         { label: 'Completed',     fg: '#065F46', bg: '#ECFDF5' },
-    cancelled:    { label: 'Cancelled',     fg: '#991B1B', bg: '#FEF2F2' },
+    pending:      { label: 'Pending',           fg: '#475569', bg: '#F1F5F9' },
+    in_progress:  { label: 'In Progress',       fg: '#1D4ED8', bg: '#EFF6FF' },
+    for_approval: { label: 'For Approval',      fg: '#92400E', bg: '#FFFBEB' },
+    done:         { label: 'Added to Backlog',  fg: '#065F46', bg: '#ECFDF5' },
+    cancelled:    { label: 'Cancelled',         fg: '#991B1B', bg: '#FEF2F2' },
   };
 
   // ─── Derived ───────────────────────────────────────────────────────────────
@@ -127,9 +167,12 @@
   });
 
   const formFilled = $derived([f_title, f_entity, f_priority, f_format, f_copy, f_targetDate]
-    .filter(v => v.trim().length > 0).length);
+    .filter(v => (v || '').trim().length > 0).length);
 
-  const formValid = $derived(formFilled === 6);
+  const formValid = $derived(
+    formFilled === 6 &&
+    ((f_format !== 'custom_digital' && f_format !== 'custom_print') || f_customSize.trim().length > 0)
+  );
 
   const isDesigner = $derived(
     (() => {
@@ -168,17 +211,81 @@
   }
 
   function openForm() {
+    editingOrderId   = null;
     formError        = '';
     submitSuccess    = false;
     f_title          = '';
     f_entity         = '';
-    f_priority       = '';
-    f_format         = '';
+    f_priority       = 'tier_1';
+    f_channel        = 'digital';
+    f_format         = '9_16_video';
+    f_customSize     = '';
+    f_material       = '';
     f_copy           = '';
     f_targetDate     = new Date(Date.now() + 3 * 86400000).toISOString().split('T')[0];
     f_attachmentNote = '';
     f_files          = [];
     showForm = true;
+  }
+
+  function openEditForm(order: CreativeOrder) {
+    editingOrderId   = order.id;
+    formError        = '';
+    submitSuccess    = false;
+    f_title          = order.title || '';
+    f_entity         = order.entity || 'SSH';
+    f_priority       = order.priority || 'tier_1';
+    f_channel        = order.channel || ((order.format && (order.format.startsWith('print_') || order.format === 'custom_print')) ? 'print' : 'digital');
+    f_format         = order.format || (f_channel === 'print' ? 'print_packaging_box' : '9_16_video');
+    f_customSize     = order.customSize || '';
+    f_material       = order.material || order.materialType || '';
+    f_copy           = order.copy || '';
+    f_targetDate     = order.targetDate || '';
+    f_attachmentNote = order.attachmentNote || '';
+    f_files          = [];
+    showForm         = true;
+  }
+
+  function canEdit(order: CreativeOrder): boolean {
+    if (!order) return false;
+    // Rule 2: Locked once added to backlog (done) or cancelled
+    if (order.status === 'done' || order.status === 'cancelled') return false;
+    // Rule 1: Privileged designers and admins can always edit active requests
+    if (isDesigner) return true;
+    // Rule 1: Original requester can edit
+    const currentName = (appState.currentUser?.name || '').trim().toLowerCase();
+    const orderReq = (order.requester || '').trim().toLowerCase();
+    if (currentName && orderReq && (currentName === orderReq || orderReq.includes(currentName) || currentName.includes(orderReq))) {
+      return true;
+    }
+    return false;
+  }
+
+  function selectPriority(id: string) {
+    f_priority = id;
+    if (id === 'tier_0') {
+      const minDate = new Date(Date.now() + 21 * 86400000).toISOString().split('T')[0];
+      if (!f_targetDate || f_targetDate < minDate) {
+        f_targetDate = minDate;
+      }
+    }
+  }
+
+  function switchChannel(channel: 'digital' | 'print') {
+    f_channel = channel;
+    if (channel === 'digital') {
+      if (!DIGITAL_FORMATS.some(f => f.id === f_format)) {
+        f_format = '9_16_video';
+      }
+      f_material = '';
+    } else {
+      if (!PRINT_FORMATS.some(f => f.id === f_format)) {
+        f_format = 'print_packaging_box';
+      }
+      if (!f_material) {
+        f_material = 'waterproof_vinyl';
+      }
+    }
   }
 
   function formatBytes(bytes: number): string {
@@ -218,23 +325,63 @@
     formError    = '';
     isSubmitting = true;
     try {
-      await ApiClient.request('/orders', {
-        method: 'POST',
-        body: JSON.stringify({
-          title:          f_title.trim(),
-          entity:         f_entity,
-          priority:       f_priority,
-          format:         f_format,
-          copy:           f_copy.trim(),
-          targetDate:     f_targetDate,
-          attachmentNote: f_attachmentNote.trim(),
-          attachments:    f_files.map(f => ({ filename: f.filename, fileData: f.fileData }))
-        }),
-      });
-      submitSuccess = true;
-      appState.addToast('Your creative request has been submitted and queued.', 'success', 'Request Received');
-      await loadOrders();
-      setTimeout(() => { showForm = false; submitSuccess = false; }, 1600);
+      if (editingOrderId) {
+        await ApiClient.request(`/orders/${encodeURIComponent(editingOrderId)}`, {
+          method: 'PATCH',
+          body: JSON.stringify({
+            title:          f_title.trim(),
+            entity:         f_entity,
+            priority:       f_priority,
+            channel:        f_channel,
+            format:         f_format,
+            customSize:     f_customSize.trim(),
+            material:       f_material,
+            copy:           f_copy.trim(),
+            targetDate:     f_targetDate,
+            attachmentNote: f_attachmentNote.trim(),
+          }),
+        });
+
+        // Upload any new attachments if added during edit
+        if (f_files.length > 0) {
+          for (const file of f_files) {
+            try {
+              await ApiClient.request(`/orders/${encodeURIComponent(editingOrderId)}/attachments`, {
+                method: 'POST',
+                body: JSON.stringify({ filename: file.filename, fileData: file.fileData })
+              });
+            } catch (attErr) {
+              console.error('[OrderFormView] Failed saving attachment on edit:', attErr);
+            }
+          }
+        }
+
+        submitSuccess = true;
+        appState.addToast('Creative request has been updated.', 'success', 'Changes Saved');
+        await loadOrders();
+        setTimeout(() => { showForm = false; submitSuccess = false; editingOrderId = null; }, 1400);
+      } else {
+        await ApiClient.request('/orders', {
+          method: 'POST',
+          body: JSON.stringify({
+            title:          f_title.trim(),
+            entity:         f_entity,
+            priority:       f_priority,
+            channel:        f_channel,
+            format:         f_format,
+            customSize:     f_customSize.trim(),
+            material:       f_material,
+            copy:           f_copy.trim(),
+            targetDate:     f_targetDate,
+            attachmentNote: f_attachmentNote.trim(),
+            attachments:    f_files.map(f => ({ filename: f.filename, fileData: f.fileData }))
+          }),
+        });
+        submitSuccess = true;
+        appState.addToast('Your creative request has been submitted and queued.', 'success', 'Request Received');
+        await loadOrders();
+        setTimeout(() => { showForm = false; submitSuccess = false; }, 1600);
+      }
     } catch (err: any) {
       formError = err.message || 'Submission failed. Please review your inputs and try again.';
     } finally {
@@ -364,7 +511,11 @@
   async function copyBrief(order: CreativeOrder) {
     const text = `PROJECT: ${order.title}\n` +
       `ENTITY: ${order.entity}\n` +
-      `FORMAT: ${formatLabel(order.format)}\n` +
+      `PRIORITY: ${priorityLabel(order.priority)}\n` +
+      `FORMAT: ${formatLabel(order.format, order.material || order.materialType, order.customSize)}\n` +
+      (order.channel ? `CHANNEL: ${order.channel === 'print' ? 'Print, Packaging & POSM' : 'Digital & Social Screen'}\n` : '') +
+      (order.material || order.materialType ? `MATERIAL: ${PRINT_MATERIALS.find(m => m.id === (order.material || order.materialType))?.label ?? (order.material || order.materialType)}\n` : '') +
+      (order.customSize ? `CUSTOM DIMENSIONS: ${order.customSize}\n` : '') +
       `DEADLINE: ${fmtDate(order.targetDate)}\n` +
       `REQUESTER: ${order.requester}\n\n` +
       `--- BRIEF & COPY ---\n${order.copy}\n` +
@@ -386,8 +537,18 @@
   function priorityLabel(id: string) {
     return PRIORITIES.find(p => p.id === id)?.label ?? '—';
   }
-  function formatLabel(id: string) {
-    return FORMATS.find(f => f.id === id)?.label ?? '—';
+  function formatLabel(id: string, material?: string, customSize?: string) {
+    const all = [...DIGITAL_FORMATS, ...PRINT_FORMATS, ...LEGACY_FORMATS];
+    const match = all.find(f => f.id === id);
+    let str = match?.label ?? id?.replace(/_/g, ' ') ?? '—';
+    if (customSize && (id === 'custom_digital' || id === 'custom_print')) {
+      str += ` (${customSize})`;
+    }
+    if (material) {
+      const mat = PRINT_MATERIALS.find(m => m.id === material);
+      str += ` · ${mat ? mat.label.split('(')[0].trim() : material}`;
+    }
+    return str;
   }
 </script>
 
@@ -415,11 +576,11 @@
   <!-- ─── STATUS FILTER TABS ────────────────────────────────────────────────── -->
   <div class="filter-row" role="tablist" aria-label="Filter by order status">
     {#each [
-      { key: 'all',          label: 'All Requests'  },
-      { key: 'pending',      label: 'Pending'       },
-      { key: 'in_progress',  label: 'In Progress'   },
-      { key: 'for_approval', label: 'For Approval'  },
-      { key: 'done',         label: 'Completed'     },
+      { key: 'all',          label: 'All Requests'      },
+      { key: 'pending',      label: 'Pending'           },
+      { key: 'in_progress',  label: 'In Progress'       },
+      { key: 'for_approval', label: 'For Approval'      },
+      { key: 'done',         label: 'Added to Backlog'  },
     ] as tab}
       <button
         class="filter-tab {filterStatus === tab.key ? 'active' : ''}"
@@ -452,10 +613,9 @@
                 <polyline points="9 12 11 14 15 10" />
               </svg>
             </div>
-            <h2 class="success-heading">Request Submitted</h2>
+            <h2 class="success-heading">{editingOrderId ? 'Changes Saved' : 'Request Submitted'}</h2>
             <p class="success-body">
-              Your creative brief has been added to the design queue.
-              The team will acknowledge within your selected priority window.
+              {editingOrderId ? 'Your creative request updates have been saved to the queue.' : 'Your creative brief has been added to the design queue. The team will acknowledge within your selected priority window.'}
             </p>
           </div>
 
@@ -463,8 +623,8 @@
           <!-- ── Modal Header ── -->
           <div class="modal-header">
             <div>
-              <div class="modal-kicker">Creative Operations · New Brief</div>
-              <h2 class="modal-title">Creative Request Form</h2>
+              <div class="modal-kicker">{editingOrderId ? 'Edit Creative Request' : 'Creative Operations · New Brief'}</div>
+              <h2 class="modal-title">{editingOrderId ? `Edit Request · ${editingOrderId}` : 'Creative Request Form'}</h2>
             </div>
             <button
               class="close-btn"
@@ -543,7 +703,9 @@
               <div class="card-group" role="radiogroup" aria-labelledby="priority-label">
                 {#each PRIORITIES as p}
                   {@const sel = f_priority === p.id}
-                  <label class="option-card {sel ? 'selected' : ''}">
+                  <!-- svelte-ignore a11y_click_events_have_key_events -->
+                  <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+                  <label class="option-card {sel ? 'selected' : ''}" onclick={() => selectPriority(p.id)}>
                     <input
                       type="radio"
                       name="f-priority"
@@ -564,14 +726,40 @@
               </div>
             </div>
 
-            <!-- 4. Format & Size -->
+            <!-- 4. Format, Size & Material -->
             <div class="field">
               <div class="field-label" id="format-label">
-                Format &amp; Size
+                Format &amp; Production Specs
                 <span class="req-mark" aria-hidden="true">*</span>
               </div>
+
+              <!-- Channel Switcher (Digital vs Print) -->
+              <div class="channel-toggle-bar" role="tablist" aria-label="Select Asset Media Channel">
+                <button
+                  type="button"
+                  class="channel-tab {f_channel === 'digital' ? 'active' : ''}"
+                  role="tab"
+                  aria-selected={f_channel === 'digital'}
+                  onclick={() => switchChannel('digital')}
+                >
+                  <iconify-icon icon="fluent:phone-screen-24-regular" style="font-size:16px;"></iconify-icon>
+                  <span>Digital &amp; Social Screen</span>
+                </button>
+                <button
+                  type="button"
+                  class="channel-tab {f_channel === 'print' ? 'active' : ''}"
+                  role="tab"
+                  aria-selected={f_channel === 'print'}
+                  onclick={() => switchChannel('print')}
+                >
+                  <iconify-icon icon="fluent:print-24-regular" style="font-size:16px;"></iconify-icon>
+                  <span>Print, Packaging &amp; POSM</span>
+                </button>
+              </div>
+
+              <!-- Formats Grid -->
               <div class="format-grid" role="radiogroup" aria-labelledby="format-label">
-                {#each FORMATS as fmt}
+                {#each (f_channel === 'digital' ? DIGITAL_FORMATS : PRINT_FORMATS) as fmt}
                   <label class="format-item {f_format === fmt.id ? 'selected' : ''}">
                     <input
                       type="radio"
@@ -585,6 +773,42 @@
                   </label>
                 {/each}
               </div>
+
+              <!-- Contextual Custom Size Input -->
+              {#if f_format === 'custom_digital' || f_format === 'custom_print'}
+                <div class="sub-field-box">
+                  <label class="sub-field-label" for="f-custom-size">
+                    Custom Dimensions
+                    <span class="req-mark">*</span>
+                  </label>
+                  <input
+                    id="f-custom-size"
+                    class="input"
+                    type="text"
+                    bind:value={f_customSize}
+                    placeholder={f_channel === 'digital' ? 'e.g. 1200 x 628 px (width x height)' : 'e.g. 150 x 85 x 45 mm (Packaging Box) or 3 x 7 ft'}
+                    required
+                  />
+                  <span class="field-hint">Specify width, height, and unit (px, mm, cm, inch, ft).</span>
+                </div>
+              {/if}
+
+              <!-- Contextual Material Type Picker (For Print & Packaging) -->
+              {#if f_channel === 'print'}
+                <div class="sub-field-box">
+                  <label class="sub-field-label" for="f-material">
+                    Material Type &amp; Lamination
+                    <span class="optional-label">Recommended for Print</span>
+                  </label>
+                  <select id="f-material" class="select-input" bind:value={f_material}>
+                    <option value="">— Select Material / Substrate —</option>
+                    {#each PRINT_MATERIALS as mat}
+                      <option value={mat.id}>{mat.label} — {mat.desc}</option>
+                    {/each}
+                  </select>
+                  <span class="field-hint">Crucial for compounding bottles, medicine box cards, and waterproof clinic collateral.</span>
+                </div>
+              {/if}
             </div>
 
             <!-- 5. Brief / Copy -->
@@ -698,9 +922,9 @@
               >
                 {#if isSubmitting}
                   <span class="spinner" aria-hidden="true"></span>
-                  Submitting…
+                  {editingOrderId ? 'Saving…' : 'Submitting…'}
                 {:else}
-                  Submit Request
+                  {editingOrderId ? 'Save Changes' : 'Submit Request'}
                 {/if}
               </button>
             </div>
@@ -749,7 +973,7 @@
             <th scope="col">Target Date</th>
             <th scope="col">Submitted by</th>
             <th scope="col">Status</th>
-            {#if isDesigner}<th scope="col" class="col-actions">Actions</th>{/if}
+            <th scope="col" class="col-actions">Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -785,7 +1009,9 @@
                 {/if}
               </td>
               <td>
-                <span class="meta-cell">{formatLabel(order.format)}</span>
+                <span class="meta-cell" title={formatLabel(order.format, order.material || order.materialType, order.customSize)}>
+                  {formatLabel(order.format, order.material || order.materialType, order.customSize)}
+                </span>
               </td>
               <td>
                 <span class="meta-cell">{fmtDate(order.targetDate)}</span>
@@ -799,22 +1025,25 @@
                   style="color: {sm.fg}; background: {sm.bg};"
                 >{sm.label}</span>
               </td>
-              {#if isDesigner}
-                <td class="col-actions" onclick={(e) => e.stopPropagation()}>
-                  <div class="action-cluster">
+              <td class="col-actions" onclick={(e) => e.stopPropagation()}>
+                <div class="action-cluster">
+                  {#if canEdit(order)}
+                    <button class="act-btn act-blue" onclick={() => openEditForm(order)} title="Edit Request Details">Edit</button>
+                  {/if}
+                  {#if isDesigner}
                     {#if order.status === 'pending'}
                       <button class="act-btn act-blue" onclick={() => updateStatus(order.id, 'in_progress')} title="Start">Start</button>
                     {:else if order.status === 'in_progress'}
                       <button class="act-btn act-amber" onclick={() => updateStatus(order.id, 'for_approval')} title="Send for Approval">Review</button>
                     {:else if order.status === 'for_approval'}
-                      <button class="act-btn act-green" onclick={() => updateStatus(order.id, 'done')} title="Mark Completed">Complete</button>
+                      <button class="act-btn act-green" onclick={() => updateStatus(order.id, 'done')} title="Accept into design backlog">Add to Backlog</button>
                     {/if}
-                    {#if order.status !== 'done' && order.status !== 'cancelled'}
-                      <button class="act-btn act-red" onclick={() => cancelOrder(order.id)} title="Cancel Order">Cancel</button>
-                    {/if}
-                  </div>
-                </td>
-              {/if}
+                  {/if}
+                  {#if (isDesigner || canEdit(order)) && order.status !== 'done' && order.status !== 'cancelled'}
+                    <button class="act-btn act-red" onclick={() => cancelOrder(order.id)} title="Cancel Order">Cancel</button>
+                  {/if}
+                </div>
+              </td>
             </tr>
 
             {#if expanded}
@@ -826,6 +1055,22 @@
                         <span class="detail-label">Brief &amp; Copy</span>
                         <pre class="detail-copy">{order.copy}</pre>
                       </div>
+                      <div class="detail-col">
+                        <span class="detail-label">Format &amp; Specifications</span>
+                        <span class="detail-val">{formatLabel(order.format, order.material || order.materialType, order.customSize)}</span>
+                      </div>
+                      {#if order.material || order.materialType}
+                        <div class="detail-col">
+                          <span class="detail-label">Print Material</span>
+                          <span class="detail-val">{PRINT_MATERIALS.find(m => m.id === (order.material || order.materialType))?.label ?? (order.material || order.materialType)}</span>
+                        </div>
+                      {/if}
+                      {#if order.customSize}
+                        <div class="detail-col">
+                          <span class="detail-label">Custom Dimensions</span>
+                          <span class="detail-val">{order.customSize}</span>
+                        </div>
+                      {/if}
                       {#if order.attachmentNote}
                         <div class="detail-col">
                           <span class="detail-label">Asset Reference</span>
@@ -860,6 +1105,16 @@
                           Attached Reference Files ({order.attachments?.length || 0})
                         </span>
                         <div class="att-header-actions">
+                          {#if canEdit(order)}
+                            <button
+                              type="button"
+                              class="text-link-btn"
+                              onclick={(e) => { e.stopPropagation(); openEditForm(order); }}
+                              title="Edit project brief and parameters"
+                            >
+                              ✏️ Edit Request
+                            </button>
+                          {/if}
                           <button
                             type="button"
                             class="text-link-btn"
@@ -950,55 +1205,6 @@
                     <!-- ── Processing & Management Controls ── -->
                     {#if isDesigner}
                       <div class="detail-management-bar">
-                        <div class="mgt-col">
-                          <span class="detail-label">Lifecycle Actions</span>
-                          <div class="mgt-btn-group">
-                            {#if order.status === 'pending'}
-                              <button
-                                class="act-btn act-blue mgt-btn"
-                                onclick={(e) => { e.stopPropagation(); updateStatus(order.id, 'in_progress'); }}
-                                title="Start working on this request"
-                              >▶ Start Working</button>
-                            {:else if order.status === 'in_progress'}
-                              <button
-                                class="act-btn act-amber mgt-btn"
-                                onclick={(e) => { e.stopPropagation(); updateStatus(order.id, 'for_approval'); }}
-                                title="Submit for review & sign-off"
-                              >◉ Send for Review</button>
-                              <button
-                                class="act-btn mgt-btn text-muted"
-                                onclick={(e) => { e.stopPropagation(); updateStatus(order.id, 'pending'); }}
-                                title="Reset back to pending"
-                              >↺ Back to Pending</button>
-                            {:else if order.status === 'for_approval'}
-                              <button
-                                class="act-btn act-green mgt-btn"
-                                onclick={(e) => { e.stopPropagation(); updateStatus(order.id, 'done'); }}
-                                title="Mark request as complete"
-                              >✓ Complete Order</button>
-                              <button
-                                class="act-btn mgt-btn text-muted"
-                                onclick={(e) => { e.stopPropagation(); updateStatus(order.id, 'in_progress'); }}
-                                title="Re-open into production"
-                              >↺ Return to WIP</button>
-                            {:else if order.status === 'done'}
-                              <span class="status-done-badge">✓ Order Completed</span>
-                              <button
-                                class="act-btn mgt-btn text-muted"
-                                onclick={(e) => { e.stopPropagation(); updateStatus(order.id, 'in_progress'); }}
-                                title="Reopen order"
-                              >↺ Reopen</button>
-                            {/if}
-                            {#if order.status !== 'done' && order.status !== 'cancelled'}
-                              <button
-                                class="act-btn act-red mgt-btn"
-                                onclick={(e) => { e.stopPropagation(); cancelOrder(order.id); }}
-                                title="Cancel this order"
-                              >✕ Cancel</button>
-                            {/if}
-                          </div>
-                        </div>
-
                         <div class="mgt-col">
                           <span class="detail-label">Designer Handover</span>
                           <select
@@ -1480,6 +1686,7 @@
     border-radius: 50%;
     flex-shrink: 0;
   }
+  .option-dot.tier_0 { background: #64748B; }
   .option-dot.tier_1 { background: var(--color-success); }
   .option-dot.tier_2 { background: var(--color-warning); }
   .option-dot.tier_3 { background: var(--color-danger); }
@@ -1531,6 +1738,80 @@
     font-size: 10.5px;
     color: var(--text-tertiary);
     line-height: 1.4;
+  }
+
+  /* Channel & Custom Field Controls */
+  .channel-toggle-bar {
+    display: flex;
+    gap: 6px;
+    background: var(--surface-card-subtle);
+    padding: 4px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--surface-card-border);
+    margin-bottom: 8px;
+  }
+  .channel-tab {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 8px 14px;
+    border-radius: var(--radius-sm);
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+  }
+  .channel-tab:hover {
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.05);
+  }
+  .channel-tab.active {
+    background: var(--surface-card);
+    color: var(--brand-accent);
+    border-color: var(--surface-card-border);
+    font-weight: 700;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  }
+  .sub-field-box {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    background: var(--surface-card-subtle);
+    border: 1px solid var(--surface-card-border);
+    border-radius: var(--radius-md);
+    padding: 12px 14px;
+    margin-top: 8px;
+  }
+  .sub-field-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .select-input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 8px 12px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--surface-card-border);
+    background: var(--surface-card);
+    color: var(--text-primary);
+    font-size: 13px;
+    font-family: var(--font-family);
+    transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+    cursor: pointer;
+  }
+  .select-input:focus {
+    outline: none;
+    border-color: var(--brand-accent);
+    box-shadow: 0 0 0 3px rgba(33, 161, 247, 0.14);
   }
 
   /* Error */

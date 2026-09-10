@@ -54,11 +54,30 @@ function getSeedOrders() {
  */
 function getOrdersFilePath() {
   const nasOrdersFile = path.join(getOrdersVaultDir(), 'creative-orders.jsonl');
-  if (fs.existsSync(nasOrdersFile)) return nasOrdersFile;
+  if (fs.existsSync(nasOrdersFile)) {
+    // If the file exists but has no records (e.g. 0-3 bytes BOM), and legacy _Team/Orders file exists with content, copy it over!
+    try {
+      const stats = fs.statSync(nasOrdersFile);
+      if (stats.size <= 3 && config && config.WORKSPACE_ROOT) {
+        const wsTeamOrders = path.join(config.WORKSPACE_ROOT, '_Team', 'Orders', 'creative-orders.jsonl');
+        if (fs.existsSync(wsTeamOrders) && fs.statSync(wsTeamOrders).size > 3) {
+          fs.copyFileSync(wsTeamOrders, nasOrdersFile);
+        }
+      }
+    } catch (e) {}
+    return nasOrdersFile;
+  }
 
   if (config && config.WORKSPACE_ROOT) {
     const wsTeamOrders = path.join(config.WORKSPACE_ROOT, '_Team', 'Orders', 'creative-orders.jsonl');
-    if (fs.existsSync(wsTeamOrders)) return wsTeamOrders;
+    if (fs.existsSync(wsTeamOrders)) {
+      try {
+        fs.copyFileSync(wsTeamOrders, nasOrdersFile);
+        return nasOrdersFile;
+      } catch (e) {
+        return wsTeamOrders;
+      }
+    }
   }
 
   const localDir = path.join(__dirname, '..', 'data');
@@ -91,13 +110,17 @@ function readAllOrders() {
   }
 
   try {
-    const raw = fs.readFileSync(filePath, 'utf8');
+    const raw = fs.readFileSync(filePath, 'utf8').replace(/^\uFEFF/, '');
     const parsed = raw
       .split('\n')
+      .map(line => line.replace(/^\uFEFF/, '').trim())
       .filter(Boolean)
       .map(line => {
         try { return JSON.parse(line); }
-        catch { return null; }
+        catch (err) {
+          console.error('[OrderService] readAllOrders line parse error:', err.message);
+          return null;
+        }
       })
       .filter(Boolean);
 
@@ -325,7 +348,11 @@ function submitOrder(payload) {
     title,
     entity,
     priority,
+    channel,
     format,
+    customSize,
+    material,
+    materialType,
     copy,
     targetDate,
     attachmentNote,
@@ -344,13 +371,19 @@ function submitOrder(payload) {
 
   const id = generateOrderId();
   const nasPath = path.join(getOrdersVaultDir(), id);
+  const determinedChannel = channel || ((format && (format.startsWith('print_') || format === 'custom_print')) ? 'print' : 'digital');
+  const finalMaterial = material || materialType || '';
 
   const order = {
     id,
     title:          title.trim(),
     entity,
     priority,
+    channel:        determinedChannel,
     format,
+    customSize:     (customSize || '').trim(),
+    material:       finalMaterial,
+    materialType:   finalMaterial,
     copy:           copy.trim(),
     targetDate,
     attachmentNote: (attachmentNote || '').trim(),
@@ -381,7 +414,17 @@ function submitOrder(payload) {
     }
   }
 
-  return getOrder(id);
+  const fetched = getOrder(id);
+  if (fetched) return fetched;
+
+  // Fallback resilience: return order object directly with live attachments if getOrder is delayed
+  const liveAttachments = listOrderAttachments(id);
+  return {
+    ...order,
+    attachments: liveAttachments,
+    attachmentCount: liveAttachments.length,
+    nasPath
+  };
 }
 
 /**
@@ -393,10 +436,25 @@ function updateOrder(id, patch) {
   const idx    = orders.findIndex(o => o.id === id);
   if (idx === -1) throw new Error(`Order "${id}" not found.`);
 
-  const allowed = ['status', 'assignedTo', 'projectId', 'comments', 'internalNote', 'attachments'];
+  const allowed = [
+    'title', 'entity', 'priority', 'channel', 'format', 'customSize',
+    'material', 'materialType', 'copy', 'targetDate', 'attachmentNote',
+    'status', 'assignedTo', 'projectId', 'comments', 'internalNote', 'attachments'
+  ];
   const updated = { ...orders[idx], updatedAt: new Date().toISOString() };
   for (const key of allowed) {
-    if (patch[key] !== undefined) updated[key] = patch[key];
+    if (patch[key] !== undefined) {
+      if (typeof patch[key] === 'string' && (key === 'title' || key === 'copy' || key === 'customSize' || key === 'attachmentNote')) {
+        updated[key] = patch[key].trim();
+      } else {
+        updated[key] = patch[key];
+      }
+    }
+  }
+  if (patch.material !== undefined && patch.materialType === undefined) {
+    updated.materialType = patch.material;
+  } else if (patch.materialType !== undefined && patch.material === undefined) {
+    updated.material = patch.materialType;
   }
 
   orders[idx] = updated;
