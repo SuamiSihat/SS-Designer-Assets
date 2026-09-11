@@ -9,7 +9,8 @@
     "dev:client": "vite",
     "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
     "build:client": "vite build",
-    "test": "node server/test/run-tests.js"
+    "test:admin": "node server/test/admin-smoketest.js",
+    "test": "node server/test/run-tests.js && node server/test/admin-smoketest.js"
   },
   "dependencies": {
     "archiver": "^8.0.0",

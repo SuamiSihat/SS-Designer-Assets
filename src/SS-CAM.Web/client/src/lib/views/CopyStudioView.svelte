@@ -33,13 +33,13 @@
     const code = (selectedProject?.brand || 'SS').toUpperCase();
     switch (code) {
       case 'SSH':
-        return { code: 'SSH', name: 'SuamiSihat Health', initial: 'SSH', color: '#022057', handle: 'suamisihathealth' };
+        return { code: 'SSH', name: 'SuamiSihat Holding', initial: 'SSH', color: '#022057', handle: 'suamisihat' };
       case 'SSC':
-        return { code: 'SSC', name: 'SuamiSihat Clinic', initial: 'SSC', color: '#043388', handle: 'suamisihatclinic' };
+        return { code: 'SSC', name: 'SuamiSihat Healthcare & Clinic', initial: 'SSC', color: '#043388', handle: 'suamisihatclinic' };
       case 'SSW':
         return { code: 'SSW', name: 'SuamiSihat Wellness', initial: 'SSW', color: '#21A1F7', handle: 'suamisihatwellness' };
       case 'SSE':
-        return { code: 'SSE', name: 'SuamiSihat Ecommerce', initial: 'SSE', color: '#BD9A73', handle: 'suamisihatecom' };
+        return { code: 'SSE', name: 'SuamiSihat E-Commerce', initial: 'SSE', color: '#BD9A73', handle: 'suamisihatecom' };
       case 'SST':
         return { code: 'SST', name: 'SuamiSihat Technology', initial: 'SST', color: '#107C10', handle: 'suamisihattech' };
       default:

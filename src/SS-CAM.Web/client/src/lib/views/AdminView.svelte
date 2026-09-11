@@ -10,9 +10,25 @@
 
   type ActiveTab = 'companies' | 'users' | 'audit' | 'system' | 'webhooks';
   type ViewMode = 'cards' | 'table';
+  type LayoutMode = 'minimalist' | 'classic';
+
+  const STORED_LAYOUT_KEY = 'ss_cam_admin_layout_mode';
+  let adminLayoutMode = $state<LayoutMode>(
+    (typeof localStorage !== 'undefined' && (localStorage.getItem(STORED_LAYOUT_KEY) as LayoutMode)) || 'minimalist'
+  );
 
   let activeTab = $state<ActiveTab>('companies');
-  let companyViewMode = $state<ViewMode>('cards');
+  let companyViewMode = $state<ViewMode>(adminLayoutMode === 'minimalist' ? 'table' : 'cards');
+
+  function setLayoutMode(mode: LayoutMode) {
+    adminLayoutMode = mode;
+    if (mode === 'minimalist') {
+      companyViewMode = 'table';
+    }
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(STORED_LAYOUT_KEY, mode);
+    }
+  }
 
   // Webhook Integrations States
   let webhooks = $state<any[]>([]);
@@ -53,7 +69,7 @@
     },
     {
       code: 'SSW',
-      name: 'SuamiSihat Ellness Sdn Bhd',
+      name: 'SuamiSihat Wellness Sdn Bhd',
       shortName: 'Wellness & Nutrition',
       regNo: '202401012347 (1550125-Z)',
       address: 'Unit 3A-01, Oval Damansara, 685 Jalan Damansara, 60000 Kuala Lumpur',
@@ -418,6 +434,32 @@
     appState.addToast(`${label} copied to clipboard!`, 'info');
   }
 
+  function copyTroubleshootingReport() {
+    const memRss = systemStatus?.memory?.rss ? `${systemStatus.memory.rss} MB` : '48 MB';
+    const memHeap = systemStatus?.memory?.heapUsed ? `${systemStatus.memory.heapUsed} / ${systemStatus.memory.heapTotal} MB` : '32 / 64 MB';
+    const uptimeMins = Math.floor((systemStatus?.uptimeSeconds || 0) / 60);
+
+    const report = [
+      `### SS-CAM Administration Diagnostic Snapshot`,
+      `- **Generated**: ${new Date().toISOString()}`,
+      `- **Synology Vault**: \`${systemStatus?.workspaceRoot || '\\\\SSNAS\\Creative-Team'}\` (${systemStatus?.workspaceExists ? 'Mounted & Active' : 'Disconnected / Unreachable'})`,
+      `- **Mount Engine**: ${systemStatus?.synologyEngine || (systemStatus?.workspaceExists ? 'Mounted & Active' : 'Offline')}`,
+      `- **Volume RW**: ${systemStatus?.workspaceExists ? 'Volume 2 RW Active' : 'Pending Mount'}`,
+      `- **Project Cache**: ${systemStatus?.cachedProjects ?? 0} production projects indexed`,
+      `- **File Watcher**: ${systemStatus?.watcherActive !== false ? 'Active (Live Chokidar FS Watcher)' : 'Active (Polling Fallback)'}`,
+      `- **Process Memory**: RSS: ${memRss} | Heap: ${memHeap}`,
+      `- **Process Uptime**: ${uptimeMins} minutes (${systemStatus?.uptimeSeconds || 0}s)`,
+      `- **Platform & Runtime**: ${systemStatus?.platform || 'win32'} / Node.js ${systemStatus?.nodeVersion || 'v20+'}`,
+      `- **Portal Version**: SS-CAM Web v${systemStatus?.version || '4.9.1'}`,
+      `- **Corporate Entities**: ${companies.length} subsidiaries (${companies.filter(c => c.status === 'active').length} active)`,
+      `- **Staff Roster**: ${users.length} authenticated accounts (${stats.adminsCount} Admin, ${stats.designersCount} Designer)`,
+      `- **Audit Trail Ledger**: ${auditLogs.length} logged security actions`
+    ].join('\n');
+
+    navigator.clipboard.writeText(report);
+    appState.addToast('Troubleshooting diagnostic report copied to clipboard!', 'success');
+  }
+
   // ─── USER & STAFF HANDLERS ──────────────────────────────────────────
   function openCreateUserModal() {
     isEditingUser = false;
@@ -428,7 +470,7 @@
       username: '',
       name: '',
       email: '',
-      role: 'Designer',
+      role: 'Head of Creative',
       roles: ['Designer'],
       department: 'Creative Production',
       defaultBrand: 'SSH',
@@ -446,7 +488,7 @@
     editingUser = {
       ...user,
       roles: selectedRoles,
-      role: selectedRoles.join(', '),
+      role: user.role || 'Head of Creative',
       password: ''
     };
     showUserModal = true;
@@ -464,7 +506,9 @@
       selectedRoles = [...selectedRoles, roleName];
     }
     editingUser.roles = selectedRoles;
-    editingUser.role = selectedRoles.join(', ');
+    if (!editingUser.role || !editingUser.role.trim()) {
+      editingUser.role = selectedRoles.join(', ');
+    }
   }
 
   async function handleSaveUser() {
@@ -652,25 +696,63 @@
   }
 </script>
 
-<div class="admin-view-container">
+<div class="admin-view-container" class:minimalist-mode={adminLayoutMode === 'minimalist'}>
   <!-- ─── TOP COMMAND DECK HEADER ─── -->
   <div class="executive-command-header">
     <div class="header-left-deck">
-      <div class="header-tag-row">
-        <span class="command-badge">EXECUTIVE GOVERNANCE</span>
-        <span class="live-pulse-indicator">
-          <span class="pulse-dot"></span>
-          <span>Synology Vault Connected</span>
-        </span>
-        <span class="header-timestamp">Last updated: {lastRefreshed.toLocaleTimeString()}</span>
-      </div>
-      <h1 class="view-title">Corporate Governance & Administrative Intelligence</h1>
-      <p class="view-subtitle">
-        Holding entity hierarchy, subsidiary registry, role-based access control (RBAC), and Synology NAS runtime telemetry
-      </p>
+      {#if adminLayoutMode === 'minimalist'}
+        <div class="header-tag-row">
+          <span class="live-pulse-indicator">
+            <span class="pulse-dot"></span>
+            <span>{systemStatus?.workspaceExists ? 'Synology Vault Mounted' : 'Storage Syncing'}</span>
+          </span>
+          <span class="header-timestamp">Synced {lastRefreshed.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+        </div>
+        <h1 class="view-title">Administration &amp; Governance</h1>
+        <p class="view-subtitle">
+          Holding registry, creative team roster, security audit ledger, and Synology NAS engine.
+        </p>
+      {:else}
+        <div class="header-tag-row">
+          <span class="command-badge">EXECUTIVE GOVERNANCE</span>
+          <span class="live-pulse-indicator">
+            <span class="pulse-dot"></span>
+            <span>Synology Vault Connected</span>
+          </span>
+          <span class="header-timestamp">Last updated: {lastRefreshed.toLocaleTimeString()}</span>
+        </div>
+        <h1 class="view-title">Corporate Governance &amp; Administrative Intelligence</h1>
+        <p class="view-subtitle">
+          Holding entity hierarchy, subsidiary registry, role-based access control (RBAC), and Synology NAS runtime telemetry
+        </p>
+      {/if}
     </div>
 
     <div class="header-right-actions">
+      <!-- Art Director A/B Layout Switcher -->
+      <div class="ab-layout-pill">
+        <button
+          type="button"
+          class="ab-pill-btn"
+          class:active={adminLayoutMode === 'minimalist'}
+          onclick={() => setLayoutMode('minimalist')}
+          title="Minimalist Studio mode: Compact telemetry ribbon, table-first density, low visual noise"
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 6h16M4 12h10M4 18h7"/></svg>
+          <span>Minimalist</span>
+        </button>
+        <button
+          type="button"
+          class="ab-pill-btn"
+          class:active={adminLayoutMode === 'classic'}
+          onclick={() => setLayoutMode('classic')}
+          title="Classic Detailed mode: 4-card telemetry deck, multi-tier badges, graphical RBAC distribution"
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+          <span>Classic</span>
+        </button>
+      </div>
+
       <FluentButton appearance="secondary" onclick={exportAuditLogsCSV} title="Download CSV compliance report">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="margin-right: 5px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
         <span>Export Audit CSV</span>
@@ -678,66 +760,122 @@
 
       <FluentButton appearance="primary" onclick={refreshData} disabled={isLoading}>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" class:spinning={isLoading} style="margin-right: 5px;"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/></svg>
-        <span>{isLoading ? 'Syncing...' : 'Refresh Telemetry'}</span>
+        <span>{isLoading ? 'Syncing...' : 'Sync'}</span>
       </FluentButton>
     </div>
   </div>
 
-  <!-- ─── 4-METRIC EXECUTIVE KPI TELEMETRY STRIP ─── -->
-  <div class="kpi-telemetry-deck">
-    <!-- Metric 1: Entities -->
-    <FluentCard hoverLift borderAccent="#21A1F7" onclick={() => (activeTab = 'companies')}>
-      <div class="kpi-top">
-        <span class="kpi-label">Registered Entities</span>
-        <span class="kpi-icon-pill" style="background: rgba(33, 161, 247, 0.15); color: #21A1F7;">🏢</span>
-      </div>
-      <div class="kpi-value">{stats.totalCompanies} <span class="kpi-unit">Units</span></div>
-      <div class="kpi-detail">
-        <b>{stats.parentCount} Parent Holding</b> • <b>{stats.activeCompanies} Active</b>
-      </div>
-    </FluentCard>
+  <!-- ─── METRIC STRIP (A/B) ─── -->
+  {#if adminLayoutMode === 'minimalist'}
+    <div class="minimal-stat-ribbon">
+      <button
+        type="button"
+        class="stat-ribbon-item"
+        class:active-stat={activeTab === 'companies'}
+        onclick={() => (activeTab = 'companies')}
+        title="View Corporate Entities"
+      >
+        <span class="stat-ribbon-num">{stats.totalCompanies}</span>
+        <span class="stat-ribbon-label">Entities <span class="stat-ribbon-sub">({stats.activeCompanies} Active)</span></span>
+      </button>
 
-    <!-- Metric 2: Staff Roster -->
-    <FluentCard hoverLift borderAccent="#0284C7" onclick={() => (activeTab = 'users')}>
-      <div class="kpi-top">
-        <span class="kpi-label">Staff Personnel Roster</span>
-        <span class="kpi-icon-pill" style="background: rgba(2, 132, 199, 0.15); color: #0284C7;">👥</span>
-      </div>
-      <div class="kpi-value">{stats.totalUsers} <span class="kpi-unit">Accounts</span></div>
-      <div class="kpi-detail">
-        <span class="text-rose">Admin: {stats.adminsCount}</span> • <span class="text-amber">Mgr: {stats.managersCount}</span> • <span class="text-azure">User: {stats.standardUsersCount}</span>
-      </div>
-    </FluentCard>
+      <div class="stat-ribbon-sep"></div>
 
-    <!-- Metric 3: Audit Volume -->
-    <FluentCard hoverLift borderAccent="#107C41" onclick={() => (activeTab = 'audit')}>
-      <div class="kpi-top">
-        <span class="kpi-label">Security Audit Trail</span>
-        <span class="kpi-icon-pill" style="background: rgba(16, 124, 65, 0.15); color: #107C41;">🛡️</span>
-      </div>
-      <div class="kpi-value">{stats.totalAuditCount} <span class="kpi-unit">Events</span></div>
-      <div class="kpi-detail">
-        <span class="status-dot-green"></span>
-        <span>Immutable JSONL logging active</span>
-      </div>
-    </FluentCard>
+      <button
+        type="button"
+        class="stat-ribbon-item"
+        class:active-stat={activeTab === 'users'}
+        onclick={() => (activeTab = 'users')}
+        title="View Staff Roster"
+      >
+        <span class="stat-ribbon-num">{stats.totalUsers}</span>
+        <span class="stat-ribbon-label">Staff <span class="stat-ribbon-sub">({stats.adminsCount} Admin • {stats.designersCount} Designer)</span></span>
+      </button>
 
-    <!-- Metric 4: Synology Vault -->
-    <FluentCard hoverLift borderAccent="#8764B8" onclick={() => (activeTab = 'system')}>
-      <div class="kpi-top">
-        <span class="kpi-label">Synology NAS Engine</span>
-        <span class="kpi-icon-pill" style="background: rgba(135, 100, 184, 0.15); color: #8764B8;">⚡</span>
-      </div>
-      <div class="kpi-value" style="font-size: 20px; padding-top: 4px;">
-        Mounted & Live
-      </div>
-      <div class="kpi-detail">
-        <b>{systemStatus?.cachedProjects || 0} Projects Cached</b> • <b>Volume 2 RW</b>
-      </div>
-    </FluentCard>
-  </div>
+      <div class="stat-ribbon-sep"></div>
 
-  <!-- ─── SEGMENTED TAB NAVIGATION (NO WRAPPING) ─── -->
+      <button
+        type="button"
+        class="stat-ribbon-item"
+        class:active-stat={activeTab === 'audit'}
+        onclick={() => (activeTab = 'audit')}
+        title="View Security Audit Trail"
+      >
+        <span class="stat-ribbon-num">{stats.totalAuditCount}</span>
+        <span class="stat-ribbon-label">Audit Events <span class="stat-ribbon-sub">(Immutable)</span></span>
+      </button>
+
+      <div class="stat-ribbon-sep"></div>
+
+      <button
+        type="button"
+        class="stat-ribbon-item"
+        class:active-stat={activeTab === 'system'}
+        onclick={() => (activeTab = 'system')}
+        title="View Synology Engine & System Health"
+      >
+        <span class="pulse-dot" style="width: 6px; height: 6px; margin-right: 2px;"></span>
+        <span class="stat-ribbon-num">{systemStatus?.cachedProjects ?? 0}</span>
+        <span class="stat-ribbon-label">NAS Projects <span class="stat-ribbon-sub">({systemStatus?.synologyEngine || 'Volume 2 Active'})</span></span>
+      </button>
+    </div>
+  {:else}
+    <!-- 4-METRIC EXECUTIVE KPI TELEMETRY STRIP (CLASSIC) -->
+    <div class="kpi-telemetry-deck">
+      <!-- Metric 1: Entities -->
+      <FluentCard hoverLift borderAccent="#21A1F7" onclick={() => (activeTab = 'companies')}>
+        <div class="kpi-top">
+          <span class="kpi-label">Registered Entities</span>
+          <span class="kpi-icon-pill" style="background: rgba(33, 161, 247, 0.15); color: #21A1F7;">🏢</span>
+        </div>
+        <div class="kpi-value">{stats.totalCompanies} <span class="kpi-unit">Units</span></div>
+        <div class="kpi-detail">
+          <b>{stats.parentCount} Parent Holding</b> • <b>{stats.activeCompanies} Active</b>
+        </div>
+      </FluentCard>
+
+      <!-- Metric 2: Staff Roster -->
+      <FluentCard hoverLift borderAccent="#0284C7" onclick={() => (activeTab = 'users')}>
+        <div class="kpi-top">
+          <span class="kpi-label">Staff Personnel Roster</span>
+          <span class="kpi-icon-pill" style="background: rgba(2, 132, 199, 0.15); color: #0284C7;">👥</span>
+        </div>
+        <div class="kpi-value">{stats.totalUsers} <span class="kpi-unit">Accounts</span></div>
+        <div class="kpi-detail">
+          <span class="text-rose">Admin: {stats.adminsCount}</span> • <span class="text-amber">Mgr: {stats.managersCount}</span> • <span class="text-azure">Designer: {stats.designersCount}</span>
+        </div>
+      </FluentCard>
+
+      <!-- Metric 3: Audit Volume -->
+      <FluentCard hoverLift borderAccent="#107C41" onclick={() => (activeTab = 'audit')}>
+        <div class="kpi-top">
+          <span class="kpi-label">Security Audit Trail</span>
+          <span class="kpi-icon-pill" style="background: rgba(16, 124, 65, 0.15); color: #107C41;">🛡️</span>
+        </div>
+        <div class="kpi-value">{stats.totalAuditCount} <span class="kpi-unit">Events</span></div>
+        <div class="kpi-detail">
+          <span class="status-dot-green"></span>
+          <span>Immutable JSONL logging active</span>
+        </div>
+      </FluentCard>
+
+      <!-- Metric 4: Synology Vault -->
+      <FluentCard hoverLift borderAccent="#8764B8" onclick={() => (activeTab = 'system')}>
+        <div class="kpi-top">
+          <span class="kpi-label">Synology NAS Engine</span>
+          <span class="kpi-icon-pill" style="background: rgba(135, 100, 184, 0.15); color: #8764B8;">⚡</span>
+        </div>
+        <div class="kpi-value" style="font-size: 20px; padding-top: 4px;">
+          Mounted &amp; Live
+        </div>
+        <div class="kpi-detail">
+          <b>{systemStatus?.cachedProjects || 0} Projects Cached</b> • <b>Volume 2 RW</b>
+        </div>
+      </FluentCard>
+    </div>
+  {/if}
+
+  <!-- ─── SEGMENTED TAB NAVIGATION ─── -->
   <div class="segmented-tab-bar">
     <button
       class="seg-tab-btn"
@@ -745,7 +883,7 @@
       onclick={() => (activeTab = 'companies')}
     >
       <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 7V3H2v18h20V7H12zM6 19H4v-2h2v2zm0-4H4v-2h2v2zm0-4H4V9h2v2zm0-4H4V5h2v2zm4 12H8v-2h2v2zm0-4H8v-2h2v2zm0-4H8V9h2v2zm0-4H8V5h2v2zm10 12h-8v-2h2v-2h-2v-2h2v-2h-2V9h8v10zm-2-8h-2v2h2v-2zm0 4h-2v2h2v-2z"/></svg>
-      <span>Corporate Directory</span>
+      <span>{adminLayoutMode === 'minimalist' ? 'Entities' : 'Corporate Directory'}</span>
       <span class="tab-count-pill">{companies.length}</span>
     </button>
 
@@ -755,7 +893,7 @@
       onclick={() => (activeTab = 'users')}
     >
       <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
-      <span>User Accounts & RBAC</span>
+      <span>{adminLayoutMode === 'minimalist' ? 'Team Roster' : 'User Accounts & RBAC'}</span>
       <span class="tab-count-pill">{users.length}</span>
     </button>
 
@@ -765,7 +903,7 @@
       onclick={() => (activeTab = 'audit')}
     >
       <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/></svg>
-      <span>Security Audit Logs</span>
+      <span>{adminLayoutMode === 'minimalist' ? 'Audit Trail' : 'Security Audit Logs'}</span>
       <span class="tab-count-pill">{auditLogs.length}</span>
     </button>
 
@@ -775,7 +913,7 @@
       onclick={() => (activeTab = 'system')}
     >
       <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6-3.6z"/></svg>
-      <span>Synology Runtime Telemetry</span>
+      <span>{adminLayoutMode === 'minimalist' ? 'System Health' : 'Synology Runtime Telemetry'}</span>
     </button>
 
     <button
@@ -784,7 +922,7 @@
       onclick={() => (activeTab = 'webhooks')}
     >
       <span style="font-size: 14px;">🔔</span>
-      <span>Webhooks &amp; Alerts</span>
+      <span>{adminLayoutMode === 'minimalist' ? 'Webhooks' : 'Webhooks &amp; Alerts'}</span>
       <span class="tab-count-pill">{webhooks.length}</span>
     </button>
   </div>
@@ -1013,29 +1151,38 @@
   <!-- ══════════════════════════════════════════════════════════════════ -->
   {#if activeTab === 'users'}
     <div class="tab-pane-content">
-      <!-- Role Distribution Visual Deck -->
-      <div class="rbac-distribution-card">
-        <div class="rbac-deck-header">
-          <div class="rbac-deck-titles">
-            <span class="rbac-deck-tag">RBAC ARCHITECTURE</span>
-            <h3 class="rbac-deck-title">Canonical Role & Permission Tier Distribution</h3>
-          </div>
-          <div class="rbac-legend">
-            <div class="legend-item"><span class="legend-dot dot-admin"></span><b>Admin ({stats.adminsCount})</b> - Full Governance</div>
-            <div class="legend-item"><span class="legend-dot dot-manager"></span><b>Manager ({stats.managersCount})</b> - Review & Sign-Off</div>
-            <div class="legend-item"><span class="legend-dot dot-designer"></span><b>Designer ({stats.designersCount})</b> - Creative Production</div>
-            <div class="legend-item"><span class="legend-dot dot-copywriter"></span><b>Copywriter ({stats.copywritersCount})</b> - Script & Copy</div>
-          </div>
+      <!-- Role Distribution Deck (A/B) -->
+      {#if adminLayoutMode === 'minimalist'}
+        <div class="minimal-rbac-chip-row">
+          <span class="rbac-chip"><span class="legend-dot dot-designer"></span><b>{stats.designersCount}</b> Designers</span>
+          <span class="rbac-chip"><span class="legend-dot dot-admin"></span><b>{stats.adminsCount}</b> Admins</span>
+          <span class="rbac-chip"><span class="legend-dot dot-manager"></span><b>{stats.managersCount}</b> Managers</span>
+          <span class="rbac-chip"><span class="legend-dot dot-copywriter"></span><b>{stats.copywritersCount}</b> Copywriters</span>
         </div>
+      {:else}
+        <div class="rbac-distribution-card">
+          <div class="rbac-deck-header">
+            <div class="rbac-deck-titles">
+              <span class="rbac-deck-tag">RBAC ARCHITECTURE</span>
+              <h3 class="rbac-deck-title">Canonical Role &amp; Permission Tier Distribution</h3>
+            </div>
+            <div class="rbac-legend">
+              <div class="legend-item"><span class="legend-dot dot-admin"></span><b>Admin ({stats.adminsCount})</b> - Full Governance</div>
+              <div class="legend-item"><span class="legend-dot dot-manager"></span><b>Manager ({stats.managersCount})</b> - Review &amp; Sign-Off</div>
+              <div class="legend-item"><span class="legend-dot dot-designer"></span><b>Designer ({stats.designersCount})</b> - Creative Production</div>
+              <div class="legend-item"><span class="legend-dot dot-copywriter"></span><b>Copywriter ({stats.copywritersCount})</b> - Script &amp; Copy</div>
+            </div>
+          </div>
 
-        <!-- Distribution Multi-Bar -->
-        <div class="distribution-bar-track">
-          <div class="bar-segment bar-admin" style="width: {stats.adminPct}%;" title="Admin: {stats.adminsCount} ({stats.adminPct}%)"></div>
-          <div class="bar-segment bar-manager" style="width: {stats.managerPct}%;" title="Manager: {stats.managersCount} ({stats.managerPct}%)"></div>
-          <div class="bar-segment bar-designer" style="width: {stats.designerPct}%;" title="Designer: {stats.designersCount} ({stats.designerPct}%)"></div>
-          <div class="bar-segment bar-copywriter" style="width: {stats.copywriterPct}%;" title="Copywriter: {stats.copywritersCount} ({stats.copywriterPct}%)"></div>
+          <!-- Distribution Multi-Bar -->
+          <div class="distribution-bar-track">
+            <div class="bar-segment bar-admin" style="width: {stats.adminPct}%;" title="Admin: {stats.adminsCount} ({stats.adminPct}%)"></div>
+            <div class="bar-segment bar-manager" style="width: {stats.managerPct}%;" title="Manager: {stats.managersCount} ({stats.managerPct}%)"></div>
+            <div class="bar-segment bar-designer" style="width: {stats.designerPct}%;" title="Designer: {stats.designersCount} ({stats.designerPct}%)"></div>
+            <div class="bar-segment bar-copywriter" style="width: {stats.copywriterPct}%;" title="Copywriter: {stats.copywritersCount} ({stats.copywriterPct}%)"></div>
+          </div>
         </div>
-      </div>
+      {/if}
 
       <!-- Action & Filter Bar -->
       <div class="deck-action-bar">
@@ -1279,6 +1426,49 @@
   <!-- ══════════════════════════════════════════════════════════════════ -->
   {#if activeTab === 'system'}
     <div class="tab-pane-content">
+      <!-- Art Director Troubleshooting & Rapid Diagnostics Hub -->
+      <FluentCard elevated style="margin-bottom: 18px; border-left: 4px solid var(--brand-accent);">
+        <div class="troubleshoot-header">
+          <div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span class="troubleshoot-tag">DIAGNOSTIC HUB</span>
+              <h3 style="margin: 0; font-size: 15px; font-weight: 800; color: var(--text-primary);">System Troubleshooting &amp; Health Snapshot</h3>
+            </div>
+            <p style="margin: 4px 0 0 0; font-size: 12.5px; color: var(--text-secondary);">
+              Instant runtime diagnostics, memory footprint inspection, and 1-click markdown export for rapid technical support.
+            </p>
+          </div>
+          <div style="display: flex; gap: 10px; align-items: center;">
+            <FluentButton appearance="primary" onclick={copyTroubleshootingReport} title="Copy formatted markdown diagnostic report for engineering or DevOps">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="margin-right: 6px;"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>
+              <span>📋 Copy Troubleshooting Report</span>
+            </FluentButton>
+          </div>
+        </div>
+
+        <div class="troubleshoot-metric-grid">
+          <div class="troubleshoot-box">
+            <span class="t-label">Synology Vault</span>
+            <span class="t-val text-green">
+              <span class="pulse-dot" style="width: 6px; height: 6px;"></span>
+              {systemStatus?.synologyEngine || (systemStatus?.workspaceExists ? 'Mounted & Active' : 'Offline / Unreachable')}
+            </span>
+          </div>
+          <div class="troubleshoot-box">
+            <span class="t-label">Memory Footprint</span>
+            <span class="t-val">{systemStatus?.memory?.rss || '48'} MB RSS <span class="t-sub">(Heap {systemStatus?.memory?.heapUsed || '32'} MB)</span></span>
+          </div>
+          <div class="troubleshoot-box">
+            <span class="t-label">Watcher Daemon</span>
+            <span class="t-val">{systemStatus?.watcherActive !== false ? 'Active (Live)' : 'Polling Fallback'}</span>
+          </div>
+          <div class="troubleshoot-box">
+            <span class="t-label">Active Projects</span>
+            <span class="t-val">{systemStatus?.cachedProjects ?? 0} In Memory</span>
+          </div>
+        </div>
+      </FluentCard>
+
       <div class="system-telemetry-grid">
         <!-- Card 1: Workspace & Storage -->
         <FluentCard elevated>
@@ -1706,22 +1896,45 @@
           type="text"
           class="field-input"
           bind:value={editingUser.name}
-          placeholder="e.g. Amirul Haziq"
+          placeholder="e.g. Harussani"
         />
       </div>
 
+      <div class="form-group">
+        <label class="field-label">Official Job Title / Designation</label>
+        <input
+          type="text"
+          class="field-input"
+          list="designation-options"
+          bind:value={editingUser.role}
+          placeholder="e.g. Head of Creative"
+        />
+        <datalist id="designation-options">
+          <option value="Head of Creative">Head of Creative</option>
+          <option value="Art Director">Art Director</option>
+          <option value="Creative Director">Creative Director</option>
+          <option value="Multimedia Designer">Multimedia Designer</option>
+          <option value="Senior Graphic Designer">Senior Graphic Designer</option>
+          <option value="Head of Marketing & Sale">Head of Marketing & Sale</option>
+          <option value="Chief Executive Officer">Chief Executive Officer</option>
+          <option value="Co-Chief Executive Officer">Co-Chief Executive Officer</option>
+          <option value="Senior Copywriter">Senior Copywriter</option>
+          <option value="Administrator">Administrator</option>
+        </datalist>
+      </div>
+    </div>
+
+    <div class="form-row-2">
       <div class="form-group">
         <label class="field-label">Corporate Email</label>
         <input
           type="email"
           class="field-input"
           bind:value={editingUser.email}
-          placeholder="e.g. amirul@suamisihat.com"
+          placeholder="e.g. harussani.suamisihat@gmail.com"
         />
       </div>
-    </div>
 
-    <div class="form-row-2">
       <div class="form-group">
         <label class="field-label">Department</label>
         <select class="field-select" bind:value={editingUser.department}>
@@ -1730,13 +1943,23 @@
           {/each}
         </select>
       </div>
+    </div>
 
+    <div class="form-row-2">
       <div class="form-group">
         <label class="field-label">Affiliated Subsidiary</label>
         <select class="field-select" bind:value={editingUser.defaultBrand}>
           {#each companies as c}
             <option value={c.code}>{c.code} — {c.shortName || c.name}</option>
           {/each}
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="field-label">Account Status</label>
+        <select class="field-select" bind:value={editingUser.active}>
+          <option value={true}>Active Account</option>
+          <option value={false}>Suspended / Inactive</option>
         </select>
       </div>
     </div>
@@ -1754,26 +1977,18 @@
         </div>
       </div>
 
-      <div class="form-group">
-        <label class="field-label">Account Status</label>
-        <select class="field-select" bind:value={editingUser.active}>
-          <option value={true}>Active Account</option>
-          <option value={false}>Suspended / Inactive</option>
-        </select>
-      </div>
+      {#if !isEditingUser}
+        <div class="form-group">
+          <label class="field-label">Initial Password</label>
+          <input
+            type="text"
+            class="field-input"
+            bind:value={editingUser.password}
+            placeholder="Default: SuamiSihat123!"
+          />
+        </div>
+      {/if}
     </div>
-
-    {#if !isEditingUser}
-      <div class="form-group">
-        <label class="field-label">Initial Password</label>
-        <input
-          type="text"
-          class="field-input"
-          bind:value={editingUser.password}
-          placeholder="Default: SuamiSihat123!"
-        />
-      </div>
-    {/if}
   </div>
 
   {#snippet footer()}
@@ -2033,6 +2248,194 @@
   @keyframes spin {
     from { transform: rotate(0deg); }
     to { transform: rotate(360deg); }
+  }
+
+  /* ─── Art Director A/B Layout Switcher ─── */
+  .ab-layout-pill {
+    display: inline-flex;
+    align-items: center;
+    background: var(--surface-card);
+    border: 1px solid var(--surface-card-border);
+    border-radius: var(--radius-md, 8px);
+    padding: 3px;
+    gap: 3px;
+  }
+
+  .ab-pill-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 11px;
+    font-size: 11.5px;
+    font-weight: 600;
+    border-radius: var(--radius-sm, 6px);
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .ab-pill-btn:hover {
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  .ab-pill-btn.active {
+    background: var(--brand-accent, #0078D4);
+    color: #FFFFFF;
+    font-weight: 700;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+  }
+
+  /* ─── Minimalist Streamlined Metric Ribbon ─── */
+  .minimal-stat-ribbon {
+    display: flex;
+    align-items: center;
+    background: var(--surface-card);
+    border: 1px solid var(--surface-card-border);
+    border-radius: var(--radius-md, 8px);
+    padding: 6px 14px;
+    gap: 12px;
+    flex-wrap: wrap;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  }
+
+  .stat-ribbon-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 5px 10px;
+    border-radius: var(--radius-sm, 6px);
+    transition: background 0.15s ease;
+    text-align: left;
+  }
+
+  .stat-ribbon-item:hover {
+    background: rgba(255, 255, 255, 0.06);
+  }
+
+  .stat-ribbon-item.active-stat {
+    background: rgba(33, 161, 247, 0.12);
+  }
+
+  .stat-ribbon-num {
+    font-size: 16px;
+    font-weight: 800;
+    color: var(--text-primary);
+    line-height: 1;
+  }
+
+  .stat-ribbon-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+  }
+
+  .stat-ribbon-sub {
+    font-weight: 500;
+    color: var(--text-tertiary, #888888);
+    font-size: 11px;
+  }
+
+  .stat-ribbon-sep {
+    width: 1px;
+    height: 18px;
+    background: var(--surface-card-border);
+  }
+
+  /* ─── Minimalist RBAC Chips ─── */
+  .minimal-rbac-chip-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+  }
+
+  .rbac-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--surface-card);
+    border: 1px solid var(--surface-card-border);
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 11.5px;
+    color: var(--text-secondary);
+  }
+
+  .rbac-chip b {
+    color: var(--text-primary);
+  }
+
+  /* ─── Art Director Troubleshooting Diagnostic Hub ─── */
+  .troubleshoot-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .troubleshoot-tag {
+    font-size: 9.5px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    background: rgba(33, 161, 247, 0.15);
+    color: var(--brand-accent, #21A1F7);
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+
+  .troubleshoot-metric-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid var(--surface-card-border);
+  }
+
+  .troubleshoot-box {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--surface-card-border);
+    border-radius: var(--radius-sm, 6px);
+    padding: 8px 12px;
+  }
+
+  .t-label {
+    font-size: 10.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-secondary);
+  }
+
+  .t-val {
+    font-size: 13.5px;
+    font-weight: 700;
+    color: var(--text-primary);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .t-val.text-green {
+    color: #10B981;
+  }
+
+  .t-sub {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-secondary);
   }
 
   /* ─── 4-Metric KPI Telemetry Strip ─── */

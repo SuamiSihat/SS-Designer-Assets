@@ -87,8 +87,8 @@
   <!-- View Header & View Switcher -->
   <div class="view-header">
     <div class="header-titles">
-      <h1 class="view-title">Project Manager</h1>
-      <p class="view-subtitle">Coordinate creative campaigns, Kanban pipelines, Gantt timelines, and production schedules</p>
+      <h1 class="view-title">Project Catalog</h1>
+      <p class="view-subtitle">Browse workspace creative assets, campaign folders, briefs, and production schedules</p>
     </div>
 
     <!-- View Controls & Default Action -->
@@ -163,7 +163,7 @@
 
       <!-- Save Default View Action Button -->
       {#if viewMode === defaultView}
-        <div class="default-view-badge" title="This view is set as your default opening view for Project Manager">
+        <div class="default-view-badge" title="This view is set as your default opening view for Project Catalog">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
           <span>Default View</span>
         </div>

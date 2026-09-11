@@ -167,8 +167,8 @@
         <span class="badge-accent">Synology Vault</span>
         <span class="header-meta">{projectStore.deliverables.length} Master Outputs</span>
       </div>
-      <h1 class="view-title">Deliverables &amp; Assets</h1>
-      <p class="view-subtitle">Inspect, approve, and manage creative outputs across campaign projects in real time.</p>
+      <h1 class="view-title">Deliverables &amp; Reviews</h1>
+      <p class="view-subtitle">Inspect, approve, and sign off creative outputs across marketing campaigns in real time.</p>
     </div>
 
     <div class="header-actions">

@@ -11,23 +11,23 @@
   }
 
   // Active Subsidiaries Configuration
-  // Represents SuamiSihat entities (Holding, Healthcare, Ellness, Ecommerce, Technology)
+  // Represents SuamiSihat entities (Holding, Healthcare, Wellness, E-Commerce, Technology)
   // Dynamically fetched from Company Manager API!
   let subsidiaryList = $state<any[]>([
     { code: 'SSH', name: 'SuamiSihat Holding Sdn Bhd' },
     { code: 'SSC', name: 'SuamiSihat Healthcare Sdn Bhd' },
-    { code: 'SSW', name: 'SuamiSihat Ellness Sdn Bhd' },
-    { code: 'SSE', name: 'SuamiSihat Ecommernce SDN BHD' },
-    { code: 'SST', name: 'SuamiSihat Technology sdn bhd' }
+    { code: 'SSW', name: 'SuamiSihat Wellness Sdn Bhd' },
+    { code: 'SSE', name: 'SuamiSihat E-Commerce Sdn Bhd' },
+    { code: 'SST', name: 'SuamiSihat Technology Sdn Bhd' }
   ]);
 
   const defaultStaffList: UserProfile[] = [
-    { username: 'harussani', name: 'Harussani', staffId: 'SS0004', role: 'Administrator' },
-    { username: 'haikal', name: 'Haikal', staffId: 'SS0035', role: 'Designer' },
-    { username: 'aliff', name: 'Aliff', staffId: 'SS0037', role: 'Designer' },
-    { username: 'raihan', name: 'Raihan', staffId: 'SS0073', role: 'Sales Manager' },
-    { username: 'hasan', name: 'Hasan', staffId: 'SS0001', role: 'Manager' },
-    { username: 'gaddafi', name: 'Gaddafi', staffId: 'SS0071', role: 'Manager' }
+    { username: 'harussani', name: 'Harussani', staffId: 'SS0004', role: 'Head of Creative' },
+    { username: 'haikal', name: 'Haikal', staffId: 'SS0035', role: 'Multimedia Designer' },
+    { username: 'aliff', name: 'Aliff', staffId: 'SS0037', role: 'Multimedia Designer' },
+    { username: 'raihan', name: 'Raihan', staffId: 'SS0073', role: 'Head of Marketing & Sale' },
+    { username: 'hasan', name: 'Hasan', staffId: 'SS0001', role: 'Chief Executive Officer' },
+    { username: 'gaddafi', name: 'Gaddafi', staffId: 'SS0071', role: 'Co-Chief Executive Officer' }
   ];
 
   let staffProfiles = $state<UserProfile[]>(defaultStaffList);

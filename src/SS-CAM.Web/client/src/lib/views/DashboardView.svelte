@@ -11,6 +11,7 @@
 
   type DashboardLens = 'studio' | 'my-workspace';
   let activeLens = $state<DashboardLens>('studio');
+  let showDeepAnalytics = $state<boolean>(false);
   let myNotifications = $state<ActivityNotification[]>([]);
   let isLoadingPersonal = $state<boolean>(false);
   let currentSecondTicker = $state<number>(0);
@@ -24,7 +25,7 @@
 
     tickerInterval = setInterval(() => {
       currentSecondTicker += 1;
-    }, 1000);
+    }, 5000);
 
     return () => {
       if (tickerInterval) clearInterval(tickerInterval);
@@ -44,11 +45,9 @@
     }
     const h = Math.floor(totalSec / 3600);
     const m = Math.floor((totalSec % 3600) / 60);
-    const s = totalSec % 60;
-    const hh = h.toString().padStart(2, '0');
-    const mm = m.toString().padStart(2, '0');
-    const ss = s.toString().padStart(2, '0');
-    return `${hh}:${mm}:${ss}`;
+    if (h > 0) return `${h}h ${m}m`;
+    if (m > 0) return `${m}m`;
+    return `${totalSec}s`;
   }
 
   async function handleTimeRangeChange(range: string) {
@@ -260,35 +259,23 @@
 
   <!-- ═══════════ STUDIO EXECUTIVE DECK LENS ═══════════ -->
   {#if activeLens === 'studio'}
-    <!-- Top 6-KPI Summary Strip -->
-    <div class="kpi-grid">
-      <FluentCard hoverLift borderAccent="#21A1F7" onclick={() => appState.navigate('projects')}>
-        <div class="kpi-label">Total Vault Assets</div>
-        <div class="kpi-value">{kpis.total}</div>
-        <div class="kpi-trend text-accent">Active Storage</div>
-      </FluentCard>
-
+    <!-- Top 4-KPI Commercial Summary Strip -->
+    <div class="kpi-grid commercial-pillars">
       <FluentCard hoverLift borderAccent="#0284C7" onclick={() => appState.navigate('projects', { status: 'in-progress' })}>
         <div class="kpi-label">Active in Production</div>
         <div class="kpi-value">{kpis.active}</div>
-        <div class="kpi-trend text-primary">In Pipeline</div>
+        <div class="kpi-trend text-primary">In Creative Pipeline</div>
       </FluentCard>
 
       <FluentCard hoverLift borderAccent="#D97706" onclick={() => appState.navigate('deliverables')}>
-        <div class="kpi-label">Review Queue</div>
-        <div class="kpi-value">{kpis.pendingReview}</div>
-        <div class="kpi-trend" style="color: #D97706;">Pending Sign-Off</div>
-      </FluentCard>
-
-      <FluentCard hoverLift borderAccent="#EF4444" onclick={() => appState.navigate('projects', { status: 'revision' })}>
-        <div class="kpi-label">Revision Required</div>
-        <div class="kpi-value">{kpis.revisionRequired}</div>
-        <div class="kpi-trend" style="color: #EF4444;">Needs Action</div>
+        <div class="kpi-label">Pending Sign-Off</div>
+        <div class="kpi-value" style="color: #D97706;">{kpis.pendingReview}</div>
+        <div class="kpi-trend" style="color: #D97706;">Awaiting Approval</div>
       </FluentCard>
 
       <FluentCard hoverLift borderAccent="#10B981" onclick={() => appState.navigate('projects', { status: 'approved' })}>
-        <div class="kpi-label">Approved & Done</div>
-        <div class="kpi-value">{kpis.completed}</div>
+        <div class="kpi-label">Approved &amp; Launch Ready</div>
+        <div class="kpi-value" style="color: #10B981;">{kpis.completed}</div>
         <div class="kpi-trend" style="color: #10B981;">Ready for Release</div>
       </FluentCard>
 
@@ -348,12 +335,12 @@
           <span class="livestream-pulse-ring" class:pulsing={appState.activeLiveTasks.length > 0}></span>
           <div>
             <div class="livestream-title-row">
-              <h2 class="livestream-title">Live Studio Workstream</h2>
+              <h2 class="livestream-title">Active Creative Sessions</h2>
               <span class="livestream-status-badge" class:active={appState.activeLiveTasks.length > 0}>
-                {appState.activeLiveTasks.length > 0 ? `${appState.activeLiveTasks.length} Workstation${appState.activeLiveTasks.length > 1 ? 's' : ''} Active` : 'All Stations Idle'}
+                {appState.activeLiveTasks.length > 0 ? `${appState.activeLiveTasks.length} Active` : 'All Stations Idle'}
               </span>
             </div>
-            <p class="livestream-subtitle">Real-time designer active sessions synced from desktop SS-CAM work clocks</p>
+            <p class="livestream-subtitle">Real-time designer focus and campaign production synced from desktop SS-CAM</p>
           </div>
         </div>
 
@@ -361,13 +348,13 @@
           <button
             class="refresh-stream-btn"
             onclick={() => appState.loadLiveTasks()}
-            title="Check workstation heartbeat"
+            title="Refresh studio status"
             aria-label="Refresh live tasks"
           >
             <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
               <path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/>
             </svg>
-            <span>Heartbeat</span>
+            <span>Sync</span>
           </button>
         </div>
       </div>
@@ -381,7 +368,7 @@
             </svg>
           </div>
           <div class="livestream-empty-text">
-            <strong>All Workstations Currently Idle</strong>
+            <strong>All Studio Workstations Currently Idle</strong>
             <span>When designers launch projects in desktop SS-CAM, active work sessions stream live here in real-time.</span>
           </div>
         </div>
@@ -398,7 +385,7 @@
                   </div>
                   <div class="designer-meta">
                     <span class="designer-name">{task.DesignerName || task.StaffId}</span>
-                    <span class="designer-workstation">{task.MachineName || 'Studio PC'}</span>
+                    <span class="designer-workstation">{task.Role || 'Creative Staff'}</span>
                   </div>
                 </div>
 
@@ -516,20 +503,8 @@
       </FluentCard>
     </div>
 
-    <!-- Two-Column Operational Grid: Radar & Workload -->
-    <div class="analytics-grid">
-      <!-- Left Column: Competency Radar -->
-      <FluentCard elevated>
-        <div class="card-section-header">
-          <div>
-            <h2>Art Director Skill Competency Matrix</h2>
-            <p>Multi-dimensional studio balance and design output readiness</p>
-          </div>
-        </div>
-        <DashboardRadar skills={slaData.competencySkills} />
-      </FluentCard>
-
-      <!-- Right Column: Designer Workload -->
+    <!-- Designer Production Load -->
+    <div class="workload-section" style="margin-bottom: 24px;">
       <FluentCard elevated>
         <div class="card-section-header">
           <div>
@@ -593,74 +568,111 @@
       </FluentCard>
     </div>
 
-    <!-- Operational SLA & Creative Velocity 4-Card Grid -->
-    <div class="sla-analytics-grid">
-      <FluentCard elevated>
-        <div class="sla-card-inner">
-          <div class="sla-icon-box" style="background: rgba(16, 185, 129, 0.12); color: #10B981;">
-            <FluentIcons name="checkCircle" size={20} color="#10B981" />
-          </div>
-          <div>
-            <div class="sla-meta-label">FIRST-TIME RIGHT RATE</div>
-            <div class="sla-value" style="color: #10B981;">
-              {slaData.firstTimeRightPercent !== null && slaData.firstTimeRightPercent !== undefined ? `${slaData.firstTimeRightPercent}%` : '—'}
-            </div>
-            <div class="sla-desc">Projects signed off with 0 revisions</div>
-          </div>
+    <!-- Collapsible Advanced Studio Telemetry & SLA Accordion -->
+    <div class="deep-analytics-accordion">
+      <button
+        type="button"
+        class="deep-analytics-toggle"
+        onclick={() => (showDeepAnalytics = !showDeepAnalytics)}
+        aria-expanded={showDeepAnalytics}
+      >
+        <div class="deep-toggle-left">
+          <FluentIcons name="chart" size={16} />
+          <span>Advanced Studio Telemetry &amp; SLA Metrics</span>
         </div>
-      </FluentCard>
+        <div class="deep-toggle-right">
+          <span class="deep-toggle-hint">{showDeepAnalytics ? 'Hide Advanced Metrics' : 'Show Competency Radar & 4 SLA Metrics'}</span>
+          <svg class="deep-chevron" class:open={showDeepAnalytics} width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M7 10l5 5 5-5z"/>
+          </svg>
+        </div>
+      </button>
 
-      <FluentCard elevated>
-        <div class="sla-card-inner">
-          <div class="sla-icon-box" style="background: rgba(4, 51, 136, 0.12); color: var(--brand-primary, #043388);">
-            <FluentIcons name="bolt" size={20} color="#00CFFF" />
+      {#if showDeepAnalytics}
+        <div class="deep-analytics-content">
+          <div class="radar-card-wrap" style="margin-bottom: 18px;">
+            <FluentCard elevated>
+              <div class="card-section-header">
+                <div>
+                  <h2>Art Director Skill Competency Matrix</h2>
+                  <p>Multi-dimensional studio balance and design output readiness</p>
+                </div>
+              </div>
+              <DashboardRadar skills={slaData.competencySkills} />
+            </FluentCard>
           </div>
-          <div>
-            <div class="sla-meta-label">AVG TURNAROUND VELOCITY</div>
-            <div class="sla-value">
-              {slaData.avgTurnaroundDays !== null && slaData.avgTurnaroundDays !== undefined ? `${slaData.avgTurnaroundDays} Days` : '—'}
-            </div>
-            <div class="sla-desc">
-              {#if slaData.medianTurnaroundDays !== null && slaData.medianTurnaroundDays !== undefined}
-                <span class="sla-stat-pill">p50: {slaData.medianTurnaroundDays}d</span>
-                <span class="sla-stat-pill">p90: {slaData.p90TurnaroundDays || slaData.avgTurnaroundDays}d</span>
-              {:else}
-                Brief kickoff to final approval
-              {/if}
-            </div>
-          </div>
-        </div>
-      </FluentCard>
 
-      <FluentCard elevated>
-        <div class="sla-card-inner">
-          <div class="sla-icon-box" style="background: rgba(217, 119, 6, 0.12); color: #D97706;">
-            <FluentIcons name="history" size={20} color="#D97706" />
-          </div>
-          <div>
-            <div class="sla-meta-label">AVG REVISION ROUNDS</div>
-            <div class="sla-value">
-              {slaData.avgRevisionCount !== null && slaData.avgRevisionCount !== undefined ? `${slaData.avgRevisionCount} Revs` : '—'}
-            </div>
-            <div class="sla-desc">Average iterations per completed project</div>
-          </div>
-        </div>
-      </FluentCard>
+          <!-- Operational SLA & Creative Velocity 4-Card Grid -->
+          <div class="sla-analytics-grid">
+            <FluentCard elevated>
+              <div class="sla-card-inner">
+                <div class="sla-icon-box" style="background: rgba(16, 185, 129, 0.12); color: #10B981;">
+                  <FluentIcons name="checkCircle" size={20} color="#10B981" />
+                </div>
+                <div>
+                  <div class="sla-meta-label">FIRST-TIME RIGHT RATE</div>
+                  <div class="sla-value" style="color: #10B981;">
+                    {slaData.firstTimeRightPercent !== null && slaData.firstTimeRightPercent !== undefined ? `${slaData.firstTimeRightPercent}%` : '—'}
+                  </div>
+                  <div class="sla-desc">Projects signed off with 0 revisions</div>
+                </div>
+              </div>
+            </FluentCard>
 
-      <FluentCard elevated>
-        <div class="sla-card-inner">
-          <div class="sla-icon-box" style="background: rgba(147, 51, 234, 0.12); color: #9333EA;">
-            <FluentIcons name="calendar" size={20} color="#9333EA" />
-          </div>
-          <div>
-            <div class="sla-meta-label">REVIEW QUEUE AGING</div>
-            <div class="sla-value" style="color: #9333EA;">
-              {slaData.avgReviewAgeDays || 0} Days
-            </div>
-            <div class="sla-desc">Average latency in review before sign-off</div>
+            <FluentCard elevated>
+              <div class="sla-card-inner">
+                <div class="sla-icon-box" style="background: rgba(4, 51, 136, 0.12); color: var(--brand-primary, #043388);">
+                  <FluentIcons name="bolt" size={20} color="#00CFFF" />
+                </div>
+                <div>
+                  <div class="sla-meta-label">AVG TURNAROUND VELOCITY</div>
+                  <div class="sla-value">
+                    {slaData.avgTurnaroundDays !== null && slaData.avgTurnaroundDays !== undefined ? `${slaData.avgTurnaroundDays} Days` : '—'}
+                  </div>
+                  <div class="sla-desc">
+                    {#if slaData.medianTurnaroundDays !== null && slaData.medianTurnaroundDays !== undefined}
+                      <span class="sla-stat-pill">p50: {slaData.medianTurnaroundDays}d</span>
+                      <span class="sla-stat-pill">p90: {slaData.p90TurnaroundDays || slaData.avgTurnaroundDays}d</span>
+                    {:else}
+                      Brief kickoff to final approval
+                    {/if}
+                  </div>
+                </div>
+              </div>
+            </FluentCard>
+
+            <FluentCard elevated>
+              <div class="sla-card-inner">
+                <div class="sla-icon-box" style="background: rgba(217, 119, 6, 0.12); color: #D97706;">
+                  <FluentIcons name="history" size={20} color="#D97706" />
+                </div>
+                <div>
+                  <div class="sla-meta-label">AVG REVISION ROUNDS</div>
+                  <div class="sla-value">
+                    {slaData.avgRevisionCount !== null && slaData.avgRevisionCount !== undefined ? `${slaData.avgRevisionCount} Revs` : '—'}
+                  </div>
+                  <div class="sla-desc">Average iterations per completed project</div>
+                </div>
+              </div>
+            </FluentCard>
+
+            <FluentCard elevated>
+              <div class="sla-card-inner">
+                <div class="sla-icon-box" style="background: rgba(147, 51, 234, 0.12); color: #9333EA;">
+                  <FluentIcons name="calendar" size={20} color="#9333EA" />
+                </div>
+                <div>
+                  <div class="sla-meta-label">REVIEW QUEUE AGING</div>
+                  <div class="sla-value" style="color: #9333EA;">
+                    {slaData.avgReviewAgeDays || 0} Days
+                  </div>
+                  <div class="sla-desc">Average latency in review before sign-off</div>
+                </div>
+              </div>
+            </FluentCard>
           </div>
         </div>
-      </FluentCard>
+      {/if}
     </div>
 
   <!-- ═══════════ MY WORKSPACE LENS ═══════════ -->
@@ -972,6 +984,10 @@
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
     gap: 14px;
+  }
+
+  .commercial-pillars {
+    grid-template-columns: repeat(4, 1fr);
   }
 
   .kpi-label {
@@ -1662,6 +1678,66 @@
     color: var(--text-secondary);
   }
 
+  /* Deep Analytics Accordion */
+  .deep-analytics-accordion {
+    margin-top: 18px;
+    border: 1px solid var(--surface-card-border, #E2E8F0);
+    border-radius: 8px;
+    background: var(--surface-card, #FFFFFF);
+    overflow: hidden;
+  }
+
+  .deep-analytics-toggle {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 18px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    transition: background 0.15s ease;
+  }
+
+  .deep-analytics-toggle:hover {
+    background: var(--surface-card-subtle, rgba(0,0,0,0.02));
+    color: var(--text-primary);
+  }
+
+  .deep-toggle-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .deep-toggle-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .deep-toggle-hint {
+    font-size: 11px;
+    color: var(--text-tertiary, #94A3B8);
+  }
+
+  .deep-chevron {
+    transition: transform 0.2s ease;
+  }
+
+  .deep-chevron.open {
+    transform: rotate(180deg);
+  }
+
+  .deep-analytics-content {
+    padding: 18px;
+    border-top: 1px solid var(--surface-card-border, #E2E8F0);
+    background: var(--surface-card-subtle, #FAFAFA);
+  }
+
   /* ═══════════ MY WORKSPACE LENS STYLES ═══════════ */
   .personal-kpi-grid {
     display: grid;
@@ -1834,6 +1910,9 @@
   .empty-workspace-state .empty-desc { font-size: 12px; color: var(--text-secondary); margin: 0; }
 
   @media (max-width: 1024px) {
+    .commercial-pillars {
+      grid-template-columns: repeat(2, 1fr);
+    }
     .studio-distribution-grid,
     .sla-analytics-grid {
       grid-template-columns: repeat(2, 1fr);
@@ -1842,6 +1921,12 @@
 
   @media (max-width: 900px) {
     .analytics-grid, .my-workspace-grid, .studio-distribution-grid, .sla-analytics-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @media (max-width: 600px) {
+    .commercial-pillars {
       grid-template-columns: 1fr;
     }
   }

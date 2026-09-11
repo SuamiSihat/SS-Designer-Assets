@@ -1359,15 +1359,26 @@ router.get('/status', (req, res) => {
 });
 
 router.get('/system/status', authenticateToken, (req, res) => {
+  const mem = process.memoryUsage();
+  const exists = fs.existsSync(config.WORKSPACE_ROOT);
   res.json({
     app: config.APP_TITLE,
     version: config.VERSION,
     workspaceRoot: config.WORKSPACE_ROOT,
-    workspaceExists: fs.existsSync(config.WORKSPACE_ROOT),
+    workspaceExists: exists,
+    synologyEngine: exists ? 'Mounted & Active' : 'Disconnected / Unreachable',
+    synologyPath: config.WORKSPACE_ROOT,
     cachedProjects: WorkspaceService.projectsCache.length,
     lastScan: WorkspaceService.lastScanTime,
     uptimeSeconds: Math.floor(process.uptime()),
-    platform: process.platform
+    platform: process.platform,
+    nodeVersion: process.version,
+    memory: {
+      rss: Math.round(mem.rss / (1024 * 1024)),
+      heapUsed: Math.round(mem.heapUsed / (1024 * 1024)),
+      heapTotal: Math.round(mem.heapTotal / (1024 * 1024))
+    },
+    watcherActive: !!WorkspaceService.watcher
   });
 });
 

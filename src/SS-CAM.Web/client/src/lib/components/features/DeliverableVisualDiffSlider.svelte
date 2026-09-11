@@ -42,12 +42,14 @@
   });
 
   // Selected Deliverable Versions
-  let afterDeliverable = $state<DeliverableItem>(currentDeliverable);
+  let selectedAfterId = $state<string | null>(null);
+  const afterDeliverable = $derived<DeliverableItem>(
+    (selectedAfterId ? companionImages.find(d => d.id === selectedAfterId) : null) || currentDeliverable
+  );
   let beforeDeliverable = $state<DeliverableItem | null>(null);
 
   // Auto-detect companion "v1" or prior version
   onMount(() => {
-    afterDeliverable = currentDeliverable;
     
     // Attempt auto-match
     if (companionImages.length > 1) {
@@ -241,9 +243,7 @@
           class="version-select" 
           value={afterDeliverable.id} 
           onchange={(e) => {
-            const targetId = (e.target as HTMLSelectElement).value;
-            const match = companionImages.find(d => d.id === targetId);
-            if (match) afterDeliverable = match;
+            selectedAfterId = (e.target as HTMLSelectElement).value;
           }}
         >
           {#each companionImages as d}

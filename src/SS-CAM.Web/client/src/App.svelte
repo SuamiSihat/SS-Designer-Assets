@@ -149,15 +149,15 @@
   });
 
   const pageConfig: Record<string, { title: string; layout: string; parent?: string }> = {
-    dashboard:        { title: 'Dashboard',          layout: 'layout-full' },
-    projects:         { title: 'Project Manager',    layout: 'layout-fluid' },
-    'project-detail': { title: 'Project Workspace',  layout: 'layout-full', parent: 'projects' },
-    deliverables:     { title: 'Review Queue',        layout: 'layout-page' },
-    team:             { title: 'Team & Workload',     layout: 'layout-page' },
-    'copy-studio':    { title: 'Copywriting Studio',  layout: 'layout-page' },
-    'order-form':     { title: 'Creative Requests',   layout: 'layout-page' },
-    admin:            { title: 'Administration',      layout: 'layout-full' },
-    profile:          { title: 'My Profile',          layout: 'layout-full' },
+    dashboard:        { title: 'Dashboard',             layout: 'layout-full' },
+    projects:         { title: 'Project Catalog',       layout: 'layout-fluid' },
+    'project-detail': { title: 'Project Workspace',     layout: 'layout-full', parent: 'projects' },
+    deliverables:     { title: 'Deliverables & Reviews', layout: 'layout-page' },
+    team:             { title: 'Team & Workload',        layout: 'layout-page' },
+    'copy-studio':    { title: 'Copywriting Studio',     layout: 'layout-page' },
+    'order-form':     { title: 'Order Requests',         layout: 'layout-page' },
+    admin:            { title: 'Administration',         layout: 'layout-full' },
+    profile:          { title: 'My Profile',             layout: 'layout-full' },
   };
 
   const currentConfig = $derived(pageConfig[appState.currentRoute] ?? { title: 'SS-CAM', layout: 'layout-page' });
@@ -190,17 +190,17 @@
 
   const navGroups = [
     { section: 'Management & Visibility', items: [
-      { route: 'dashboard',    label: 'Dashboard',          icon: dashIcon },
-      { route: 'projects',     label: 'Project Manager',    icon: folderIcon, matchRoutes: ['projects','project-detail'] },
-      { route: 'deliverables', label: 'Review Queue',       icon: reviewIcon, badge: true },
+      { route: 'dashboard',    label: 'Dashboard',              icon: dashIcon },
+      { route: 'projects',     label: 'Project Catalog',        icon: folderIcon, matchRoutes: ['projects','project-detail'] },
+      { route: 'deliverables', label: 'Deliverables & Reviews', icon: reviewIcon, badge: true },
     ]},
     { section: 'Coordination & Studio', items: [
-      { route: 'order-form',   label: 'Creative Requests',  icon: orderIcon },
-      { route: 'team',         label: 'Team & Workload',    icon: teamIcon },
-      { route: 'copy-studio',  label: 'Copywriting Studio', icon: pencilIcon },
+      { route: 'order-form',   label: 'Order Requests',         icon: orderIcon },
+      { route: 'team',         label: 'Team & Workload',        icon: teamIcon },
+      { route: 'copy-studio',  label: 'Copywriting Studio',     icon: pencilIcon },
     ]},
     { section: 'System & Governance', items: [
-      { route: 'admin',        label: 'Administration',     icon: adminIcon },
+      { route: 'admin',        label: 'Administration',         icon: adminIcon },
     ]},
   ];
 
@@ -272,23 +272,18 @@
         <div class="nav-spacer"></div>
 
         {#if !isRail}
-          <div class="desktop-banner desktop-app-banner">
-            <div class="banner-row">
-              <span class="banner-pill">Desktop Client &amp; Apps</span>
-              <span class="banner-ver">v{serverVersion}</span>
-            </div>
-            <div class="banner-title">SS-CAM Native Apps</div>
-            <p class="banner-desc">Native Windows (WPF), Linux (Fedora), and Android companion clients.</p>
+          <div class="sidebar-desktop-link-wrap">
             <a
               href="https://suamisihat.github.io/ss_cam/"
-              class="banner-btn"
+              class="sidebar-desktop-link"
               target="_blank"
               rel="noreferrer"
+              title="Download SS-CAM Desktop (Windows, Linux, Android)"
             >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
               </svg>
-              Downloads &amp; Docs ↗
+              <span>Native Apps (v{serverVersion}) ↗</span>
             </a>
           </div>
         {:else}
@@ -297,7 +292,7 @@
             class="nav-link rail-link"
             target="_blank"
             rel="noreferrer"
-            title="Download SS-CAM App"
+            title="Download SS-CAM Desktop Apps"
           >
             <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
@@ -341,23 +336,26 @@
         </div>
 
         <div class="header-right">
-          <!-- Live Studio Pulse Pill & Flyout -->
-          <div class="studio-pulse-container" role="region" aria-label="Studio Pulse">
+          <!-- Unified Studio Activity & Vault Sync Pill -->
+          <div class="studio-pulse-container" role="region" aria-label="Studio Activity & Vault Sync">
             <button
-              class="studio-pulse-pill"
+              class="studio-pulse-pill unified-status-pill"
               class:has-active={appState.activeLiveTasks.length > 0}
+              class:is-reconnecting={appState.sseStatus === 'reconnecting'}
               onclick={() => (appState.studioDrawerOpen = !appState.studioDrawerOpen)}
               title={appState.activeLiveTasks.length > 0
-                ? `${appState.activeLiveTasks.length} active designer(s) currently working`
-                : 'Studio Pulse: All workstations idle'}
+                ? `${appState.activeLiveTasks.length} active studio session(s) · Live Synced with Synology Vault`
+                : appState.sseStatus === 'connected' ? 'Studio idle · Live Synced with Synology Vault' : 'Reconnecting to Synology Vault...'}
               aria-expanded={appState.studioDrawerOpen}
             >
-              <span class="studio-pulse-dot" class:pulsing={appState.activeLiveTasks.length > 0}></span>
+              <span class="studio-pulse-dot" class:pulsing={appState.activeLiveTasks.length > 0} class:dot-reconnect={appState.sseStatus === 'reconnecting'}></span>
               <span class="studio-pulse-label">
-                {#if appState.activeLiveTasks.length > 0}
-                  <strong>{appState.activeLiveTasks.length}</strong> in Studio
+                {#if appState.sseStatus === 'reconnecting'}
+                  Reconnecting...
+                {:else if appState.activeLiveTasks.length > 0}
+                  <strong>{appState.activeLiveTasks.length}</strong> in Studio · Synced
                 {:else}
-                  Studio Idle
+                  Studio Idle · Synced
                 {/if}
               </span>
               <svg class="studio-pulse-chevron" width="10" height="10" viewBox="0 0 24 24" fill="currentColor" class:open={appState.studioDrawerOpen}>
@@ -436,19 +434,6 @@
             {/if}
           </div>
 
-          <!-- Real-Time Vault Live Sync Pill -->
-          <div
-            class="live-sync-pill"
-            class:connected={appState.sseStatus === 'connected'}
-            class:reconnecting={appState.sseStatus === 'reconnecting'}
-            title={appState.lastSyncedAt ? `Live SSE Synced with Synology Vault. Last event: ${appState.lastSyncedAt.toLocaleTimeString()}` : 'Connecting to live vault stream...'}
-          >
-            <span class="live-pulse-dot" aria-hidden="true"></span>
-            <span class="live-label">
-              {appState.sseStatus === 'connected' ? 'Live Synced' : appState.sseStatus === 'reconnecting' ? 'Reconnecting' : 'Syncing'}
-            </span>
-          </div>
-
           <button
             class="icon-btn notif-btn"
             onclick={() => (appState.notificationDrawerOpen = !appState.notificationDrawerOpen)}
@@ -461,17 +446,6 @@
             {#if appState.notificationCount > 0}
               <span class="notif-count">{appState.notificationCount > 9 ? '9+' : appState.notificationCount}</span>
             {/if}
-          </button>
-
-          <button
-            class="icon-btn"
-            onclick={() => { appState.addToast('Rescanning workspace…', 'info'); projectStore.loadProjects(); projectStore.loadDashboard(); }}
-            title="Rescan Workspace"
-            aria-label="Rescan workspace"
-          >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-              <path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/>
-            </svg>
           </button>
 
           <!-- User Dropdown -->
@@ -526,6 +500,10 @@
                 <button class="dd-item" onclick={() => { appState.userMenuOpen = false; appState.navigate('admin'); }} role="menuitem">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6-3.6z"/></svg>
                   Administration
+                </button>
+                <button class="dd-item" onclick={() => { appState.userMenuOpen = false; appState.addToast('Rescanning workspace…', 'info'); projectStore.loadProjects(); projectStore.loadDashboard(); }} role="menuitem">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/></svg>
+                  Rescan Workspace
                 </button>
                 <div class="dd-divider"></div>
                 <button class="dd-item danger" onclick={() => { appState.userMenuOpen = false; appState.logout(); }} role="menuitem">
@@ -940,67 +918,32 @@
     min-height: 14px;
   }
 
-  .desktop-banner {
-    margin: 6px 4px 10px;
-    padding: 12px 14px;
-    background: linear-gradient(145deg, rgba(2,32,87,.85), rgba(4,51,136,.65));
-    border: 1px solid rgba(33,161,247,.3);
-    border-radius: 12px;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    box-sizing: border-box;
+  .sidebar-desktop-link-wrap {
+    padding: 8px 10px;
+    margin: 4px 6px 8px;
   }
-  .banner-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-  .banner-pill {
-    font-size: 9.5px;
-    font-weight: 800;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    background: rgba(33,161,247,.22);
-    color: #6DC6EC;
-    padding: 2px 6px;
-    border-radius: 4px;
-  }
-  .banner-ver {
-    font-size: 10.5px;
-    color: rgba(255,255,255,.65);
-    font-family: monospace;
-  }
-  .banner-title {
-    font-size: 13.5px;
-    font-weight: 800;
-    color: #fff;
-  }
-  .banner-desc  {
-    font-size: 11px;
-    line-height: 1.35;
-    color: rgba(255,255,255,.75);
-    margin: 0 0 2px 0;
-  }
-  .banner-btn {
+  .sidebar-desktop-link {
     display: inline-flex;
     align-items: center;
-    justify-content: center;
-    gap: 6px;
-    background: linear-gradient(90deg, #21A1F7, #0078D4);
-    color: #fff;
+    gap: 7px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-tertiary);
     text-decoration: none;
-    font-size: 11.5px;
-    font-weight: 800;
-    padding: 7px 10px;
-    border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(33,161,247,.35);
-    transition: transform .15s, box-shadow .15s;
-    margin-top: 2px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    transition: all 0.15s ease;
+    border: 1px solid transparent;
   }
-  .banner-btn:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 14px rgba(33,161,247,.55);
+  .sidebar-desktop-link:hover {
+    color: var(--text-primary);
+    background: var(--fill-subtle);
+    border-color: var(--stroke-subtle);
+  }
+
+  .unified-status-pill .dot-reconnect {
+    background: #D97706 !important;
+    box-shadow: 0 0 6px rgba(217, 119, 6, 0.4) !important;
   }
 
   /* ═══ MAIN ══════════════════════════════════════════════════════ */

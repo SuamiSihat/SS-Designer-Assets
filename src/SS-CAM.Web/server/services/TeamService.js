@@ -145,7 +145,7 @@ class TeamService {
   static getStaffRoster() {
     const rosterPath = this.getRosterPath();
     const defaultTeam = [
-      { staffId: 'SS0004', username: 'harussani', name: 'Harussani', email: 'harussani.suamisihat@gmail.com', role: 'Art Director / Administrator', department: 'Creative Production', defaultBrand: 'SS', avatarColor: '#0078D4', active: true },
+      { staffId: 'SS0004', username: 'harussani', name: 'Harussani', email: 'harussani.suamisihat@gmail.com', role: 'Head of Creative', department: 'Creative Production', defaultBrand: 'SS', avatarColor: '#0078D4', active: true },
       { staffId: 'SS0035', username: 'haikal', name: 'Haikal', email: 'haikal.suamisihat@gmail.com', role: 'Multimedia Designer', department: 'Multimedia & Motion', defaultBrand: 'SS', avatarColor: '#106EBE', active: true },
       { staffId: 'SS0037', username: 'aliff', name: 'Aliff', email: 'aliffnaz.suamisihat@gmail.com', role: 'Multimedia Designer', department: 'Multimedia & Motion', defaultBrand: 'SSE', avatarColor: '#7C3AED', active: true },
       { staffId: 'SS0073', username: 'raihan', name: 'Raihan', email: 'raihan.suamisihat@gmail.com', role: 'Head of Marketing & Sale', department: 'Marketing & Sales', defaultBrand: 'SS', avatarColor: '#D97706', active: true },
@@ -282,10 +282,13 @@ class TeamService {
     let updatedRoles = updates.roles;
     let updatedRole = updates.role;
 
-    if (Array.isArray(updatedRoles) && updatedRoles.length > 0) {
+    if (typeof updatedRole === 'string' && updatedRole.trim()) {
+      updatedRole = updatedRole.trim();
+      if (!Array.isArray(updatedRoles) || updatedRoles.length === 0) {
+        updatedRoles = updatedRole.split(',').map(r => r.trim()).filter(Boolean);
+      }
+    } else if (Array.isArray(updatedRoles) && updatedRoles.length > 0) {
       updatedRole = updatedRoles.join(', ');
-    } else if (typeof updatedRole === 'string' && updatedRole.trim()) {
-      updatedRoles = updatedRole.split(',').map(r => r.trim()).filter(Boolean);
     } else if (!updatedRoles && !updatedRole) {
       updatedRoles = roster[idx].roles || (roster[idx].role ? roster[idx].role.split(',').map(r => r.trim()).filter(Boolean) : ['Designer']);
       updatedRole = roster[idx].role || 'Designer';
@@ -296,6 +299,7 @@ class TeamService {
       ...updates,
       role: updatedRole || 'Designer',
       roles: updatedRoles || ['Designer'],
+      DisplayText: `${targetStaffId} - ${updates.name || roster[idx].name} (${updatedRole || 'Designer'})`,
       staffId: targetStaffId // Preserve immutable Staff ID
     };
 
@@ -317,32 +321,41 @@ class TeamService {
   }
 
   /**
+   * Evaluates if a member or role string belongs to active creative or admin tiers.
+   */
+  static isCreativeOrAdminRole(memberOrRole) {
+    if (!memberOrRole) return false;
+    const member = typeof memberOrRole === 'string' ? { role: memberOrRole } : memberOrRole;
+    const roleLower = (member.role || member.officialTitle || '').toLowerCase();
+    const deptLower = (member.department || '').toLowerCase();
+
+    // If user has designer, copywriter, creative, art director, or admin roles, include them
+    const rolesArr = Array.isArray(member.roles) ? member.roles.map(r => String(r).toLowerCase()) : [];
+    if (rolesArr.includes('designer') || rolesArr.includes('admin') || rolesArr.includes('copywriter')) {
+      return true;
+    }
+    if (roleLower.includes('designer') || roleLower.includes('copy') || roleLower.includes('creative') || roleLower.includes('art director') || roleLower.includes('admin') || roleLower.includes('multimedia')) {
+      return true;
+    }
+
+    // Exclude standalone Managers, CEOs, Executive Directors, and Sales/Marketing Heads
+    if (roleLower.includes('manager') || roleLower.includes('ceo') || roleLower.includes('chief') ||
+        roleLower.includes('head of') || roleLower.includes('executive') || roleLower.includes('director of') ||
+        deptLower.includes('executive') || deptLower.includes('management') || deptLower.includes('marketing & sales') ||
+        roleLower === 'manager' || roleLower === 'mgr') {
+      return false;
+    }
+    return true;
+  }
+
+  /**
    * Returns list of team members with assigned active workloads and capacity indicators.
    * Filters strictly to Designer, Copywriter & Admin role staff (excluding standalone Managers & Executives).
    */
   static getTeamDirectory() {
-    const isCreativeOrAdminRole = (member) => {
-      const roleLower = (member.role || '').toLowerCase();
-      const deptLower = (member.department || '').toLowerCase();
-
-      // If user has designer, copywriter, art director, or admin roles, include them
-      if (roleLower.includes('designer') || roleLower.includes('copy') || roleLower.includes('art director') || roleLower.includes('admin') || roleLower.includes('multimedia')) {
-        return true;
-      }
-
-      // Exclude standalone Managers, CEOs, Executive Directors, and Sales/Marketing Heads
-      if (roleLower.includes('manager') || roleLower.includes('ceo') || roleLower.includes('chief') ||
-          roleLower.includes('head of') || roleLower.includes('executive') || roleLower.includes('director of') ||
-          deptLower.includes('executive') || deptLower.includes('management') || deptLower.includes('marketing & sales') ||
-          roleLower === 'manager' || roleLower === 'mgr') {
-        return false;
-      }
-      return true;
-    };
-
     const roster = this.getStaffRoster()
       .filter(m => m.active !== false)
-      .filter(isCreativeOrAdminRole);
+      .filter(m => TeamService.isCreativeOrAdminRole(m));
 
     const WorkspaceService = require('./WorkspaceService');
     const metrics = WorkspaceService.getDashboardMetrics();

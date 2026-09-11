@@ -70,11 +70,11 @@
 
   // ─── Constants ─────────────────────────────────────────────────────────────
   const ENTITIES = [
-    { id: 'SSC', label: 'Clinic',    full: 'SuamiSihat Clinic'      },
-    { id: 'SSE', label: 'Commerce',  full: 'SuamiSihat E-Commerce'  },
-    { id: 'SSH', label: 'Holding',   full: 'SuamiSihat Holding'     },
-    { id: 'SST', label: 'Tech',      full: 'SuamiSihat Technology'  },
-    { id: 'SSW', label: 'Wellness',  full: 'SuamiSihat Wellness'    },
+    { id: 'SSH', label: 'Holding',             full: 'SuamiSihat Holding'            },
+    { id: 'SSC', label: 'Healthcare & Clinic', full: 'SuamiSihat Healthcare & Clinic'},
+    { id: 'SSW', label: 'Wellness',            full: 'SuamiSihat Wellness'           },
+    { id: 'SSE', label: 'E-Commerce',          full: 'SuamiSihat E-Commerce'         },
+    { id: 'SST', label: 'Technology',          full: 'SuamiSihat Technology'         },
   ];
 
   const PRIORITIES = [
@@ -244,6 +244,25 @@
     f_attachmentNote = order.attachmentNote || '';
     f_files          = [];
     showForm         = true;
+  }
+
+  const COMMERCIAL_PRESETS = [
+    { id: 'tiktok_hook', label: '📱 TikTok/Reels Video', channel: 'digital' as const, format: '9_16_video', entity: 'SSE', priority: 'tier_1', prefix: 'TikTok Video Hook - ' },
+    { id: 'meta_feed', label: '🖼️ Meta/IG Promo Post', channel: 'digital' as const, format: '1_1_feed', entity: 'SSE', priority: 'tier_1', prefix: 'Feed Promo Post - ' },
+    { id: 'clinic_print', label: '🏥 Clinic Roll-Up Bunting', channel: 'print' as const, format: 'print_banner_rollup', entity: 'SSC', priority: 'tier_2', prefix: 'Clinic Event Bunting - ' },
+    { id: 'urgent_tactical', label: '🔥 Urgent Tactical Ad', channel: 'digital' as const, format: '9_16_video', entity: 'SSE', priority: 'tier_3', prefix: 'URGENT: Flash Promo - ' }
+  ];
+
+  function applyPreset(presetId: string) {
+    const p = COMMERCIAL_PRESETS.find(x => x.id === presetId);
+    if (!p) return;
+    f_channel = p.channel;
+    f_format = p.format;
+    f_entity = p.entity;
+    f_priority = p.priority;
+    if (!f_title || COMMERCIAL_PRESETS.some(x => f_title.startsWith(x.prefix))) {
+      f_title = p.prefix;
+    }
   }
 
   function canEdit(order: CreativeOrder): boolean {
@@ -590,10 +609,10 @@
   <div class="page-header">
     <div class="page-header-text">
       <div class="page-kicker">Creative Operations</div>
-      <h1 class="page-title">Creative Request Form</h1>
+      <h1 class="page-title">Order Requests</h1>
       <p class="page-desc">
-        Submit structured creative briefs to the design team.
-        Complete all required fields — total time under 60 seconds.
+        Intake creative briefs, ad copy requirements, and campaign requests.
+        Structured submission pipeline with SLA priority windows.
       </p>
     </div>
     <div class="page-actions">
@@ -652,8 +671,8 @@
           <!-- ── Modal Header ── -->
           <div class="modal-header">
             <div>
-              <div class="modal-kicker">{editingOrderId ? 'Edit Creative Request' : 'Creative Operations · New Brief'}</div>
-              <h2 class="modal-title">{editingOrderId ? `Edit Request · ${editingOrderId}` : 'Creative Request Form'}</h2>
+              <div class="modal-kicker">{editingOrderId ? 'Edit Order Request' : 'Creative Operations · New Brief'}</div>
+              <h2 class="modal-title">{editingOrderId ? `Edit Request · ${editingOrderId}` : 'Order Request Intake'}</h2>
             </div>
             <button
               class="close-btn"
@@ -674,6 +693,25 @@
             {/each}
             <span class="progress-label">{formFilled} / 6</span>
           </div>
+
+          <!-- ── Quick Commercial Presets ── -->
+          {#if !editingOrderId}
+            <div class="preset-strip">
+              <div class="preset-label">QUICK COMMERCIAL PRESETS</div>
+              <div class="preset-buttons">
+                {#each COMMERCIAL_PRESETS as preset}
+                  <button
+                    type="button"
+                    class="preset-btn"
+                    onclick={() => applyPreset(preset.id)}
+                    title="Autofill {preset.label}"
+                  >
+                    {preset.label}
+                  </button>
+                {/each}
+              </div>
+            </div>
+          {/if}
 
           <!-- ── Form ── -->
           <form class="form-body" onsubmit={handleSubmit} novalidate>
@@ -1583,6 +1621,43 @@
     white-space: nowrap;
     min-width: 28px;
     text-align: right;
+  }
+
+  /* ── Commercial Presets Strip ── */
+  .preset-strip {
+    margin: 14px 24px 0;
+    padding: 10px 14px;
+    background: var(--surface-card-subtle, #F8FAFC);
+    border: 1px solid var(--surface-card-border, #E2E8F0);
+    border-radius: 8px;
+  }
+  .preset-label {
+    font-size: 10px;
+    font-weight: 800;
+    color: var(--text-tertiary, #94A3B8);
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+  }
+  .preset-buttons {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .preset-btn {
+    font-size: 11.5px;
+    font-weight: 600;
+    padding: 5px 12px;
+    border-radius: 6px;
+    background: var(--surface-card, #FFFFFF);
+    border: 1px solid var(--surface-card-border, #CBD5E1);
+    color: var(--text-primary, #0F172A);
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .preset-btn:hover {
+    border-color: var(--brand-accent, #21A1F7);
+    color: var(--brand-primary, #043388);
+    background: #EBF4FE;
   }
 
   /* ── Form Body ── */

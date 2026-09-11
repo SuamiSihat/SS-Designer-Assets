@@ -411,7 +411,7 @@ namespace SS_CAM.Services
         {
             var defaults = new List<StaffDirectoryItem>
             {
-                new StaffDirectoryItem { StaffId = "SS0004", Name = "Harussani", Role = "Art Director", Department = "Creative Production", DefaultBrand = "SS" },
+                new StaffDirectoryItem { StaffId = "SS0004", Name = "Harussani", Role = "Head of Creative", Department = "Creative Production", DefaultBrand = "SS" },
                 new StaffDirectoryItem { StaffId = "SS0035", Name = "Haikal", Role = "Multimedia Designer", Department = "Multimedia & Motion", DefaultBrand = "SS" },
                 new StaffDirectoryItem { StaffId = "SS0037", Name = "Aliff", Role = "Multimedia Designer", Department = "Multimedia & Motion", DefaultBrand = "SSE" },
                 new StaffDirectoryItem { StaffId = "SS0073", Name = "Raihan", Role = "Head of Marketing & Sale", Department = "Marketing & Sales", DefaultBrand = "SS" },
