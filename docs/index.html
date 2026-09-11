@@ -34,6 +34,7 @@
       </a>
 
       <nav class="nav-links" id="nav-menu" aria-label="Main navigation">
+        <a href="#whats-new"   class="nav-item"><iconify-icon icon="fluent:sparkle-24-regular"></iconify-icon>What's New</a>
         <a href="#pillars"      class="nav-item"><iconify-icon icon="fluent:home-24-regular"></iconify-icon>Pillars</a>
         <a href="#design-rules" class="nav-item"><iconify-icon icon="fluent:color-background-24-regular"></iconify-icon>Design Rules</a>
         <a href="#showcase"     class="nav-item"><iconify-icon icon="fluent:phone-laptop-24-regular"></iconify-icon>App Tour</a>
@@ -122,7 +123,7 @@
     <div class="section-container">
       <div class="metrics-grid">
         <div class="metric-item reveal">
-          <div class="metric-num">5.2 MB</div>
+          <div class="metric-num">5.9 MB</div>
           <div class="metric-desc">Single-File Executable</div>
         </div>
         <div class="metric-item reveal">
@@ -160,6 +161,9 @@
 
       <div class="cl-sidebar-section">
         <span class="cl-sidebar-label">Product</span>
+        <a href="#whats-new"    class="cl-sidebar-link" id="slink-whats-new">
+          <iconify-icon icon="fluent:sparkle-24-regular"></iconify-icon> What's New v4.9.0
+        </a>
         <a href="#pillars"     class="cl-sidebar-link active" id="slink-pillars">
           <iconify-icon icon="fluent:grid-24-regular"></iconify-icon> Core Pillars
         </a>
@@ -209,6 +213,87 @@
     <main class="f-main-content" id="main-content">
 
       <!-- ══════════════════════════════════════════════════════════
+           WHAT'S NEW IN V4.9.0
+           ══════════════════════════════════════════════════════════ -->
+      <section class="cl-section" id="whats-new">
+        <div class="cl-section-eyebrow">Major Release Highlights</div>
+        <h2 class="cl-section-title">What's New in SS-CAM v4.9.0.</h2>
+        <p class="cl-section-desc">Art Director ecosystem unification: interactive Gantt timeline drawer, live studio workstream telemetry, Master Brand System v3.5.1, and tri-platform parity.</p>
+
+        <div class="fedora-card-grid" style="margin-top:24px;">
+
+          <!-- Feature 1 -->
+          <div class="fedora-card reveal">
+            <div class="fedora-card-header">
+              <iconify-icon icon="fluent:calendar-ltr-24-regular" style="font-size:1.8rem; color:var(--ss-azure);"></iconify-icon>
+              <div>
+                <h3 class="fedora-card-title">Visual Timeline &amp; Gantt Inspector</h3>
+                <p class="fedora-card-sub">Interactive 440px Right Drawer &middot; Live Date/Duration Sync</p>
+              </div>
+            </div>
+            <p style="font-size:.875rem; color:var(--color-neutral-fg-2); line-height:1.6; margin-bottom:12px;">
+              Click any project row or timeline bar to inspect metadata. Automatic bidirectional date/duration calculations in days (<code>{N}d</code>) and quick extension buttons (<code>+1d</code>, <code>+3d</code>, <code>+1w</code>).
+            </p>
+            <div style="font-size:.78rem; font-weight:600; color:var(--ss-azure); display:flex; align-items:center; gap:6px;">
+              <iconify-icon icon="fluent:checkmark-circle-24-regular"></iconify-icon> Subtask badges [✓ X/Y • Z pts] &amp; Malaysia off-day conflict guard
+            </div>
+          </div>
+
+          <!-- Feature 2 -->
+          <div class="fedora-card reveal">
+            <div class="fedora-card-header">
+              <iconify-icon icon="fluent:pulse-24-regular" style="font-size:1.8rem; color:#10B981;"></iconify-icon>
+              <div>
+                <h3 class="fedora-card-title">Live Studio Pulse &amp; Workstream</h3>
+                <p class="fedora-card-sub">Real-Time Telemetry &middot; Active Digital Stopwatches</p>
+              </div>
+            </div>
+            <p style="font-size:.875rem; color:var(--color-neutral-fg-2); line-height:1.6; margin-bottom:12px;">
+              Ambient header indicator (<code>● N in Studio</code>) with quick-access flyout, coupled with live workstation cards and real-time ticking stopwatches across Web, Desktop, and Android Standby Desk mode.
+            </p>
+            <div style="font-size:.78rem; font-weight:600; color:#10B981; display:flex; align-items:center; gap:6px;">
+              <iconify-icon icon="fluent:checkmark-circle-24-regular"></iconify-icon> Live filesystem watcher &amp; Server-Sent Events (SSE)
+            </div>
+          </div>
+
+          <!-- Feature 3 -->
+          <div class="fedora-card reveal">
+            <div class="fedora-card-header">
+              <iconify-icon icon="fluent:search-visual-24-regular" style="font-size:1.8rem; color:var(--ss-gold);"></iconify-icon>
+              <div>
+                <h3 class="fedora-card-title">Command Palette &amp; Brand v3.5.1</h3>
+                <p class="fedora-card-sub">Ctrl + K Everywhere &middot; 16 Single-Source Tokens</p>
+              </div>
+            </div>
+            <p style="font-size:.875rem; color:var(--color-neutral-fg-2); line-height:1.6; margin-bottom:12px;">
+              Universal studio launcher with 5 category filter tabs, 16 official brand color tokens with HEX &amp; CSS variable copy modes, and pre-seeded direct-response marketing hooks.
+            </p>
+            <div style="font-size:.78rem; font-weight:600; color:var(--ss-gold); display:flex; align-items:center; gap:6px;">
+              <iconify-icon icon="fluent:checkmark-circle-24-regular"></iconify-icon> Dual copy mechanics: Click HEX / Shift+Click CSS token
+            </div>
+          </div>
+
+          <!-- Feature 4 -->
+          <div class="fedora-card reveal">
+            <div class="fedora-card-header">
+              <iconify-icon icon="fluent:box-24-regular" style="font-size:1.8rem; color:#8B5CF6;"></iconify-icon>
+              <div>
+                <h3 class="fedora-card-title">Packaging Dielines &amp; Low Tier</h3>
+                <p class="fedora-card-sub">Box/Sleeve &amp; Label Specs &middot; Strategic Tier 0</p>
+              </div>
+            </div>
+            <p style="font-size:.875rem; color:var(--color-neutral-fg-2); line-height:1.6; margin-bottom:12px;">
+              Dedicated packaging dieline formats with 300 DPI CMYK and bleed guidance, physical substrate chips (Art Card, Mirrorkote, Vinyl), and strategic <code>tier_0</code> backlog scheduling.
+            </p>
+            <div style="font-size:.78rem; font-weight:600; color:#8B5CF6; display:flex; align-items:center; gap:6px;">
+              <iconify-icon icon="fluent:checkmark-circle-24-regular"></iconify-icon> Option A brief governance &amp; automatic locking
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ══════════════════════════════════════════════════════════
            CORE PILLARS
            ══════════════════════════════════════════════════════════ -->
       <section class="cl-section" id="pillars">
@@ -251,6 +336,13 @@
             <div class="pillar-num">05</div>
             <h3 class="pillar-title">Canva Cloud Bridge &amp; Velocity Engine</h3>
             <p class="pillar-body">1-click platform dimension deep-launcher for Canva, automatic <code>02_SOURCE/Open_In_Canva.url</code> shortcut scaffolding, and zero-latency (0 ms) cached tab navigation.</p>
+          </div>
+
+          <div class="pillar-card reveal">
+            <div class="pillar-icon-box" style="background:rgba(33,161,247,0.12); color:var(--ss-azure);"><iconify-icon icon="fluent:calendar-ltr-24-regular"></iconify-icon></div>
+            <div class="pillar-num">06</div>
+            <h3 class="pillar-title">Visual Timeline &amp; Gantt Inspector</h3>
+            <p class="pillar-body">Interactive project scheduling with slide-in 440px right inspector drawer, bidirectional date/duration sync, Malaysian off-day alerts with 1-click auto-reschedule, and subtask completion badges.</p>
           </div>
 
         </div>
@@ -393,7 +485,7 @@
             <button class="tab-btn" data-target="panel-creator" data-title="Standardized 5-Folder Project Creator" data-sub="Instant canonical vault hierarchy scaffolding with dynamic project ID auto-calculation.">Project Creator</button>
             <button class="tab-btn" data-target="panel-catalog" data-title="Project Catalog &amp; Workspace Vault" data-sub="Filter active campaigns by subsidiary brand, designer, status, or urgency.">Project Vault</button>
             <button class="tab-btn" data-target="panel-tasks" data-title="YAML Frontmatter Kanban Board" data-sub="Kanban columns reading directly from project README frontmatter headers.">Task Manager</button>
-            <button class="tab-btn" data-target="panel-calendar" data-title="7×6 Monthly Campaign Timetable" data-sub="Visual calendar mapping project deadlines, Friday Solat, and Malaysia public holidays.">Big Calendar</button>
+            <button class="tab-btn" data-target="panel-calendar" data-title="Visual Project Timeline &amp; Gantt Inspector Drawer" data-sub="Interactive Gantt timeline with 440px right inspector drawer, auto-duration sync, Malaysian off-day alerts, and subtask indicators.">Timeline &amp; Gantt</button>
           </div>
 
           <div class="showcase-stage" style="padding:var(--f-space-5);">
@@ -467,8 +559,11 @@
 
             <div class="showcase-panel" id="panel-calendar">
               <div class="hotspot-stage-wrapper">
-                <img src="app-big-calendar.png" alt="SS-CAM Big Calendar" class="showcase-img">
-                <div class="hotspot-pin" style="top:30%;left:50%;" data-tooltip="7×6 Timetable: Maps deadlines &amp; Friday Solat markers"></div>
+                <img src="app-big-calendar.png" alt="SS-CAM Visual Project Timeline &amp; Gantt Inspector" class="showcase-img">
+                <div class="hotspot-pin" style="top:25%;left:25%;" data-tooltip="Timeline &amp; Gantt: Click any project row or bar to inspect"></div>
+                <div class="hotspot-pin" style="top:35%;left:80%;" data-tooltip="Project Detail Drawer: 440px right panel with date/duration sync &amp; subtasks"></div>
+                <div class="hotspot-pin" style="top:60%;left:50%;" data-tooltip="Off-Day Conflict Guard: Auto-detects weekends and Malaysian holidays with 1-click fix"></div>
+                <div class="hotspot-pin" style="top:75%;left:30%;" data-tooltip="Subtask Indicators: Live [✓ X/Y • Z pts] completion badges across timeline"></div>
               </div>
             </div>
 
@@ -492,7 +587,7 @@
               <iconify-icon icon="fluent:window-apps-24-regular" style="font-size:1.8rem; color:#0078D4;"></iconify-icon>
               <div>
                 <h3 class="fedora-card-title">Windows 10 / 11 Native WPF</h3>
-                <p class="fedora-card-sub">Portable single-file executable (~5.6 MB)</p>
+                <p class="fedora-card-sub">Portable single-file executable (~6.0 MB)</p>
               </div>
             </div>
             <p style="font-size:.875rem; color:var(--color-neutral-fg-2); margin-bottom:14px; line-height:1.6;">

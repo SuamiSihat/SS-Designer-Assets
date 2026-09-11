@@ -2,7 +2,28 @@
 
 All notable SS-CAM changes are documented here.
 
-## [4.9.0] - 2026-09-11 (Art Director Ecosystem Unification: Live Studio Workstream Telemetry, Command Palette v3.5.1, Packaging Deliverables & Tri-Platform Parity)
+## [4.9.0] - 2026-09-11 (Visual Project Timeline & Gantt Inspector Drawer, Live Studio Workstream Telemetry, Command Palette v3.5.1 & Tri-Platform Parity)
+
+### Added & Refined — Visual Project Timeline & Interactive Gantt Inspector Drawer (`CalendarPage.xaml`)
+- **Docked Right Inspector Drawer (`ProjectDetailDrawer`)**:
+  - Added slide-in 440px inspector drawer docked to the right edge of the visual calendar view with Fluent 2 elevated glassmorphic styling.
+  - Interactive launch triggers: clicking any project title or timeline bar in the Gantt chart, or clicking the "Inspect" button in day detail cards.
+  - Header displays Job/Folder ID, live status badge, project name, designer path, and quick action toolbar (Save, Explorer, Working Source `02_SOURCE_FILES`, Canva URL, and Handover ZIP).
+- **Interactive Scheduling & Dynamic Date Calculations**:
+  - Dual date pickers for Start Date (`DrawerStartDate`) and Deadline (`DrawerDeadline`).
+  - Automatic bidirectional sync: modifying either date automatically calculates duration in days (`{N}d`); modifying duration directly updates the deadline date.
+  - Quick deadline extension buttons: `+1d`, `+3d`, `+1w`.
+- **Malaysian Off-Day Conflict Alert & 1-Click Auto-Reschedule (`MalaysiaHolidayService`)**:
+  - Evaluates deadline against weekend days (Saturday/Sunday) and national Malaysian public holidays.
+  - Displays high-visibility alert banner when creative deliverables land on off-days, paired with a 1-click **"Fix Off-Day Conflict"** button that automatically advances the deadline to the next working day.
+- **Deliverables & Subtask Checklist Management**:
+  - Integrated subtasks progress bar and counter (`{Done}/{Total} Deliverables Done (X%)`).
+  - 1-click subtask status cycle button: `Draft` ➔ `In Progress` ➔ `Done` with dynamic visual styling.
+  - Inline subtask form allowing creation, modification of title/weight/specs, and safe deletion.
+  - Direct synchronization with `README.md` YAML frontmatter via `FrontmatterService.WriteStatus`.
+- **Gantt Chart Subtask Status Indicators**:
+  - Desktop: Left project column displays `[✓ X/Y • Z pts]` badge (turns green when all subtasks are complete); timeline bars feature a `✓ X/Y` pill badge; hover tooltips display complete deliverable breakdown.
+  - Web Portal (`ProjectGanttView.svelte`): Added `.subtask-pill-badge` in left meta list with emerald glow on completion, plus `.bar-subtask-pill` on timeline schedule bars.
 
 ### Added & Refined — Live Studio Telemetry & Workstream Pulse (Web, Desktop, Android)
 - **Live Studio Telemetry Backend (`TeamService.js`, `WorkspaceService.js`, `api.js`)**:
@@ -35,10 +56,10 @@ All notable SS-CAM changes are documented here.
 ### Release Artifacts & Verification
 | Artifact | Platform / Target | Specifications | Status |
 |---|---|---|---|
-| `dist/SS-CAM-v4.9.0.exe` | Windows 10/11 x64 | .NET Framework 4.8 WPF Single-File Binary (5.96 MB) | **Verified** |
-| `dist/SS-CAM.exe` | Windows 10/11 x64 | Latest Production Canonical Exe | **Verified** |
-| `src/SS-CAM.Android/app/build/outputs/bundle/release/app-release.aab` | Android 8.0+ (API 26–36) | Production Android App Bundle, RSA 2048 Signed (5.76 MB) | **Verified** |
-| `src/SS-CAM.Android/app/build/outputs/apk/release/app-release.apk` | Android 8.0+ (API 26–36) | Standalone Release APK | **Verified** |
+| `dist/SS-CAM-v4.9.0.exe` | Windows 10/11 x64 | .NET Framework 4.8 WPF Single-File Binary (5.99 MB) | **Verified** |
+| `dist/SS-CAM.exe` | Windows 10/11 x64 | Latest Production Canonical Exe (5.99 MB) | **Verified** |
+| `dist/SS-CAM-v4.9.0-android-release.aab` | Android 8.0+ (API 26–36) | Production Android App Bundle, RSA 2048 Signed (6.03 MB) | **Verified** |
+| `dist/SS-CAM-v4.9.0-android-release.apk` | Android 8.0+ (API 26–36) | Standalone Release APK (3.39 MB) | **Verified** |
 | `src/SS-CAM.Web/client/dist/` | Docker / Node.js 20 | Svelte 5 + Vite Production Web Bundle | **Verified** |
 
 ## [4.8.1] - 2026-09-10 (Global Studio Command Palette Ctrl+K, Art Director 60-30-10 Polish, Live Work Session Stopwatch & Status Indicator, Creative Operations Upgrade)

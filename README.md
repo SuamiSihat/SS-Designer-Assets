@@ -13,8 +13,14 @@ Standardized Project Vaults · ClickUp 3.0 Workspace · Copywriting Studio · Br
 
 ---
 
-## 🚀 What's New in v4.9.0 ("Art Director Ecosystem Unification: Live Studio Workstream Telemetry, Command Palette v3.5.1, Packaging Deliverables & Tri-Platform Parity")
+## 🚀 What's New in v4.9.0 ("Visual Project Timeline & Gantt Inspector Drawer, Live Studio Workstream Telemetry, Command Palette v3.5.1 & Tri-Platform Parity")
 
+* **📅 Visual Project Timeline & Interactive Gantt Inspector Drawer (`CalendarPage.xaml`)**:
+  * **Docked Right Inspector Drawer (`ProjectDetailDrawer`)**: Slide-in 440px inspector drawer docked to the right edge of the visual calendar view with Fluent 2 glassmorphic styling. Click any project row or timeline bar in the Gantt chart (or "Inspect" in day cards) to view metadata and controls.
+  * **Interactive Scheduling & Dynamic Date Calculations**: Dual date pickers for Start Date and Deadline with automatic duration calculation (`{N}d`), plus 1-click extension buttons (`+1d`, `+3d`, `+1w`).
+  * **Malaysian Off-Day Conflict Alert & 1-Click Auto-Reschedule**: Real-time evaluation against weekends and national public holidays with a 1-click **"Fix Off-Day Conflict"** button that shifts deadlines to the next working day.
+  * **Deliverables & Subtask Checklist Management**: Track deliverables completion (`{Done}/{Total} Deliverables Done (X%)`), 1-click status cycling (`Draft` ➔ `In Progress` ➔ `Done`), and inline editing synced directly with `README.md` frontmatter.
+  * **Gantt Chart Subtask Status Indicators**: Left column displays `[✓ X/Y • Z pts]` badge (turns green on full completion); timeline bars feature a `✓ X/Y` pill badge; hover tooltips display complete deliverable breakdown.
 * **📡 Live Studio Telemetry & Workstream Pulse (Web, Desktop, Android)**:
   * **Unified Telemetry Feed**: Real-time synchronization of active designer tasks via `<WorkspaceRoot>/_Team/live_tasks.json` with 16-hour session freshness filter and UTF-8 BOM safety.
   * **Web Management Portal**: Added elevated Live Studio Radar card on the main dashboard with digital stopwatches for each active designer workstation, paired with the top header pulse indicator (`● {N} in Studio` / `● Studio Idle`) and interactive task flyout.
@@ -26,8 +32,8 @@ Standardized Project Vaults · ClickUp 3.0 Workspace · Copywriting Studio · Br
   * Integrated dedicated packaging dieline formats (`pkg_box_sleeve` — Box & Sleeve, `pkg_label` — Bottle/Jar/Vial Label) with 300 DPI CMYK and die-cut bleed specs.
   * Added strategic `tier_0` (`🗓️ Low / Pipeline`) priority tier with automated +21 day delivery threshold guidance across Web and Mobile order forms.
 * **🛡️ Production Release Packaging**:
-  * Windows Desktop portable binary `dist/SS-CAM-v4.9.0.exe` (5.96 MB).
-  * Android production app bundle `app-release.aab` (5.76 MB, RSA 2048 cryptographically verified) and standalone release `app-release.apk`.
+  * Windows Desktop portable binary `dist/SS-CAM-v4.9.0.exe` (5.99 MB).
+  * Android production app bundle `app-release.aab` (6.03 MB, RSA 2048 cryptographically verified) and standalone release `app-release.apk` (3.39 MB).
 
 
 * **📋 Deliverables & Subtask Management Engine (`README.md` Frontmatter)**:

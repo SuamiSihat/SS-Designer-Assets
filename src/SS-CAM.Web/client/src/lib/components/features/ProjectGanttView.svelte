@@ -262,6 +262,12 @@
                 {#if p.revision && p.revision > 0}
                   <span class="rev-pill-small">Rev {p.revision}</span>
                 {/if}
+                {#if p.subtasks && p.subtasks.length > 0}
+                  {@const doneSub = p.subtasks.filter(s => s.status === 'done' || s.isCompleted).length}
+                  <span class="subtask-pill-badge" class:all-done={doneSub === p.subtasks.length}>
+                    ✓ {doneSub}/{p.subtasks.length}
+                  </span>
+                {/if}
               </div>
             </div>
 
@@ -285,7 +291,11 @@
                 >
                   <div class="bar-progress-fill" style="width: {getProgressPercent(p.status)}%;"></div>
                   <div class="bar-content-label">
-                    <span class="bar-title-text">{p.jobId}: {p.title}</span>
+                    <span class="bar-title-text">{p.jobId || p.id}: {p.title}</span>
+                    {#if p.subtasks && p.subtasks.length > 0}
+                      {@const doneSub = p.subtasks.filter(s => s.status === 'done' || s.isCompleted).length}
+                      <span class="bar-subtask-pill">✓ {doneSub}/{p.subtasks.length}</span>
+                    {/if}
                     <span class="bar-days-pill">{bar.durationDays}d</span>
                   </div>
                 </div>
@@ -557,6 +567,32 @@
     border-radius: 4px;
     font-size: 10px;
     flex-shrink: 0;
+  }
+
+  .bar-subtask-pill {
+    background: rgba(0, 0, 0, 0.35);
+    padding: 1px 5px;
+    border-radius: 4px;
+    font-size: 9.5px;
+    font-weight: 700;
+    flex-shrink: 0;
+    margin-left: auto;
+  }
+
+  .subtask-pill-badge {
+    background: var(--bg-card-secondary, #F1F5F9);
+    color: var(--brand-primary, #0078D4);
+    font-size: 10px;
+    font-weight: 700;
+    padding: 1px 5px;
+    border-radius: 4px;
+    border: 1px solid var(--border-subtle, #E2E8F0);
+  }
+
+  .subtask-pill-badge.all-done {
+    background: #107C41;
+    color: #FFFFFF;
+    border-color: #107C41;
   }
 
   .gantt-empty-state {

@@ -267,6 +267,12 @@
                                         <ui:TextBlock Text="{Binding DesignerDisplay}" FontSize="11" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,0,0,8"/>
 
                                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                            <ui:Button Click="OnOpenDrawerFromDayDetailClicked" Tag="{Binding FullPath}" Appearance="Primary" Height="28" Padding="10,0" Margin="0,0,6,0" Cursor="Hand" ToolTip="Inspect &amp; Edit Project Timeline">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <ui:SymbolIcon Symbol="Edit24" FontSize="11" Margin="0,0,4,0" VerticalAlignment="Center"/>
+                                                    <ui:TextBlock Text="Inspect" FontSize="10.5" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                                </StackPanel>
+                                            </ui:Button>
                                             <ui:Button Click="OnOpenProjectFolderClicked" Tag="{Binding FullPath}" Appearance="Secondary" Width="28" Height="28" Padding="0" Cursor="Hand" ToolTip="Open Folder">
                                                 <ui:SymbolIcon Symbol="Folder24" FontSize="13" VerticalAlignment="Center"/>
                                             </ui:Button>
@@ -276,6 +282,391 @@
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
+                </ScrollViewer>
+            </DockPanel>
+        </Border>
+
+        <!-- Project Detail & Inspector Side Overlay Drawer -->
+        <Border x:Name="ProjectDetailDrawer"
+                Width="440" HorizontalAlignment="Right" VerticalAlignment="Stretch"
+                Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" BorderThickness="1,0,0,0"
+                Panel.ZIndex="100"
+                Visibility="Collapsed">
+            <DockPanel Margin="20,16,20,16" LastChildFill="True">
+                <!-- Header Top Section -->
+                <StackPanel DockPanel.Dock="Top" Margin="0,0,0,12">
+                    <!-- Top Row: Badges & Close Button -->
+                    <Grid Margin="0,0,0,6">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <Border Background="{DynamicResource FluentBrand80}" CornerRadius="3" Padding="6,2" Margin="0,0,6,0">
+                                <ui:TextBlock x:Name="DrawerJobId" Text="PROJECT" FontSize="10" FontWeight="Bold" Foreground="White"/>
+                            </Border>
+                            <Border x:Name="DrawerStatusBadge" Background="{DynamicResource TextControlBackground}" CornerRadius="3" Padding="6,2">
+                                <ui:TextBlock x:Name="DrawerStatusBadgeText" Text="BACKLOG" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                            </Border>
+                        </StackPanel>
+
+                        <ui:Button Click="OnCloseProjectDetailDrawer" HorizontalAlignment="Right"
+                                   Background="Transparent" BorderThickness="0" Cursor="Hand" ToolTip="Close Inspector Drawer">
+                            <ui:SymbolIcon Symbol="Dismiss24" FontSize="14" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                        </ui:Button>
+                    </Grid>
+
+                    <!-- Title & Subtitle -->
+                    <ui:TextBlock x:Name="DrawerTitle" Text="Project Title" FontSize="16" FontWeight="Bold"
+                                  Foreground="{DynamicResource TextFillColorPrimaryBrush}" TextWrapping="Wrap" Margin="0,0,0,2"/>
+                    <ui:TextBlock x:Name="DrawerSubtitle" Text="Designer &#x2022; Workspace Path" FontSize="11"
+                                  Foreground="{DynamicResource TextFillColorSecondaryBrush}" TextTrimming="CharacterEllipsis" Margin="0,0,0,8"/>
+
+                    <!-- Action Toolbar -->
+                    <Grid>
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <ui:Button x:Name="BtnDrawerSave" Appearance="Primary" Click="OnDrawerSaveClicked" Height="30" Padding="14,0" Cursor="Hand" Margin="0,0,6,0" ToolTip="Save all changes to project README.md">
+                                <StackPanel Orientation="Horizontal">
+                                    <ui:SymbolIcon Symbol="Save24" FontSize="13" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                                    <ui:TextBlock Text="Save Changes" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </ui:Button>
+
+                            <ui:Button Click="OnDrawerOpenFolderClicked" Appearance="Secondary" Height="30" Width="30" Padding="0" Cursor="Hand" Margin="0,0,4,0" ToolTip="Open Project Folder in File Explorer">
+                                <ui:SymbolIcon Symbol="Folder24" FontSize="13" VerticalAlignment="Center"/>
+                            </ui:Button>
+
+                            <ui:Button Click="OnDrawerOpenSourceClicked" Appearance="Secondary" Height="30" Width="30" Padding="0" Cursor="Hand" Margin="0,0,4,0" ToolTip="Open Working Source File (.afdesign, .psd, .ai)">
+                                <ui:SymbolIcon Symbol="DocumentEdit24" FontSize="13" VerticalAlignment="Center"/>
+                            </ui:Button>
+
+                            <ui:Button Click="OnDrawerOpenCanvaClicked" Appearance="Secondary" Height="30" Width="30" Padding="0" Cursor="Hand" Margin="0,0,4,0" ToolTip="Open Canva Design Template in Browser">
+                                <ui:SymbolIcon Symbol="Globe24" FontSize="13" VerticalAlignment="Center"/>
+                            </ui:Button>
+
+                            <ui:Button Click="OnDrawerHandoverZipClicked" Appearance="Secondary" Height="30" Width="30" Padding="0" Cursor="Hand" ToolTip="Export Creative Handover Package (ZIP)">
+                                <ui:SymbolIcon Symbol="Archive24" FontSize="13" VerticalAlignment="Center"/>
+                            </ui:Button>
+                        </StackPanel>
+
+                        <ui:TextBlock x:Name="DrawerSaveStatus" HorizontalAlignment="Right" VerticalAlignment="Center"
+                                      FontSize="10.5" FontWeight="SemiBold" Foreground="{DynamicResource SystemFillColorSuccessBrush}"/>
+                    </Grid>
+                </StackPanel>
+
+                <!-- Scrollable Body Content -->
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel Margin="0,4,0,0">
+                        <!-- Off-Day Conflict Alert Card -->
+                        <Border x:Name="DrawerConflictBanner" Visibility="Collapsed"
+                                Background="#1AFE4949" BorderBrush="#DC2626" BorderThickness="1"
+                                CornerRadius="6" Padding="12,10" Margin="0,0,0,10">
+                            <StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                    <ui:SymbolIcon Symbol="Warning24" FontSize="14" Foreground="#DC2626" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                    <ui:TextBlock Text="Off-Day Schedule Conflict" FontSize="11" FontWeight="Bold" Foreground="#DC2626" VerticalAlignment="Center"/>
+                                </StackPanel>
+                                <ui:TextBlock x:Name="DrawerConflictText" Text="Project deadline falls on a non-working off-day. Please adjust to a working day."
+                                              FontSize="10.5" Foreground="{DynamicResource TextFillColorPrimaryBrush}" TextWrapping="Wrap" Margin="0,0,0,6"/>
+                                <ui:Button Appearance="Secondary" Height="26" Padding="10,0" HorizontalAlignment="Left"
+                                           Click="OnDrawerFixConflictClicked" Cursor="Hand" ToolTip="Advance deadline to the next available working day">
+                                    <StackPanel Orientation="Horizontal">
+                                        <ui:SymbolIcon Symbol="CalendarArrowRight24" FontSize="11" Margin="0,0,4,0" VerticalAlignment="Center"/>
+                                        <ui:TextBlock Text="Reschedule to Next Working Day" FontSize="10" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </ui:Button>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Card 1: Timeline, Dates & Duration -->
+                        <ui:Card Margin="0,0,0,10" Padding="12">
+                            <StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                    <ui:SymbolIcon Symbol="CalendarClock24" FontSize="13" Foreground="{DynamicResource FluentBrand80}" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                    <ui:TextBlock Text="TIMELINE &amp; DURATION" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                </StackPanel>
+
+                                <Grid Margin="0,0,0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="8"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- Start Date -->
+                                    <StackPanel Grid.Column="0">
+                                        <ui:TextBlock Text="Start Date" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,0,0,3"/>
+                                        <DatePicker x:Name="DrawerStartDate" Height="32" FontSize="11" SelectedDateChanged="OnDrawerDateChanged"/>
+                                    </StackPanel>
+
+                                    <!-- Deadline Date -->
+                                    <StackPanel Grid.Column="2">
+                                        <ui:TextBlock Text="Deadline (End Date)" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,0,0,3"/>
+                                        <DatePicker x:Name="DrawerDeadline" Height="32" FontSize="11" SelectedDateChanged="OnDrawerDateChanged"/>
+                                    </StackPanel>
+                                </Grid>
+
+                                <!-- Duration & Quick Stepper -->
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                                        <ui:TextBlock Text="Duration" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,0,0,3"/>
+                                        <ui:TextBox x:Name="DrawerDuration" Width="80" Height="32" FontSize="11" PlaceholderText="e.g. 3d" TextChanged="OnDrawerDurationChanged"/>
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Bottom">
+                                        <ui:TextBlock Text="Quick Extend Deadline" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,0,0,3"/>
+                                        <StackPanel Orientation="Horizontal">
+                                            <ui:Button Appearance="Secondary" Content="+1 Day" Click="OnDrawerAddDaysClicked" Tag="1" Height="32" Padding="8,0" FontSize="10.5" Margin="0,0,4,0" Cursor="Hand"/>
+                                            <ui:Button Appearance="Secondary" Content="+3 Days" Click="OnDrawerAddDaysClicked" Tag="3" Height="32" Padding="8,0" FontSize="10.5" Margin="0,0,4,0" Cursor="Hand"/>
+                                            <ui:Button Appearance="Secondary" Content="+1 Week" Click="OnDrawerAddDaysClicked" Tag="7" Height="32" Padding="8,0" FontSize="10.5" Cursor="Hand"/>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Grid>
+                            </StackPanel>
+                        </ui:Card>
+
+                        <!-- Card 2: Ownership, Status & Priority -->
+                        <ui:Card Margin="0,0,0,10" Padding="12">
+                            <StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                    <ui:SymbolIcon Symbol="Person24" FontSize="13" Foreground="{DynamicResource FluentBrand80}" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                    <ui:TextBlock Text="OWNERSHIP &amp; METADATA" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                </StackPanel>
+
+                                <Grid Margin="0,0,0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="8"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- Status -->
+                                    <StackPanel Grid.Column="0">
+                                        <ui:TextBlock Text="Project Status" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,0,0,3"/>
+                                        <ComboBox x:Name="DrawerStatus" Height="32" FontSize="11" SelectionChanged="OnDrawerStatusSelectionChanged">
+                                            <ComboBoxItem Content="backlog"/>
+                                            <ComboBoxItem Content="in-progress"/>
+                                            <ComboBoxItem Content="review"/>
+                                            <ComboBoxItem Content="revision"/>
+                                            <ComboBoxItem Content="approved"/>
+                                            <ComboBoxItem Content="done"/>
+                                            <ComboBoxItem Content="on-hold"/>
+                                        </ComboBox>
+                                    </StackPanel>
+
+                                    <!-- Priority -->
+                                    <StackPanel Grid.Column="2">
+                                        <ui:TextBlock Text="Priority" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,0,0,3"/>
+                                        <ComboBox x:Name="DrawerPriority" Height="32" FontSize="11">
+                                            <ComboBoxItem Content="low"/>
+                                            <ComboBoxItem Content="medium"/>
+                                            <ComboBoxItem Content="high"/>
+                                            <ComboBoxItem Content="urgent"/>
+                                        </ComboBox>
+                                    </StackPanel>
+                                </Grid>
+
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="8"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- Task Owner / Designer -->
+                                    <StackPanel Grid.Column="0">
+                                        <ui:TextBlock Text="Assigned Designer" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,0,0,3"/>
+                                        <ComboBox x:Name="DrawerDesigner" Height="32" FontSize="11" IsEditable="True"/>
+                                    </StackPanel>
+
+                                    <!-- Revision Stepper -->
+                                    <StackPanel Grid.Column="2">
+                                        <ui:TextBlock Text="Revision Round" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,0,0,3"/>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <ui:Button Grid.Column="0" Click="OnDrawerRevisionDecrementClicked" Appearance="Secondary" Height="32" Width="30" Padding="0" Cursor="Hand" ToolTip="Decrease revision">
+                                                <ui:SymbolIcon Symbol="Subtract24" FontSize="10" VerticalAlignment="Center"/>
+                                            </ui:Button>
+                                            <ui:TextBox Grid.Column="1" x:Name="DrawerRevision" Height="32" FontSize="11" HorizontalContentAlignment="Center" Margin="3,0" Text="0"/>
+                                            <ui:Button Grid.Column="2" Click="OnDrawerRevisionIncrementClicked" Appearance="Secondary" Height="32" Width="30" Padding="0" Cursor="Hand" ToolTip="Increase revision">
+                                                <ui:SymbolIcon Symbol="Add24" FontSize="10" VerticalAlignment="Center"/>
+                                            </ui:Button>
+                                        </Grid>
+                                    </StackPanel>
+                                </Grid>
+                            </StackPanel>
+                        </ui:Card>
+
+                        <!-- Card 3: Deliverables & Subtasks -->
+                        <ui:Card Margin="0,0,0,10" Padding="12">
+                            <StackPanel>
+                                <!-- Deliverables Header -->
+                                <Grid Margin="0,0,0,6">
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <ui:SymbolIcon Symbol="CheckmarkCircle24" FontSize="13" Foreground="{DynamicResource FluentBrand80}" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                        <ui:TextBlock Text="DELIVERABLES &amp; SUBTASKS" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                        <ui:TextBlock x:Name="DrawerSubtasksProgress" Text="(0/0 &#x2022; 0 pts)" FontSize="10" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="6,0,0,0" VerticalAlignment="Center"/>
+                                    </StackPanel>
+
+                                    <ui:Button HorizontalAlignment="Right" Appearance="Secondary" Click="OnDrawerAddSubtaskClicked" Height="26" Padding="10,0" FontSize="10.5" Cursor="Hand" ToolTip="Add a new deliverable spec or variation">
+                                        <StackPanel Orientation="Horizontal">
+                                            <ui:SymbolIcon Symbol="Add24" FontSize="11" Margin="0,0,4,0" VerticalAlignment="Center"/>
+                                            <ui:TextBlock Text="Add" FontSize="10.5" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </ui:Button>
+                                </Grid>
+
+                                <!-- Subtasks Progress Bar -->
+                                <ProgressBar x:Name="DrawerSubtasksProgressBar" Height="4" Margin="0,0,0,8" Value="0" Maximum="100" Foreground="{DynamicResource FluentBrand80}"/>
+
+                                <!-- Inline Add/Edit Subtask Editor Card -->
+                                <Border x:Name="DrawerSubtaskEditorCard" Visibility="Collapsed" Background="{DynamicResource CardBackgroundFillColorSecondaryBrush}" BorderBrush="{DynamicResource FluentBrand80}" BorderThickness="1.5" CornerRadius="6" Padding="10" Margin="0,0,0,8">
+                                    <StackPanel>
+                                        <ui:TextBlock x:Name="DrawerSubtaskEditorTitle" Text="Add Deliverable / Subtask" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource FluentBrand80}" Margin="0,0,0,6"/>
+
+                                        <!-- Row 1: ID & Name -->
+                                        <Grid Margin="0,0,0,6">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="65"/>
+                                                <ColumnDefinition Width="6"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0">
+                                                <ui:TextBlock Text="ID" FontSize="9" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,0,0,2"/>
+                                                <ui:TextBox x:Name="DrawerSubtaskId" Height="28" FontSize="10.5" PlaceholderText="KV01"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="2">
+                                                <ui:TextBlock Text="Deliverable Name / Asset Title" FontSize="9" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,0,0,2"/>
+                                                <ui:TextBox x:Name="DrawerSubtaskName" Height="28" FontSize="10.5" PlaceholderText="e.g. Master Key Visual 1:1"/>
+                                            </StackPanel>
+                                        </Grid>
+
+                                        <!-- Row 2: Specs & Type -->
+                                        <Grid Margin="0,0,0,6">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="6"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0">
+                                                <ui:TextBlock Text="Specs (Aspect Ratio, Size)" FontSize="9" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,0,0,2"/>
+                                                <ComboBox x:Name="DrawerSubtaskSpecs" IsEditable="True" Height="28" FontSize="10.5">
+                                                    <ComboBoxItem Content="1:1, 1080x1080 (Square Post)"/>
+                                                    <ComboBoxItem Content="9:16, 1080x1920 (Reels/TikTok/Story)"/>
+                                                    <ComboBoxItem Content="16:9, 1920x1080 (YouTube/Landscape)"/>
+                                                    <ComboBoxItem Content="4:5, 1080x1350 (IG Portrait Post)"/>
+                                                </ComboBox>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="2">
+                                                <ui:TextBlock Text="Type" FontSize="9" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,0,0,2"/>
+                                                <ComboBox x:Name="DrawerSubtaskType" IsEditable="True" Height="28" FontSize="10.5">
+                                                    <ComboBoxItem Content="key_visual"/>
+                                                    <ComboBoxItem Content="resize"/>
+                                                    <ComboBoxItem Content="hook_variation"/>
+                                                    <ComboBoxItem Content="master_video"/>
+                                                    <ComboBoxItem Content="artwork"/>
+                                                </ComboBox>
+                                            </StackPanel>
+                                        </Grid>
+
+                                        <!-- Row 3: Weight & Status -->
+                                        <Grid Margin="0,0,0,8">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="6"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0">
+                                                <ui:TextBlock Text="Complexity Points (Weight)" FontSize="9" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,0,0,2"/>
+                                                <ComboBox x:Name="DrawerSubtaskWeight" IsEditable="True" Height="28" FontSize="10.5">
+                                                    <ComboBoxItem Content="0.2 pt (Format Resize)"/>
+                                                    <ComboBoxItem Content="0.4 pt (Hook Variation)"/>
+                                                    <ComboBoxItem Content="1.0 pt (Master Key Visual)"/>
+                                                    <ComboBoxItem Content="2.0 pts (Master Story Cut 30-60s)"/>
+                                                    <ComboBoxItem Content="6.0 pts (Long-Form Episode)"/>
+                                                </ComboBox>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="2">
+                                                <ui:TextBlock Text="Status" FontSize="9" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,0,0,2"/>
+                                                <ComboBox x:Name="DrawerSubtaskStatus" Height="28" FontSize="10.5">
+                                                    <ComboBoxItem Content="Draft" Tag="draft"/>
+                                                    <ComboBoxItem Content="In Progress" Tag="in-progress"/>
+                                                    <ComboBoxItem Content="Done" Tag="done"/>
+                                                </ComboBox>
+                                            </StackPanel>
+                                        </Grid>
+
+                                        <!-- Action Buttons -->
+                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                            <ui:Button Appearance="Secondary" Content="Cancel" Click="OnDrawerCancelSubtaskEditClicked" Height="26" Padding="12,0" FontSize="10.5" Margin="0,0,6,0" Cursor="Hand"/>
+                                            <ui:Button Appearance="Primary" Content="Save Deliverable" Click="OnDrawerSaveSubtaskEditClicked" Height="26" Padding="14,0" FontSize="10.5" Cursor="Hand"/>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Subtasks Items List -->
+                                <ItemsControl x:Name="DrawerSubtasksList">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Background="{DynamicResource CardBackgroundFillColorDefaultBrush}" BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="4" Padding="8,6" Margin="0,0,0,4">
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <Border Background="{DynamicResource TextControlBackground}" CornerRadius="3" Padding="4,1" Margin="0,0,6,0">
+                                                                <ui:TextBlock Text="{Binding Id}" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource FluentBrand80}"/>
+                                                            </Border>
+                                                            <ui:TextBlock Text="{Binding Name}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}" TextTrimming="CharacterEllipsis"/>
+                                                        </StackPanel>
+                                                        <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
+                                                            <ui:TextBlock Text="{Binding Type}" FontSize="9.5" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                                            <ui:TextBlock Text=" &#x2022; " FontSize="9.5" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                                            <ui:TextBlock Text="{Binding Specs}" FontSize="9.5" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                                        </StackPanel>
+                                                    </StackPanel>
+
+                                                    <!-- Weight Badge -->
+                                                    <Border Grid.Column="1" Background="{DynamicResource TextControlBackground}" CornerRadius="3" Padding="5,2" VerticalAlignment="Center" Margin="6,0">
+                                                        <ui:TextBlock Text="{Binding WeightDisplay}" FontSize="9.5" FontWeight="Bold" Foreground="{DynamicResource FluentBrand80}"/>
+                                                    </Border>
+
+                                                    <!-- Status Button Toggle -->
+                                                    <ui:Button Grid.Column="2" Appearance="Secondary" Height="24" Padding="8,0" Click="OnDrawerSubtaskStatusToggleClicked" Tag="{Binding Id}" Cursor="Hand" ToolTip="Click to cycle status: Draft &#x2192; In Progress &#x2192; Done">
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <Border Width="6" Height="6" CornerRadius="3" Background="{Binding StatusBadgeColor}" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                                                            <ui:TextBlock Text="{Binding StatusDisplay}" FontSize="10" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                                        </StackPanel>
+                                                    </ui:Button>
+
+                                                    <!-- Edit Subtask Button -->
+                                                    <ui:Button Grid.Column="3" Appearance="Secondary" Height="24" Width="24" Padding="0" Margin="4,0,0,0" Click="OnDrawerEditSubtaskClicked" Tag="{Binding Id}" Cursor="Hand" ToolTip="Edit deliverable info">
+                                                        <ui:SymbolIcon Symbol="Edit16" FontSize="10" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                                    </ui:Button>
+
+                                                    <!-- Delete Subtask Button -->
+                                                    <ui:Button Grid.Column="4" Appearance="Secondary" Height="24" Width="24" Padding="0" Margin="4,0,0,0" Click="OnDrawerRemoveSubtaskClicked" Tag="{Binding Id}" Cursor="Hand" ToolTip="Remove this deliverable">
+                                                        <ui:SymbolIcon Symbol="Dismiss16" FontSize="10" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                                    </ui:Button>
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </ui:Card>
+                    </StackPanel>
                 </ScrollViewer>
             </DockPanel>
         </Border>

@@ -1,9 +1,16 @@
 # SS-CAM FIX LOG
 
-## v4.9.0 — 2026-09-11 (Art Director Ecosystem Unification: Live Studio Workstream Telemetry, Command Palette v3.5.1, Packaging Deliverables & Tri-Platform Parity)
+## v4.9.0 — 2026-09-11 (Visual Project Timeline & Gantt Inspector Drawer, Live Studio Workstream Telemetry, Command Palette v3.5.1 & Tri-Platform Parity)
 - **Assembly Version**: `4.9.0.0`
 - **Android Version**: `versionCode = 490`, `versionName = "4.9.0"`
 - **Web Portal Version**: `4.9.0`
+- **Visual Project Timeline & Gantt Inspector Drawer (`CalendarPage.xaml`, `CalendarPage.xaml.cs`, `ProjectGanttView.svelte`)**:
+  - Right-docked 440px `ProjectDetailDrawer` opened by clicking project name or timeline bar in Gantt chart, or "Inspect" in day cards.
+  - Interactive Start Date and Deadline calendar pickers with automatic bidirectional duration sync in days (`{N}d`) and quick extension pills (`+1d`, `+3d`, `+1w`).
+  - Malaysian Off-Day Conflict Alert (`MalaysiaHolidayService.IsOffDay`) detecting weekends and national public holidays with a 1-click **"Fix Off-Day Conflict"** auto-reschedule button.
+  - Deliverables & Subtask Checklist Manager with `{Done}/{Total} (X%)` progress bar, 1-click status cycling (`Draft` ➔ `In Progress` ➔ `Done`), and inline editing.
+  - Direct persistence to `README.md` YAML frontmatter via `FrontmatterService.WriteStatus`.
+  - Visual Subtask Status Indicators: `[✓ X/Y • Z pts]` completion badges on Gantt left column (turns green on completion) and `✓ X/Y` pill badge on timeline bars (Desktop & Web).
 - **Live Studio Telemetry & Workstream Pulse Across Ecosystem (`TeamService.js`, `LiveTaskSyncService.cs`, `DeskCompanionMode.kt`, `TeamHubScreen.kt`)**:
   - Implemented `GET /api/team/live-tasks` reading `<WorkspaceRoot>/_Team/live_tasks.json` with UTF-8 BOM safety and 16-hour session freshness filter.
   - Connected Chokidar file watcher to broadcast real-time Server-Sent Events (`live_tasks:updated`) across all connected browser clients upon filesystem mutation.
@@ -22,10 +29,11 @@
   - Added strategic `tier_0` (`🗓️ Low / Pipeline`) priority tier across Web and Android Order Creation modals.
   - Standardized physical substrate chips (`Art Card 260/310gsm`, `Mirrorkote Gloss`, `Synthetic Vinyl`) and millimetre dimension inputs.
 - **Packaging & Release Deliverables**:
-  - Windows Desktop: `dist/SS-CAM-v4.9.0.exe` (5.96 MB single-file) and `dist/SS-CAM.exe`.
-  - Android Companion: `app-release.aab` (5.76 MB, RSA 2048 Signed) and `app-release.apk`.
+  - Windows Desktop: `dist/SS-CAM-v4.9.0.exe` (5.99 MB single-file) and `dist/SS-CAM.exe`.
+  - Android Companion: `app-release.aab` (6.03 MB, RSA 2048 Signed) and `app-release.apk` (3.39 MB).
   - Web Portal: Production assets compiled cleanly to `src/SS-CAM.Web/client/dist/`.
-  - Test Suite: 33/33 tests passing with 0 failures.
+  - Test Suite: 34/34 tests passing with 0 failures.
+  - GitHub Release: v4.9.0 Published with artifacts as Latest.
 
 ## v4.8.1 — 2026-09-10 (Global Studio Command Palette `Ctrl + K`, Art Director 60-30-10 Polish, Live Work Session Stopwatch & Status Indicator, Creative Operations Upgrade)
 - **Assembly Version**: `4.8.1.0`

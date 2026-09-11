@@ -55,6 +55,9 @@ namespace SS_CAM.Views
         private List<ProjectStatusItem> _allProjects = new List<ProjectStatusItem>();
         private bool _isPopulatingFilter = false;
         private bool _isGanttView = false;
+        private ProjectStatusItem _drawerEditingProject = null;
+        private string _drawerEditingSubtaskId = null;
+        private bool _isUpdatingDrawerDates = false;
 
         public CalendarPage()
         {
@@ -1246,7 +1249,15 @@ namespace SS_CAM.Views
                     }
 
                     // Project Title Label Column
-                    StackPanel nameStack = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+                    StackPanel nameStack = new StackPanel { VerticalAlignment = VerticalAlignment.Center, Cursor = Cursors.Hand };
+                    nameStack.ToolTip = "Click to inspect & edit in right drawer";
+                    ProjectStatusItem projRef = p;
+                    nameStack.MouseLeftButtonDown += (s, ev) =>
+                    {
+                        ev.Handled = true;
+                        OpenProjectDetailDrawer(projRef);
+                    };
+
                     TextBlock pName = new TextBlock
                     {
                         Text = p.Project ?? "Untitled",
@@ -1271,6 +1282,32 @@ namespace SS_CAM.Views
 
                     nameStack.Children.Add(pName);
                     nameStack.Children.Add(pSub);
+
+                    // Subtask indicator badge in left column
+                    if (p.TotalSubtasksCount > 0)
+                    {
+                        StackPanel subtaskRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 2, 0, 0) };
+                        bool allDone = (p.CompletedSubtasksCount == p.TotalSubtasksCount);
+                        Border subtaskBadge = new Border
+                        {
+                            Background = allDone
+                                ? (Brush)Application.Current.FindResource("SystemFillColorSuccessBrush")
+                                : (Brush)Application.Current.FindResource("TextControlBackground"),
+                            CornerRadius = new CornerRadius(3),
+                            Padding = new Thickness(4, 1, 4, 1)
+                        };
+                        TextBlock txtSubtaskBadge = new TextBlock
+                        {
+                            Text = string.Format("✓ {0}/{1} • {2:0.#} pts", p.CompletedSubtasksCount, p.TotalSubtasksCount, p.TotalWeight),
+                            FontSize = 8.5,
+                            FontWeight = FontWeights.Bold,
+                            Foreground = allDone ? Brushes.White : (Brush)Application.Current.FindResource("FluentBrand80")
+                        };
+                        subtaskBadge.Child = txtSubtaskBadge;
+                        subtaskRow.Children.Add(subtaskBadge);
+                        nameStack.Children.Add(subtaskRow);
+                    }
+
                     Grid.SetColumn(nameStack, 0);
                     rowGrid.Children.Add(nameStack);
 
@@ -1282,7 +1319,13 @@ namespace SS_CAM.Views
                         CornerRadius = new CornerRadius(4),
                         Height = 20,
                         VerticalAlignment = VerticalAlignment.Center,
-                        Margin = new Thickness(1, 0, 1, 0)
+                        Margin = new Thickness(1, 0, 1, 0),
+                        Cursor = Cursors.Hand
+                    };
+                    bar.MouseLeftButtonDown += (s, ev) =>
+                    {
+                        ev.Handled = true;
+                        OpenProjectDetailDrawer(projRef);
                     };
 
                     if (isDeadlineOffDay)
@@ -1295,8 +1338,21 @@ namespace SS_CAM.Views
                         ? string.Format("\n\n⚠️ SCHEDULE CONFLICT: Project deadline falls on an OFF-DAY ({0})!\nCreative deliverables must not be scheduled on weekends or public holidays. Please reschedule to a working day.", offDayReason)
                         : "";
 
-                    bar.ToolTip = string.Format("Project: {0}\nDesigner: {1}\nStatus: {2}\nStart: {3}\nDeadline: {4}{5}",
-                        p.Project, p.Designer, p.Status, p.CreatedDateDisplay, p.DeadlineDisplay, warningToolTip);
+                    string subtaskSummary = "";
+                    if (p.Subtasks != null && p.Subtasks.Count > 0)
+                    {
+                        System.Text.StringBuilder sb = new System.Text.StringBuilder();
+                        sb.AppendLine(string.Format("\n\nDeliverables & Subtasks ({0}/{1} Done • {2:0.#} pts):", p.CompletedSubtasksCount, p.TotalSubtasksCount, p.TotalWeight));
+                        foreach (var st in p.Subtasks)
+                        {
+                            string mark = st.IsCompleted ? "✓" : ((st.Status ?? "").ToLowerInvariant().Contains("progress") ? "⏳" : "○");
+                            sb.AppendLine(string.Format("  {0} [{1}] {2} ({3}, {4})", mark, st.StatusDisplay, st.Name, st.Specs, st.WeightDisplay));
+                        }
+                        subtaskSummary = sb.ToString();
+                    }
+
+                    bar.ToolTip = string.Format("Project: {0}\nDesigner: {1}\nStatus: {2}\nStart: {3}\nDeadline: {4}{5}{6}\n\n👉 Click to inspect & edit in right drawer",
+                        p.Project, p.Designer, p.Status, p.CreatedDateDisplay, p.DeadlineDisplay, warningToolTip, subtaskSummary);
 
                     DockPanel barContent = new DockPanel { LastChildFill = true, Margin = new Thickness(4, 0, 4, 0) };
 
@@ -1321,6 +1377,30 @@ namespace SS_CAM.Views
                         };
                         warnBadge.Child = warnTxt;
                         barContent.Children.Add(warnBadge);
+                    }
+
+                    // Subtask pill badge on Gantt timeline bar
+                    if (p.TotalSubtasksCount > 0)
+                    {
+                        Border subtaskPill = new Border
+                        {
+                            Background = new SolidColorBrush(Color.FromArgb(140, 0, 0, 0)),
+                            CornerRadius = new CornerRadius(3),
+                            Padding = new Thickness(4, 0, 4, 0),
+                            Margin = new Thickness(3, 0, 0, 0),
+                            VerticalAlignment = VerticalAlignment.Center
+                        };
+                        DockPanel.SetDock(subtaskPill, Dock.Right);
+                        TextBlock txtPill = new TextBlock
+                        {
+                            Text = string.Format("✓ {0}/{1}", p.CompletedSubtasksCount, p.TotalSubtasksCount),
+                            FontSize = 8,
+                            FontWeight = FontWeights.Bold,
+                            Foreground = Brushes.White,
+                            VerticalAlignment = VerticalAlignment.Center
+                        };
+                        subtaskPill.Child = txtPill;
+                        barContent.Children.Add(subtaskPill);
                     }
 
                     TextBlock barText = new TextBlock
@@ -1362,6 +1442,682 @@ namespace SS_CAM.Views
                 Debug.WriteLine("[CalendarPage] RenderGanttTimeline error: " + ex.Message);
             }
         }
+
+        #region Project Detail Drawer & Deliverables Management
+
+        public void OpenProjectDetailDrawer(ProjectStatusItem project)
+        {
+            if (project == null) return;
+            _drawerEditingProject = project;
+
+            try
+            {
+                if (DayDetailPanel != null) DayDetailPanel.Visibility = Visibility.Collapsed;
+
+                if (DrawerJobId != null)
+                {
+                    string idText = !string.IsNullOrWhiteSpace(project.Project) ? project.Project : "PROJECT";
+                    if (idText.Length > 18) idText = idText.Substring(0, 18);
+                    DrawerJobId.Text = idText;
+                }
+
+                UpdateDrawerStatusBadge(project.Status);
+
+                if (DrawerTitle != null) DrawerTitle.Text = project.Project ?? "Untitled Project";
+                if (DrawerSubtitle != null)
+                {
+                    DrawerSubtitle.Text = string.Format("{0} • {1}",
+                        !string.IsNullOrWhiteSpace(project.Designer) ? project.Designer : "Unassigned",
+                        project.FullPath ?? "");
+                }
+
+                if (DrawerDesigner != null)
+                {
+                    string currentDesigner = project.Designer ?? "";
+                    DrawerDesigner.Items.Clear();
+                    if (DesignerFilter != null)
+                    {
+                        foreach (var it in DesignerFilter.Items)
+                        {
+                            string d = it != null ? it.ToString() : "";
+                            if (!string.IsNullOrWhiteSpace(d) && !d.Equals("All Designers", StringComparison.OrdinalIgnoreCase))
+                            {
+                                DrawerDesigner.Items.Add(d);
+                            }
+                        }
+                    }
+                    DrawerDesigner.Text = currentDesigner;
+                }
+
+                if (DrawerStatus != null) SelectComboItemByContent(DrawerStatus, project.Status);
+                if (DrawerPriority != null) SelectComboItemByContent(DrawerPriority, project.Priority);
+
+                _isUpdatingDrawerDates = true;
+                DateTime dtStart;
+                if (!string.IsNullOrWhiteSpace(project.CreatedDate) && DateTime.TryParse(project.CreatedDate, out dtStart))
+                {
+                    DrawerStartDate.SelectedDate = dtStart.Date;
+                }
+                else
+                {
+                    DrawerStartDate.SelectedDate = project.ParsedCreatedDate.Date;
+                }
+
+                DateTime dtDeadline;
+                if (!string.IsNullOrWhiteSpace(project.Deadline) && DateTime.TryParse(project.Deadline, out dtDeadline))
+                {
+                    DrawerDeadline.SelectedDate = dtDeadline.Date;
+                }
+                else
+                {
+                    DrawerDeadline.SelectedDate = DrawerStartDate.SelectedDate;
+                }
+
+                if (DrawerDuration != null)
+                {
+                    DrawerDuration.Text = !string.IsNullOrWhiteSpace(project.Duration) ? project.Duration : "";
+                }
+                _isUpdatingDrawerDates = false;
+
+                if (DrawerRevision != null)
+                {
+                    DrawerRevision.Text = project.Revision.ToString();
+                }
+
+                if (DrawerSaveStatus != null)
+                {
+                    DrawerSaveStatus.Text = "";
+                }
+
+                UpdateDrawerConflictBanner();
+
+                if (DrawerSubtaskEditorCard != null) DrawerSubtaskEditorCard.Visibility = Visibility.Collapsed;
+                _drawerEditingSubtaskId = null;
+                PopulateDrawerSubtasks(project);
+
+                if (ProjectDetailDrawer != null)
+                {
+                    ProjectDetailDrawer.Visibility = Visibility.Visible;
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine("[CalendarPage] OpenProjectDetailDrawer error: " + ex.Message);
+            }
+        }
+
+        private void OnCloseProjectDetailDrawer(object sender, RoutedEventArgs e)
+        {
+            if (ProjectDetailDrawer != null)
+            {
+                ProjectDetailDrawer.Visibility = Visibility.Collapsed;
+            }
+            _drawerEditingProject = null;
+        }
+
+        private void OnOpenDrawerFromDayDetailClicked(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                FrameworkElement el = sender as FrameworkElement;
+                if (el == null || el.Tag == null) return;
+                string path = el.Tag.ToString();
+                if (string.IsNullOrWhiteSpace(path)) return;
+
+                var proj = _allProjects.Find(p => string.Equals(p.FullPath, path, StringComparison.OrdinalIgnoreCase));
+                if (proj != null)
+                {
+                    OpenProjectDetailDrawer(proj);
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine("[CalendarPage] OnOpenDrawerFromDayDetailClicked error: " + ex.Message);
+            }
+        }
+
+        private void UpdateDrawerConflictBanner()
+        {
+            if (DrawerConflictBanner == null) return;
+            if (DrawerDeadline != null && DrawerDeadline.SelectedDate.HasValue)
+            {
+                DateTime dl = DrawerDeadline.SelectedDate.Value.Date;
+                bool isOff = MalaysiaHolidayService.IsOffDay(dl);
+                if (isOff)
+                {
+                    string reason = MalaysiaHolidayService.GetOffDayReason(dl);
+                    if (DrawerConflictText != null)
+                    {
+                        DrawerConflictText.Text = string.Format("⚠️ Deadline ({0:dd MMM yyyy}) lands on an OFF-DAY ({1}). Creative deliverables must not be scheduled on weekends or public holidays.", dl, reason);
+                    }
+                    DrawerConflictBanner.Visibility = Visibility.Visible;
+                }
+                else
+                {
+                    DrawerConflictBanner.Visibility = Visibility.Collapsed;
+                }
+            }
+            else
+            {
+                DrawerConflictBanner.Visibility = Visibility.Collapsed;
+            }
+        }
+
+        private void OnDrawerFixConflictClicked(object sender, RoutedEventArgs e)
+        {
+            if (DrawerDeadline == null || !DrawerDeadline.SelectedDate.HasValue) return;
+            DateTime cur = DrawerDeadline.SelectedDate.Value.Date;
+            DateTime next = cur.AddDays(1);
+            int safety = 0;
+            while (MalaysiaHolidayService.IsOffDay(next) && safety < 14)
+            {
+                next = next.AddDays(1);
+                safety++;
+            }
+            DrawerDeadline.SelectedDate = next;
+        }
+
+        private void OnDrawerDateChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_isUpdatingDrawerDates) return;
+            UpdateDrawerConflictBanner();
+
+            if (DrawerStartDate != null && DrawerDeadline != null &&
+                DrawerStartDate.SelectedDate.HasValue && DrawerDeadline.SelectedDate.HasValue)
+            {
+                DateTime s = DrawerStartDate.SelectedDate.Value.Date;
+                DateTime d = DrawerDeadline.SelectedDate.Value.Date;
+                if (d >= s)
+                {
+                    int days = (d - s).Days + 1;
+                    _isUpdatingDrawerDates = true;
+                    if (DrawerDuration != null) DrawerDuration.Text = string.Format("{0}d", days);
+                    _isUpdatingDrawerDates = false;
+                }
+            }
+        }
+
+        private void OnDrawerDurationChanged(object sender, TextChangedEventArgs e)
+        {
+            if (_isUpdatingDrawerDates) return;
+            if (DrawerStartDate == null || !DrawerStartDate.SelectedDate.HasValue) return;
+            if (DrawerDuration == null) return;
+
+            string text = DrawerDuration.Text.Trim();
+            if (string.IsNullOrWhiteSpace(text)) return;
+
+            var match = Regex.Match(text, @"^\d+");
+            if (match.Success)
+            {
+                int days;
+                if (int.TryParse(match.Value, out days) && days > 0)
+                {
+                    _isUpdatingDrawerDates = true;
+                    DateTime s = DrawerStartDate.SelectedDate.Value.Date;
+                    DrawerDeadline.SelectedDate = s.AddDays(days - 1);
+                    _isUpdatingDrawerDates = false;
+                    UpdateDrawerConflictBanner();
+                }
+            }
+        }
+
+        private void OnDrawerAddDaysClicked(object sender, RoutedEventArgs e)
+        {
+            FrameworkElement btn = sender as FrameworkElement;
+            if (btn == null || btn.Tag == null) return;
+            int addDays;
+            if (!int.TryParse(btn.Tag.ToString(), out addDays)) return;
+
+            DateTime baseDate = DrawerDeadline != null && DrawerDeadline.SelectedDate.HasValue
+                ? DrawerDeadline.SelectedDate.Value.Date
+                : (DrawerStartDate != null && DrawerStartDate.SelectedDate.HasValue ? DrawerStartDate.SelectedDate.Value.Date : DateTime.Today);
+
+            if (DrawerDeadline != null)
+            {
+                DrawerDeadline.SelectedDate = baseDate.AddDays(addDays);
+            }
+        }
+
+        private void OnDrawerStatusSelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (DrawerStatus != null && DrawerStatus.SelectedItem is ComboBoxItem)
+            {
+                string status = ((ComboBoxItem)DrawerStatus.SelectedItem).Content.ToString();
+                UpdateDrawerStatusBadge(status);
+            }
+        }
+
+        private void UpdateDrawerStatusBadge(string status)
+        {
+            if (DrawerStatusBadgeText == null || DrawerStatusBadge == null) return;
+            string st = (status ?? "backlog").ToLowerInvariant().Trim();
+            DrawerStatusBadgeText.Text = st.ToUpperInvariant();
+            DrawerStatusBadge.Background = GetStatusBrush(st);
+            DrawerStatusBadgeText.Foreground = Brushes.White;
+        }
+
+        private void OnDrawerRevisionDecrementClicked(object sender, RoutedEventArgs e)
+        {
+            if (DrawerRevision == null) return;
+            int val;
+            if (!int.TryParse(DrawerRevision.Text, out val)) val = 0;
+            if (val > 0) val--;
+            DrawerRevision.Text = val.ToString();
+        }
+
+        private void OnDrawerRevisionIncrementClicked(object sender, RoutedEventArgs e)
+        {
+            if (DrawerRevision == null) return;
+            int val;
+            if (!int.TryParse(DrawerRevision.Text, out val)) val = 0;
+            val++;
+            DrawerRevision.Text = val.ToString();
+        }
+
+        private void OnDrawerSaveClicked(object sender, RoutedEventArgs e)
+        {
+            if (_drawerEditingProject == null) return;
+
+            try
+            {
+                if (DrawerStatus != null && DrawerStatus.SelectedItem is ComboBoxItem)
+                    _drawerEditingProject.Status = ((ComboBoxItem)DrawerStatus.SelectedItem).Content.ToString();
+
+                if (DrawerPriority != null && DrawerPriority.SelectedItem is ComboBoxItem)
+                    _drawerEditingProject.Priority = ((ComboBoxItem)DrawerPriority.SelectedItem).Content.ToString();
+
+                if (DrawerDeadline != null && DrawerDeadline.SelectedDate.HasValue)
+                    _drawerEditingProject.Deadline = DrawerDeadline.SelectedDate.Value.ToString("yyyy-MM-dd");
+
+                if (DrawerStartDate != null && DrawerStartDate.SelectedDate.HasValue)
+                    _drawerEditingProject.CreatedDate = DrawerStartDate.SelectedDate.Value.ToString("yyyy-MM-dd");
+
+                if (DrawerDuration != null)
+                    _drawerEditingProject.Duration = DrawerDuration.Text.Trim();
+
+                if (DrawerDesigner != null)
+                    _drawerEditingProject.Designer = DrawerDesigner.Text.Trim();
+
+                int revVal;
+                if (DrawerRevision != null && int.TryParse(DrawerRevision.Text, out revVal))
+                    _drawerEditingProject.Revision = revVal;
+
+                // Write to README.md
+                FrontmatterService.WriteStatus(_drawerEditingProject);
+
+                if (DrawerSaveStatus != null)
+                {
+                    DrawerSaveStatus.Text = "Saved to README.md \u2713";
+                }
+
+                NotificationService.ShowSuccess(
+                    "Project Updated",
+                    string.Format("Saved timeline & status for '{0}'.", _drawerEditingProject.Project),
+                    _drawerEditingProject.FullPath);
+
+                // Update item in _allProjects
+                int idx = _allProjects.FindIndex(p => string.Equals(p.FullPath, _drawerEditingProject.FullPath, StringComparison.OrdinalIgnoreCase));
+                if (idx >= 0)
+                {
+                    _allProjects[idx] = _drawerEditingProject;
+                }
+
+                UpdateMetrics();
+                if (_isGanttView) RenderGanttTimeline(); else RenderCalendarGrid();
+            }
+            catch (Exception ex)
+            {
+                if (DrawerSaveStatus != null)
+                {
+                    DrawerSaveStatus.Text = "Error: " + ex.Message;
+                }
+                Debug.WriteLine("[CalendarPage] OnDrawerSaveClicked error: " + ex.Message);
+            }
+        }
+
+        private void OnDrawerOpenFolderClicked(object sender, RoutedEventArgs e)
+        {
+            if (_drawerEditingProject != null && Directory.Exists(_drawerEditingProject.FullPath))
+            {
+                try
+                {
+                    Process.Start(new ProcessStartInfo
+                    {
+                        FileName = _drawerEditingProject.FullPath,
+                        UseShellExecute = true
+                    });
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine("[CalendarPage] OpenFolder error: " + ex.Message);
+                }
+            }
+        }
+
+        private void OnDrawerOpenSourceClicked(object sender, RoutedEventArgs e)
+        {
+            if (_drawerEditingProject != null && Directory.Exists(_drawerEditingProject.FullPath))
+            {
+                string srcDir = Path.Combine(_drawerEditingProject.FullPath, "02_SOURCE_FILES");
+                string targetFile = null;
+                if (Directory.Exists(srcDir))
+                {
+                    string[] files = Directory.GetFiles(srcDir);
+                    foreach (string f in files)
+                    {
+                        string ext = Path.GetExtension(f).ToLowerInvariant();
+                        if (ext == ".afdesign" || ext == ".psd" || ext == ".ai" || ext == ".afphoto" || ext == ".afpub")
+                        {
+                            targetFile = f;
+                            break;
+                        }
+                    }
+                }
+
+                if (targetFile != null && File.Exists(targetFile))
+                {
+                    try
+                    {
+                        Process.Start(new ProcessStartInfo { FileName = targetFile, UseShellExecute = true });
+                        NotificationService.ShowInfo("Launching Source File", Path.GetFileName(targetFile));
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine("[CalendarPage] OpenSource error: " + ex.Message);
+                    }
+                }
+                else
+                {
+                    System.Windows.MessageBox.Show("No working source file (.afdesign, .psd, .ai) found in 02_SOURCE_FILES.", "Source File Not Found", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
+                }
+            }
+        }
+
+        private void OnDrawerOpenCanvaClicked(object sender, RoutedEventArgs e)
+        {
+            if (_drawerEditingProject != null && !string.IsNullOrWhiteSpace(_drawerEditingProject.CanvaUrl))
+            {
+                try
+                {
+                    string url = _drawerEditingProject.CanvaUrl.Trim();
+                    if (!url.StartsWith("http://", StringComparison.OrdinalIgnoreCase) && !url.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+                    {
+                        url = "https://" + url;
+                    }
+                    Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine("[CalendarPage] OpenCanva error: " + ex.Message);
+                }
+            }
+            else
+            {
+                NotificationService.ShowInfo("No Canva URL", "This project does not have a Canva URL specified in README.md.");
+            }
+        }
+
+        private async void OnDrawerHandoverZipClicked(object sender, RoutedEventArgs e)
+        {
+            if (_drawerEditingProject == null || !Directory.Exists(_drawerEditingProject.FullPath)) return;
+
+            Microsoft.Win32.SaveFileDialog sfd = new Microsoft.Win32.SaveFileDialog
+            {
+                Title = "Export Creative Handover Package (ZIP)",
+                Filter = "ZIP Archive (*.zip)|*.zip",
+                FileName = string.Format("{0}_Handover.zip", _drawerEditingProject.Project),
+                InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.Desktop)
+            };
+
+            if (sfd.ShowDialog() == true)
+            {
+                ExportPackageOptions options = new ExportPackageOptions
+                {
+                    IncludeDeliverables = true,
+                    IncludeCopywriting = true,
+                    IncludeBriefMarkdown = true,
+                    IncludeHtmlSummary = true,
+                    IncludeWipMockups = false
+                };
+
+                ExportPackageResult res = await ExportPackagingService.CreateHandoverPackageAsync(_drawerEditingProject.FullPath, sfd.FileName, options);
+                if (res != null && res.Success)
+                {
+                    NotificationService.ShowSuccess("Handover Exported", string.Format("Packaged {0} files into {1}", res.FileCount, Path.GetFileName(res.ZipFilePath)));
+                }
+                else
+                {
+                    System.Windows.MessageBox.Show(res != null ? res.ErrorMessage : "Packaging failed", "Export Error", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+                }
+            }
+        }
+
+        private void PopulateDrawerSubtasks(ProjectStatusItem item)
+        {
+            if (item == null) return;
+            try
+            {
+                if (DrawerSubtasksList != null)
+                {
+                    DrawerSubtasksList.ItemsSource = null;
+                    DrawerSubtasksList.ItemsSource = item.Subtasks;
+                }
+                if (DrawerSubtasksProgressBar != null)
+                {
+                    DrawerSubtasksProgressBar.Value = item.SubtaskProgressPercent;
+                }
+                if (DrawerSubtasksProgress != null)
+                {
+                    DrawerSubtasksProgress.Text = string.Format("({0}/{1} Done • {2:0.#} pts)",
+                        item.CompletedSubtasksCount, item.TotalSubtasksCount, item.TotalWeight);
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine("[CalendarPage] PopulateDrawerSubtasks error: " + ex.Message);
+            }
+        }
+
+        private void OnDrawerSubtaskStatusToggleClicked(object sender, RoutedEventArgs e)
+        {
+            FrameworkElement btn = sender as FrameworkElement;
+            string subtaskId = btn != null ? btn.Tag as string : null;
+            if (string.IsNullOrWhiteSpace(subtaskId) || _drawerEditingProject == null || _drawerEditingProject.Subtasks == null) return;
+
+            var st = _drawerEditingProject.Subtasks.Find(s => string.Equals(s.Id, subtaskId, StringComparison.OrdinalIgnoreCase));
+            if (st == null) return;
+
+            string currentStatus = (st.Status ?? "draft").ToLowerInvariant().Trim();
+            if (currentStatus == "draft") st.Status = "in-progress";
+            else if (currentStatus == "in-progress" || currentStatus == "progress" || currentStatus == "review" || currentStatus == "revision") st.Status = "done";
+            else st.Status = "draft";
+
+            FrontmatterService.WriteStatus(_drawerEditingProject);
+            PopulateDrawerSubtasks(_drawerEditingProject);
+            if (_isGanttView) RenderGanttTimeline();
+        }
+
+        private void OnDrawerAddSubtaskClicked(object sender, RoutedEventArgs e)
+        {
+            if (_drawerEditingProject == null) return;
+            if (_drawerEditingProject.Subtasks == null) _drawerEditingProject.Subtasks = new List<ProjectSubtaskItem>();
+
+            int nextNum = _drawerEditingProject.Subtasks.Count + 1;
+            bool isVideo = (!string.IsNullOrEmpty(_drawerEditingProject.Project) && _drawerEditingProject.Project.IndexOf("V_", StringComparison.OrdinalIgnoreCase) >= 0);
+            string id = string.Format("{0}{1:D2}", isVideo ? "V" : "KV", nextNum);
+            string name = isVideo ? (nextNum == 1 ? "Master Story Cut 60s" : string.Format("Hook Variation {0} 15s", (char)('A' + nextNum - 2))) : string.Format("Key Visual {0}", nextNum);
+            double weight = isVideo ? (nextNum == 1 ? 2.0 : 0.4) : (nextNum == 1 ? 1.0 : 0.2);
+
+            _drawerEditingSubtaskId = null;
+            if (DrawerSubtaskEditorTitle != null) DrawerSubtaskEditorTitle.Text = "Add Deliverable / Subtask";
+            if (DrawerSubtaskId != null) DrawerSubtaskId.Text = id;
+            if (DrawerSubtaskName != null) DrawerSubtaskName.Text = name;
+            if (DrawerSubtaskSpecs != null) DrawerSubtaskSpecs.Text = isVideo ? "9:16, 1080x1920" : "1:1, 1080x1080";
+            if (DrawerSubtaskType != null) DrawerSubtaskType.Text = isVideo ? (nextNum == 1 ? "master_video" : "hook_variation") : (nextNum == 1 ? "key_visual" : "resize");
+            if (DrawerSubtaskWeight != null) DrawerSubtaskWeight.Text = weight.ToString("0.#");
+            if (DrawerSubtaskStatus != null) DrawerSubtaskStatus.SelectedIndex = 0;
+
+            if (DrawerSubtaskEditorCard != null)
+            {
+                DrawerSubtaskEditorCard.Visibility = Visibility.Visible;
+                if (DrawerSubtaskName != null) DrawerSubtaskName.Focus();
+            }
+        }
+
+        private void OnDrawerEditSubtaskClicked(object sender, RoutedEventArgs e)
+        {
+            FrameworkElement btn = sender as FrameworkElement;
+            string subtaskId = btn != null ? btn.Tag as string : null;
+            if (string.IsNullOrWhiteSpace(subtaskId) || _drawerEditingProject == null || _drawerEditingProject.Subtasks == null) return;
+
+            var st = _drawerEditingProject.Subtasks.Find(s => string.Equals(s.Id, subtaskId, StringComparison.OrdinalIgnoreCase));
+            if (st == null) return;
+
+            _drawerEditingSubtaskId = st.Id;
+            if (DrawerSubtaskEditorTitle != null) DrawerSubtaskEditorTitle.Text = string.Format("Edit Deliverable: {0}", st.Id);
+            if (DrawerSubtaskId != null) DrawerSubtaskId.Text = st.Id ?? "";
+            if (DrawerSubtaskName != null) DrawerSubtaskName.Text = st.Name ?? "";
+            if (DrawerSubtaskSpecs != null) DrawerSubtaskSpecs.Text = st.Specs ?? "";
+            if (DrawerSubtaskType != null) DrawerSubtaskType.Text = st.Type ?? "";
+            if (DrawerSubtaskWeight != null) DrawerSubtaskWeight.Text = st.Weight.ToString("0.#");
+
+            if (DrawerSubtaskStatus != null)
+            {
+                string norm = (st.Status ?? "draft").ToLowerInvariant().Trim();
+                if (norm == "done" || norm == "approved") DrawerSubtaskStatus.SelectedIndex = 2;
+                else if (norm == "in-progress" || norm == "progress" || norm == "review" || norm == "revision") DrawerSubtaskStatus.SelectedIndex = 1;
+                else DrawerSubtaskStatus.SelectedIndex = 0;
+            }
+
+            if (DrawerSubtaskEditorCard != null)
+            {
+                DrawerSubtaskEditorCard.Visibility = Visibility.Visible;
+                if (DrawerSubtaskName != null) DrawerSubtaskName.Focus();
+            }
+        }
+
+        private void OnDrawerCancelSubtaskEditClicked(object sender, RoutedEventArgs e)
+        {
+            _drawerEditingSubtaskId = null;
+            if (DrawerSubtaskEditorCard != null)
+            {
+                DrawerSubtaskEditorCard.Visibility = Visibility.Collapsed;
+            }
+        }
+
+        private void OnDrawerSaveSubtaskEditClicked(object sender, RoutedEventArgs e)
+        {
+            if (_drawerEditingProject == null) return;
+            if (_drawerEditingProject.Subtasks == null) _drawerEditingProject.Subtasks = new List<ProjectSubtaskItem>();
+
+            string id = DrawerSubtaskId != null ? DrawerSubtaskId.Text.Trim() : "";
+            string name = DrawerSubtaskName != null ? DrawerSubtaskName.Text.Trim() : "";
+            string specs = DrawerSubtaskSpecs != null ? DrawerSubtaskSpecs.Text.Trim() : "";
+            string type = DrawerSubtaskType != null ? DrawerSubtaskType.Text.Trim() : "";
+            string weightRaw = DrawerSubtaskWeight != null ? DrawerSubtaskWeight.Text.Trim() : "";
+
+            if (string.IsNullOrWhiteSpace(id)) id = string.Format("ST{0:D2}", _drawerEditingProject.Subtasks.Count + 1);
+            if (string.IsNullOrWhiteSpace(name)) name = "Untitled Deliverable";
+            if (string.IsNullOrWhiteSpace(specs)) specs = "1080x1080";
+            if (string.IsNullOrWhiteSpace(type)) type = "artwork";
+
+            if (specs.Contains("(") && specs.IndexOf("(") > 3)
+            {
+                specs = specs.Substring(0, specs.IndexOf("(")).Trim();
+            }
+
+            double weight = 1.0;
+            if (!string.IsNullOrWhiteSpace(weightRaw))
+            {
+                string match = Regex.Match(weightRaw, @"\d+(\.\d+)?").Value;
+                if (!double.TryParse(match, NumberStyles.Any, CultureInfo.InvariantCulture, out weight))
+                {
+                    weight = 1.0;
+                }
+            }
+
+            string status = "draft";
+            if (DrawerSubtaskStatus != null)
+            {
+                if (DrawerSubtaskStatus.SelectedIndex == 1) status = "in-progress";
+                else if (DrawerSubtaskStatus.SelectedIndex == 2) status = "done";
+                else status = "draft";
+            }
+
+            if (!string.IsNullOrWhiteSpace(_drawerEditingSubtaskId))
+            {
+                var existing = _drawerEditingProject.Subtasks.Find(s => string.Equals(s.Id, _drawerEditingSubtaskId, StringComparison.OrdinalIgnoreCase));
+                if (existing != null)
+                {
+                    existing.Id = id;
+                    existing.Name = name;
+                    existing.Specs = specs;
+                    existing.Type = type;
+                    existing.Weight = weight;
+                    existing.Status = status;
+                }
+                NotificationService.ShowSuccess("Deliverable Updated", string.Format("Updated '{0}' ({1:0.#} pts)", name, weight), _drawerEditingProject.FullPath);
+            }
+            else
+            {
+                var newItem = new ProjectSubtaskItem
+                {
+                    Id = id,
+                    Name = name,
+                    Specs = specs,
+                    Type = type,
+                    Weight = weight,
+                    Status = status,
+                    AssignedDesigner = _drawerEditingProject.Designer ?? ""
+                };
+                _drawerEditingProject.Subtasks.Add(newItem);
+                NotificationService.ShowSuccess("Deliverable Added", string.Format("Added '{0}' ({1:0.#} pts)", name, weight), _drawerEditingProject.FullPath);
+            }
+
+            _drawerEditingSubtaskId = null;
+            if (DrawerSubtaskEditorCard != null) DrawerSubtaskEditorCard.Visibility = Visibility.Collapsed;
+
+            FrontmatterService.WriteStatus(_drawerEditingProject);
+            PopulateDrawerSubtasks(_drawerEditingProject);
+            if (_isGanttView) RenderGanttTimeline();
+        }
+
+        private void OnDrawerRemoveSubtaskClicked(object sender, RoutedEventArgs e)
+        {
+            FrameworkElement btn = sender as FrameworkElement;
+            string subtaskId = btn != null ? btn.Tag as string : null;
+            if (string.IsNullOrWhiteSpace(subtaskId) || _drawerEditingProject == null || _drawerEditingProject.Subtasks == null) return;
+
+            var st = _drawerEditingProject.Subtasks.Find(s => string.Equals(s.Id, subtaskId, StringComparison.OrdinalIgnoreCase));
+            if (st != null)
+            {
+                if (string.Equals(_drawerEditingSubtaskId, st.Id, StringComparison.OrdinalIgnoreCase))
+                {
+                    _drawerEditingSubtaskId = null;
+                    if (DrawerSubtaskEditorCard != null) DrawerSubtaskEditorCard.Visibility = Visibility.Collapsed;
+                }
+                _drawerEditingProject.Subtasks.Remove(st);
+                FrontmatterService.WriteStatus(_drawerEditingProject);
+                PopulateDrawerSubtasks(_drawerEditingProject);
+                if (_isGanttView) RenderGanttTimeline();
+            }
+        }
+
+        private static void SelectComboItemByContent(ComboBox cmb, string value)
+        {
+            if (cmb == null) return;
+            foreach (ComboBoxItem item in cmb.Items)
+            {
+                if (string.Equals(item.Content.ToString(), value, StringComparison.OrdinalIgnoreCase))
+                {
+                    cmb.SelectedItem = item;
+                    return;
+                }
+            }
+            if (cmb.Items.Count > 0) cmb.SelectedIndex = 0;
+        }
+
+        #endregion
 
         private Brush GetStatusBrush(string status)
         {
