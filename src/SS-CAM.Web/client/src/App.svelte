@@ -102,13 +102,13 @@
         window.dispatchEvent(new CustomEvent('live_tasks:updated', { detail: data }));
       } else if (event === 'workspace:updated' || event === 'project:updated') {
         appState.lastSyncedAt = new Date();
-        projectStore.loadProjects();
+        projectStore.loadProjects(true);
         if (appState.currentRoute === 'dashboard') {
-          projectStore.loadDashboard();
+          projectStore.loadDashboard(undefined, true);
         } else if (appState.currentRoute === 'project-detail' && appState.routeParams.id) {
-          projectStore.loadProjectDetail(appState.routeParams.id);
+          projectStore.loadProjectDetail(appState.routeParams.id, true);
         } else if (appState.currentRoute === 'deliverables') {
-          projectStore.loadDeliverables();
+          projectStore.loadDeliverables(true);
         }
         window.dispatchEvent(new CustomEvent('workspace:updated', { detail: data }));
       } else if (event === 'team:updated') {
@@ -120,11 +120,11 @@
       } else if (event === 'project:decision') {
         appState.lastSyncedAt = new Date();
         appState.addToast(`${data.reviewer} marked ${data.projectId} as ${(data.decision || '').replace('_', ' ')}`, 'info', 'Decision Updated');
-        projectStore.loadProjects();
+        projectStore.loadProjects(true);
         if (appState.currentRoute === 'dashboard') {
-          projectStore.loadDashboard();
+          projectStore.loadDashboard(undefined, true);
         } else if (appState.currentRoute === 'project-detail' && appState.routeParams.id === data.projectId) {
-          projectStore.loadProjectDetail(data.projectId);
+          projectStore.loadProjectDetail(data.projectId, true);
         }
         window.dispatchEvent(new CustomEvent('workspace:updated', { detail: data }));
       } else if (event === 'comment:added') {
@@ -133,12 +133,12 @@
           appState.addToast(`${data.comment?.author}: ${data.comment?.content?.substring(0, 40) || ''}...`, 'info', 'New Project Comment');
         }
         if (appState.currentRoute === 'project-detail' && appState.routeParams.id === data.projectId) {
-          projectStore.loadProjectDetail(data.projectId);
+          projectStore.loadProjectDetail(data.projectId, true);
         }
       } else if (event === 'comment:resolved') {
         appState.lastSyncedAt = new Date();
         if (appState.currentRoute === 'project-detail' && appState.routeParams.id === data.projectId) {
-          projectStore.loadProjectDetail(data.projectId);
+          projectStore.loadProjectDetail(data.projectId, true);
         }
       }
     });

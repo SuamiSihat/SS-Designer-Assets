@@ -185,7 +185,7 @@
   <ProjectFilterBar />
 
   <!-- Dynamic View Render -->
-  {#if projectStore.isLoading}
+  {#if projectStore.isLoading && projectStore.projects.length === 0}
     <div class="loading-box">
       <div class="loading-spinner-orbit"></div>
       <span>Syncing Projects with Synology NAS Workspace...</span>

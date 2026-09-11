@@ -65,20 +65,24 @@ class ProjectStore {
     return this.projects.filter(p => p.status === 'review').length;
   });
 
-  async loadProjects() {
-    this.isLoading = true;
+  async loadProjects(silent = false) {
+    if (!silent && this.projects.length === 0) {
+      this.isLoading = true;
+    }
     try {
       const res = await ApiClient.getProjects();
       this.projects = res.projects || [];
     } catch (err: any) {
-      appState.addToast(`Failed to load projects: ${err.message}`, 'error');
+      if (!silent) appState.addToast(`Failed to load projects: ${err.message}`, 'error');
     } finally {
       this.isLoading = false;
     }
   }
 
-  async loadDashboard(options?: { timeRange?: string; brand?: string }) {
-    this.isLoading = true;
+  async loadDashboard(options?: { timeRange?: string; brand?: string }, silent = false) {
+    if (!silent && !this.dashboardData) {
+      this.isLoading = true;
+    }
     if (options?.timeRange) this.dashboardTimeRange = options.timeRange;
     if (options?.brand) this.dashboardBrand = options.brand;
     try {
@@ -87,35 +91,41 @@ class ProjectStore {
         brand: this.dashboardBrand
       });
     } catch (err: any) {
-      appState.addToast(`Failed to load dashboard: ${err.message}`, 'error');
+      if (!silent) appState.addToast(`Failed to load dashboard: ${err.message}`, 'error');
     } finally {
       this.isLoading = false;
     }
   }
 
-  async loadProjectDetail(id: string) {
-    this.loadingDetail = true;
-    this.isLoading = true;
+  async loadProjectDetail(id: string, silent = false) {
+    if (!silent && (!this.selectedProject || (this.selectedProject.id !== id && this.selectedProject.jobId !== id))) {
+      this.loadingDetail = true;
+      this.isLoading = true;
+    }
     try {
       const res = await ApiClient.getProject(id);
       this.selectedProject = res.project;
       this.activeDeliverables = res.deliverables || [];
     } catch (err: any) {
-      appState.addToast(`Failed to load project details: ${err.message}`, 'error');
-      this.selectedProject = null;
+      if (!silent) {
+        appState.addToast(`Failed to load project details: ${err.message}`, 'error');
+        this.selectedProject = null;
+      }
     } finally {
       this.loadingDetail = false;
       this.isLoading = false;
     }
   }
 
-  async loadDeliverables() {
-    this.isLoading = true;
+  async loadDeliverables(silent = false) {
+    if (!silent && this.deliverables.length === 0) {
+      this.isLoading = true;
+    }
     try {
       const res = await ApiClient.getDeliverables();
       this.deliverables = res.deliverables || [];
     } catch (err: any) {
-      appState.addToast(`Failed to load deliverables: ${err.message}`, 'error');
+      if (!silent) appState.addToast(`Failed to load deliverables: ${err.message}`, 'error');
     } finally {
       this.isLoading = false;
     }

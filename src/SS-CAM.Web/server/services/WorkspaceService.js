@@ -12,6 +12,7 @@ class WorkspaceService {
     this.workspaceRoot = config.WORKSPACE_ROOT;
     this.projectsCache = [];
     this.lastScanTime = null;
+    this.lastWorkspaceSignature = null;
     this.isScanning = false;
     this.watcher = null;
 
@@ -246,7 +247,7 @@ class WorkspaceService {
 
     try {
       this.watcher = chokidar.watch(this.workspaceRoot, {
-        ignored: /(^|[\/\\])\..|node_modules/,
+        ignored: /(^|[\/\\])(\..|node_modules|@eaDir|#recycle|\$RECYCLE\.BIN|_Team|_Orders|_Audit|~|\.tmp$)/,
         persistent: true,
         ignoreInitial: true,
         depth: 5
@@ -257,11 +258,14 @@ class WorkspaceService {
         if (debounceTimer) clearTimeout(debounceTimer);
         debounceTimer = setTimeout(() => {
           this.scan();
-        }, 500);
+        }, 1500);
       };
 
       const handleFileChange = (filePath) => {
-        if (filePath && (filePath.endsWith('live_tasks.json') || filePath.includes('_Team'))) {
+        if (!filePath) return;
+
+        // Telemetry & user accounts in _Team should only broadcast live_tasks:updated, NEVER trigger full project rescan
+        if (filePath.endsWith('live_tasks.json') || filePath.includes('_Team')) {
           try {
             const TeamService = require('./TeamService');
             const SseService = require('./SseService');
@@ -273,7 +277,14 @@ class WorkspaceService {
               timestamp: new Date().toISOString()
             });
           } catch (e) {}
+          return;
         }
+
+        // Ignore temporary/system files that shouldn't trigger project scan
+        if (filePath.includes('@eaDir') || filePath.includes('#recycle') || filePath.includes('_Orders') || filePath.includes('_Audit') || filePath.endsWith('.tmp')) {
+          return;
+        }
+
         triggerRescan();
       };
 
@@ -299,23 +310,35 @@ class WorkspaceService {
       this.scanDirectory(this.workspaceRoot, results);
       this.projectsCache = results;
       this.lastScanTime = new Date();
-      const SseService = require('./SseService');
-      SseService.broadcast('workspace:updated', {
-        count: results.length,
-        timestamp: this.lastScanTime.toISOString()
-      });
 
-      // Broadcast live tasks telemetry alongside workspace scan
-      try {
-        const TeamService = require('./TeamService');
-        const liveTasks = TeamService.getLiveTasks();
-        SseService.broadcast('live_tasks:updated', {
-          liveTasks,
-          count: liveTasks.length,
-          activeCount: liveTasks.filter(t => (t.State || '').toLowerCase() === 'running').length,
+      // Compute fingerprint to determine if projects or statuses actually changed
+      const currentSignature = results.map(p => `${p.id || p.jobId}:${p.status}:${p.outputCount || 0}:${p.updatedAt || ''}`).sort().join('|');
+      const hasChanged = !this.lastWorkspaceSignature || this.lastWorkspaceSignature !== currentSignature;
+      this.lastWorkspaceSignature = currentSignature;
+
+      // Only broadcast if project catalog actually changed or if explicitly forced
+      if (hasChanged || force) {
+        const SseService = require('./SseService');
+        SseService.broadcast('workspace:updated', {
+          count: results.length,
           timestamp: this.lastScanTime.toISOString()
         });
-      } catch (e) {}
+      }
+
+      // Broadcast live tasks telemetry alongside workspace scan if forced or changed
+      if (hasChanged || force) {
+        try {
+          const TeamService = require('./TeamService');
+          const SseService = require('./SseService');
+          const liveTasks = TeamService.getLiveTasks();
+          SseService.broadcast('live_tasks:updated', {
+            liveTasks,
+            count: liveTasks.length,
+            activeCount: liveTasks.filter(t => (t.State || '').toLowerCase() === 'running').length,
+            timestamp: this.lastScanTime.toISOString()
+          });
+        } catch (e) {}
+      }
     } catch (err) {
       console.error('[WorkspaceService] Scan error:', err.message);
     } finally {

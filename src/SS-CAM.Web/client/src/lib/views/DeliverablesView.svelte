@@ -296,7 +296,7 @@
   </div>
 
   <!-- Main Deliverables Content -->
-  {#if projectStore.isLoading}
+  {#if projectStore.isLoading && projectStore.deliverables.length === 0}
     <div class="state-card">
       <div class="spinner-large"></div>
       <p class="state-title">Scanning Synology Vault Deliverables...</p>
