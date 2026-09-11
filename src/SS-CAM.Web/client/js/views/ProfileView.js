@@ -19,7 +19,7 @@ const ProfileView = {
       username: rawUser.username || 'harussani',
       name: rawUser.name || 'Harussani',
       staffId: staffId,
-      role: rawUser.role || 'Art Director / Administrator',
+      role: rawUser.officialTitle || rawUser.role || 'Head of Creative',
       department: rawUser.department || 'Creative Production'
     };
 

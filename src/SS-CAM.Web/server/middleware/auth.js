@@ -163,7 +163,7 @@ const SYSTEM_USERS = [
   { id: 'SS0001', username: 'hasan', name: 'Hasan', email: 'hasan@suamisihat.com', role: 'CEO, Manager', roles: ['CEO', 'Manager'], staffId: 'SS0001', department: 'Executive Management' },
   { id: 'SS0071', username: 'gaddafi', name: 'Gaddafi', email: 'gaddafi@suamisihat.com', role: 'CEO', roles: ['CEO'], staffId: 'SS0071', department: 'Executive Management' },
   { id: 'SS0073', username: 'raihan', name: 'Raihan', email: 'raihan.suamisihat@gmail.com', role: 'SalesManager', roles: ['SalesManager'], staffId: 'SS0073', department: 'Marketing & Sales' },
-  { id: 'SS0004', username: 'harussani', name: 'Harussani', email: 'harussani.suamisihat@gmail.com', role: 'Administrator, Designer', roles: ['Administrator', 'Designer'], staffId: 'SS0004', department: 'Creative Production' },
+  { id: 'SS0004', username: 'harussani', name: 'Harussani', email: 'harussani.suamisihat@gmail.com', role: 'Head of Creative', roles: ['Designer', 'Admin'], officialTitle: 'Head of Creative', staffId: 'SS0004', department: 'Creative Production' },
   { id: 'SS0035', username: 'haikal', name: 'Haikal', email: 'haikal.suamisihat@gmail.com', role: 'Designer', roles: ['Designer'], staffId: 'SS0035', department: 'Multimedia & Motion' },
   { id: 'SS0037', username: 'aliff', name: 'Aliff', email: 'aliffnaz.suamisihat@gmail.com', role: 'Designer', roles: ['Designer'], staffId: 'SS0037', department: 'Multimedia & Motion' },
   { id: 'SS0000', username: 'admin', name: 'System Administrator', email: 'admin@suamisihat.com', role: 'Administrator', roles: ['Administrator'], staffId: 'SS0000', department: 'IT & Infrastructure' }
@@ -221,11 +221,13 @@ function updateUserPassword(username, newPassword) {
 function generateToken(user) {
   const roles = getUserRoles(user);
   const permissions = getUserPermissions(user);
+  const officialTitle = user.officialTitle || (typeof user.role === 'string' ? user.role : 'Head of Creative');
   return jwt.sign(
     {
       id: user.id || user.staffId,
       username: user.username,
       name: user.name,
+      officialTitle,
       role: roles.join(', '),
       roles: roles,
       staffId: user.staffId,

@@ -113,6 +113,7 @@
         window.dispatchEvent(new CustomEvent('workspace:updated', { detail: data }));
       } else if (event === 'team:updated') {
         appState.lastSyncedAt = new Date();
+        appState.loadCurrentUser();
         window.dispatchEvent(new CustomEvent('team:updated', { detail: data }));
       } else if (event === 'company:updated') {
         appState.lastSyncedAt = new Date();
@@ -469,7 +470,7 @@
               </div>
               <div class="user-info">
                 <span class="user-name">{appState.currentUser?.name ?? 'User'}</span>
-                <span class="user-role-label">{appState.currentUser?.role}</span>
+                <span class="user-role-label">{appState.currentUser?.officialTitle || appState.currentUser?.role}</span>
               </div>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" class="chevron" class:open={appState.userMenuOpen} aria-hidden="true">
                 <path d="M7 10l5 5 5-5z"/>
@@ -489,7 +490,7 @@
                   </div>
                   <div>
                     <div class="dd-name">{appState.currentUser?.name}</div>
-                    <div class="dd-meta">{appState.currentUser?.staffId} · {appState.currentUser?.role}</div>
+                    <div class="dd-meta">{appState.currentUser?.staffId} · {appState.currentUser?.officialTitle || appState.currentUser?.role}</div>
                   </div>
                 </div>
                 <div class="dd-divider"></div>

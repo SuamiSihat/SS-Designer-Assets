@@ -9,6 +9,7 @@ export interface User {
   username: string;
   name: string;
   role: string;
+  officialTitle?: string;
   roles?: string[];
   staffId: string;
   department: string;

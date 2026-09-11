@@ -524,6 +524,12 @@
         if (res.success || res.member) {
           appState.addToast(`Staff account ${editingUser.name} updated!`, 'success');
           showUserModal = false;
+          if (
+            editingUser.staffId?.toLowerCase() === appState.currentUser?.staffId?.toLowerCase() ||
+            editingUser.staffId?.toLowerCase() === appState.currentUser?.id?.toLowerCase()
+          ) {
+            await appState.loadCurrentUser();
+          }
           await refreshData();
         }
       } else {

@@ -115,7 +115,7 @@
       fullName = appState.currentUser.name || '';
       staffId = appState.currentUser.staffId || '';
       department = appState.currentUser.department || 'Creative Production';
-      role = appState.currentUser.role || 'Designer';
+      role = appState.currentUser.officialTitle || appState.currentUser.role || 'Head of Creative';
       email = appState.currentUser.email || '';
       defaultBrand = appState.currentUser.defaultBrand || 'SS';
       avatar = appState.currentUser.avatarUrl || appState.currentUser.avatar || (typeof localStorage !== 'undefined' ? (localStorage.getItem(`ss_cam_avatar_${staffId}`) || localStorage.getItem('ss_cam_user_avatar') || '') : '');
@@ -128,10 +128,20 @@
       const res = await ApiClient.getStaffRoster();
       if (res && res.roster) {
         staffDirectory = res.roster;
-        if (staffId) {
-          const matched = staffDirectory.find(s => s.staffId.toLowerCase() === staffId.toLowerCase());
+        const targetId = staffId || appState.currentUser?.staffId;
+        if (targetId) {
+          const matched = staffDirectory.find(s => s.staffId.toLowerCase() === targetId.toLowerCase());
           if (matched) {
             selectedStaffKey = matched.staffId;
+            if (matched.role) {
+              role = matched.role;
+            }
+            if (matched.department) {
+              department = matched.department;
+            }
+            if (matched.email && !email) {
+              email = matched.email;
+            }
           }
         }
       }
@@ -147,7 +157,7 @@
       fullName = found.name;
       staffId = found.staffId;
       department = found.department || 'Creative Production';
-      role = found.role || 'Designer';
+      role = found.role || 'Head of Creative';
       if (found.email) email = found.email;
       if (found.defaultBrand) defaultBrand = found.defaultBrand;
       if (found.avatarUrl || found.avatar) avatar = found.avatarUrl || found.avatar || '';
@@ -231,6 +241,8 @@
         name: fullName.trim(),
         email: email.trim(),
         department: department.trim(),
+        role: role.trim(),
+        officialTitle: role.trim(),
         avatar: avatar || '',
         avatarColor: avatarColor || '#0078D4',
         defaultBrand: defaultBrand || 'SS'
@@ -255,6 +267,8 @@
           name: fullName.trim(),
           email: email.trim(),
           department: department.trim(),
+          role: role.trim(),
+          officialTitle: role.trim(),
           avatar: avatar || '',
           avatarColor: avatarColor || '#0078D4',
           defaultBrand: defaultBrand || 'SS',
@@ -359,9 +373,14 @@
 
           <div class="avatar-hero-info">
             <h2 class="hero-name">{fullName || 'Designer Name'}</h2>
-            <div class="hero-meta">{department || 'Creative Production'} · {role || 'Designer'}</div>
+            <div class="hero-meta">{department || 'Creative Production'} · {role || 'Head of Creative'}</div>
             <div class="hero-staff-chip">
               <span class="staff-id-tag">Staff ID: {staffId || 'SS0004'}</span>
+              {#if appState.currentUser?.roles && appState.currentUser.roles.length > 0}
+                {#each appState.currentUser.roles as tier}
+                  <span class="role-tier-badge tier-{tier.toLowerCase()}">{tier}</span>
+                {/each}
+              {/if}
               {#if avatar}
                 <button type="button" class="remove-photo-btn" onclick={removeAvatarPhoto} title="Remove Custom Picture">
                   Remove Photo
@@ -432,30 +451,38 @@
 
         <div class="form-grid-2x2">
           <FluentInput
-            label="Department / Role"
+            label="Official Designation / Job Title"
+            bind:value={role}
+            placeholder="e.g. Head of Creative"
+          />
+
+          <FluentInput
+            label="Department"
             bind:value={department}
             placeholder="e.g. Creative Production"
           />
+        </div>
 
+        <div class="form-grid-2x2">
           <FluentInput
             label="Email Address"
             type="email"
             bind:value={email}
             placeholder="e.g. name.suamisihat@gmail.com"
           />
-        </div>
 
-        <div class="form-row">
-          <label class="field-label" for="default-brand-select">Default Operating Brand</label>
-          <select
-            id="default-brand-select"
-            class="fluent-select"
-            bind:value={defaultBrand}
-          >
-            {#each brands as b}
-              <option value={b.code}>{b.name}</option>
-            {/each}
-          </select>
+          <div class="form-row" style="margin-bottom: 0;">
+            <label class="field-label" for="default-brand-select">Default Operating Brand</label>
+            <select
+              id="default-brand-select"
+              class="fluent-select"
+              bind:value={defaultBrand}
+            >
+              {#each brands as b}
+                <option value={b.code}>{b.name}</option>
+              {/each}
+            </select>
+          </div>
         </div>
 
         <div class="profile-action-row">
@@ -749,6 +776,20 @@
     border-radius: 4px;
     border: 1px solid rgba(0, 120, 212, 0.2);
   }
+  .role-tier-badge {
+    font-size: 10.5px;
+    font-weight: 800;
+    padding: 2px 7px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    display: inline-block;
+    white-space: nowrap;
+    letter-spacing: 0.3px;
+  }
+  .role-tier-badge.tier-admin { background: #FEF2F2; color: #B91C1C; border: 1px solid #FECACA; }
+  .role-tier-badge.tier-manager { background: #FFFBEB; color: #B45309; border: 1px solid #FDE68A; }
+  .role-tier-badge.tier-designer { background: #EBF4FE; color: #0078D4; border: 1px solid #BFDBFE; font-weight: 700; }
+  .role-tier-badge.tier-copywriter { background: #F5F3FF; color: #7C3AED; border: 1px solid #DDD6FE; font-weight: 700; }
   .remove-photo-btn {
     font-size: 11px;
     color: #EF4444;

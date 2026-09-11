@@ -117,6 +117,7 @@ router.post('/auth/login', (req, res) => {
       username: user.username,
       name: user.name,
       role: Array.isArray(user.role) ? user.role.join(', ') : (user.role || roles.join(', ')),
+      officialTitle: user.officialTitle || (typeof user.role === 'string' ? user.role : 'Head of Creative'),
       roles,
       staffId: user.staffId,
       department: user.department,
@@ -157,20 +158,31 @@ router.post('/auth/change-password', authenticateToken, (req, res) => {
 
 router.get('/auth/me', authenticateToken, (req, res) => {
   const staffRoster = TeamService.getStaffRoster();
-  const searchStaffId = (req.user.staffId || '').toLowerCase();
+  const searchStaffId = (req.user.staffId || req.user.id || '').toLowerCase();
   const searchUsername = (req.user.username || '').toLowerCase();
+  const searchName = (req.user.name || '').toLowerCase();
   const liveStaff = staffRoster.find(u => 
     (u.staffId && u.staffId.toLowerCase() === searchStaffId) ||
-    (u.username && u.username.toLowerCase() === searchUsername)
+    (u.username && u.username.toLowerCase() === searchUsername) ||
+    (u.name && u.name.toLowerCase() === searchName)
   );
 
   if (liveStaff) {
+    const canonicalRoles = Array.isArray(liveStaff.roles) && liveStaff.roles.length > 0
+      ? liveStaff.roles
+      : (liveStaff.role ? liveStaff.role.split(',').map(r => r.trim()).filter(Boolean) : ['Designer']);
+    const canonicalTitle = liveStaff.officialTitle || liveStaff.role || 'Head of Creative';
+    const canonicalRoleStr = liveStaff.role || canonicalRoles.join(', ');
+
     res.json({
       user: {
         ...req.user,
+        staffId: liveStaff.staffId,
+        username: liveStaff.username || req.user.username,
         name: liveStaff.name || req.user.name,
-        role: liveStaff.role || req.user.role,
-        roles: liveStaff.roles || req.user.roles,
+        officialTitle: canonicalTitle,
+        role: canonicalRoleStr,
+        roles: canonicalRoles,
         department: liveStaff.department || req.user.department,
         email: liveStaff.email || req.user.email,
         avatar: liveStaff.avatarUrl || liveStaff.avatar || '',
@@ -187,22 +199,30 @@ router.get('/auth/me', authenticateToken, (req, res) => {
 router.put('/auth/profile', authenticateToken, (req, res) => {
   try {
     const staffRoster = TeamService.getStaffRoster();
-    const searchStaffId = (req.user.staffId || '').toLowerCase();
+    const searchStaffId = (req.user.staffId || req.user.id || '').toLowerCase();
     const searchUsername = (req.user.username || '').toLowerCase();
+    const searchName = (req.user.name || '').toLowerCase();
     
     let target = staffRoster.find(u => 
       (u.staffId && u.staffId.toLowerCase() === searchStaffId) ||
-      (u.username && u.username.toLowerCase() === searchUsername)
+      (u.username && u.username.toLowerCase() === searchUsername) ||
+      (u.name && u.name.toLowerCase() === searchName)
     );
 
     const updates = {
       name: req.body.name || (target ? target.name : req.user.name),
       email: req.body.email !== undefined ? req.body.email : (target ? target.email : req.user.email),
       department: req.body.department || (target ? target.department : req.user.department),
+      role: req.body.role || req.body.officialTitle || (target ? target.role : 'Designer'),
+      officialTitle: req.body.officialTitle || req.body.role || (target ? target.officialTitle : 'Head of Creative'),
       avatar: req.body.avatar !== undefined ? req.body.avatar : (target ? target.avatar : ''),
       avatarColor: req.body.avatarColor || (target ? target.avatarColor : '#0078D4'),
       defaultBrand: req.body.defaultBrand || (target ? target.defaultBrand : 'SS')
     };
+
+    if (Array.isArray(req.body.roles) && req.body.roles.length > 0) {
+      updates.roles = req.body.roles;
+    }
 
     let updatedMember;
     if (target) {
@@ -211,7 +231,7 @@ router.put('/auth/profile', authenticateToken, (req, res) => {
       updatedMember = TeamService.addStaffMember({
         staffId: req.user.staffId || 'SS' + Math.floor(1000 + Math.random() * 9000),
         username: req.user.username,
-        role: req.user.role || 'Designer',
+        role: req.body.role || req.user.role || 'Designer',
         ...updates
       });
     }
