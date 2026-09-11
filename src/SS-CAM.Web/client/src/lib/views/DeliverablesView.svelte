@@ -457,18 +457,18 @@
                             <div class="action-icons-right">
                               {#if d.isImage || d.previewType === 'image'}
                                 <button class="tool-icon-btn" title="Smart Social Resizer" onclick={() => openResizer(d)}>
-                                  <FluentIcons name="vector" size={12} />
+                                  <FluentIcons name="vector" size={13} />
                                 </button>
                                 <button class="tool-icon-btn" title="Print Preflight Validator" onclick={() => openPreflight(d)}>
-                                  <FluentIcons name="printer" size={12} />
+                                  <FluentIcons name="printer" size={13} />
                                 </button>
                               {/if}
                               <button class="tool-icon-btn" title="Copy Client Review Link" onclick={() => openShare(d)}>
-                                <FluentIcons name="link" size={12} />
+                                <FluentIcons name="link" size={13} />
                               </button>
                               {#if d.downloadUrl}
                                 <a href={d.downloadUrl} download={d.filename} class="tool-icon-btn" title="Download Master File">
-                                  <FluentIcons name="download" size={12} />
+                                  <FluentIcons name="download" size={13} />
                                 </a>
                               {/if}
                             </div>
@@ -579,18 +579,18 @@
                   <div class="action-icons-right">
                     {#if d.isImage || d.previewType === 'image'}
                       <button class="tool-icon-btn" title="Smart Social Resizer" onclick={() => openResizer(d)}>
-                        <FluentIcons name="vector" size={12} />
+                        <FluentIcons name="vector" size={13} />
                       </button>
                       <button class="tool-icon-btn" title="Print Preflight Validator" onclick={() => openPreflight(d)}>
-                        <FluentIcons name="printer" size={12} />
+                        <FluentIcons name="printer" size={13} />
                       </button>
                     {/if}
                     <button class="tool-icon-btn" title="Copy Client Review Link" onclick={() => openShare(d)}>
-                      <FluentIcons name="link" size={12} />
+                      <FluentIcons name="link" size={13} />
                     </button>
                     {#if d.downloadUrl}
                       <a href={d.downloadUrl} download={d.filename} class="tool-icon-btn" title="Download Master File">
-                        <FluentIcons name="download" size={12} />
+                        <FluentIcons name="download" size={13} />
                       </a>
                     {/if}
                   </div>
@@ -665,7 +665,7 @@
                     <FluentIcons name="link" size={13} />
                   </button>
                   {#if d.downloadUrl}
-                    <a href={d.downloadUrl} download={d.filename} class="download-link" title="Download">
+                    <a href={d.downloadUrl} download={d.filename} class="tool-icon-btn" title="Download Master File">
                       <FluentIcons name="download" size={13} />
                     </a>
                   {/if}
@@ -1315,21 +1315,33 @@
   .tool-icon-btn {
     width: 26px;
     height: 26px;
-    display: flex;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
-    background: var(--surface-card-subtle);
-    border: 1px solid var(--surface-card-border);
-    border-radius: 5px;
-    color: var(--text-secondary);
+    background: var(--surface-card-subtle, #F8FAFC);
+    border: 1px solid var(--surface-card-border, #E2E8F0);
+    border-radius: 6px;
+    color: var(--text-secondary, #475569);
     cursor: pointer;
     text-decoration: none;
-    transition: all 0.12s;
+    box-sizing: border-box;
+    padding: 0;
+    transition: all 0.15s ease;
+  }
+  .tool-icon-btn :global(svg) {
+    display: block;
+    fill: currentColor;
   }
   .tool-icon-btn:hover {
-    background: var(--surface-card-hover, rgba(0, 120, 212, 0.1));
-    color: var(--brand-primary, #0078D4);
-    border-color: var(--brand-accent, #0078D4);
+    background: var(--brand-tint, rgba(33, 161, 247, 0.12));
+    color: var(--brand-primary, #043388);
+    border-color: var(--brand-accent, #21A1F7);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(4, 51, 136, 0.08);
+  }
+  .tool-icon-btn:active {
+    transform: translateY(0);
+    box-shadow: none;
   }
 
   /* State Cards */
@@ -1364,24 +1376,7 @@
     margin-bottom: 12px;
   }
 
-  .tool-icon-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 28px;
-    height: 28px;
-    background: var(--surface-card-subtle, rgba(255, 255, 255, 0.05));
-    border: 1px solid var(--surface-card-border, rgba(255, 255, 255, 0.1));
-    border-radius: 6px;
-    color: #FFF;
-    cursor: pointer;
-    font-size: 12px;
-    transition: all 0.15s ease;
-  }
-  .tool-icon-btn:hover {
-    background: rgba(33, 161, 247, 0.2);
-    border-color: #38BDF8;
-  }
+
 
   .view-mode-toggle {
     display: flex;
