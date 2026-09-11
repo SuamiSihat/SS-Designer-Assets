@@ -214,6 +214,192 @@
     }
   }
 
+  // ─── Subtask & Deliverables Management ──────────────────────────────
+  let showSubtaskModal = $state<boolean>(false);
+  let isSavingSubtask = $state<boolean>(false);
+  let editingSubtaskId = $state<string | null>(null);
+  let subtaskForm = $state<{
+    id: string;
+    name: string;
+    type: string;
+    specs: string;
+    weight: number;
+    status: string;
+  }>({
+    id: '',
+    name: '',
+    type: 'master_video',
+    specs: '',
+    weight: 1.0,
+    status: 'draft'
+  });
+
+  const subtaskStats = $derived.by(() => {
+    const list = Array.isArray(currentFrontmatter.subtasks) ? currentFrontmatter.subtasks : [];
+    const total = list.length;
+    const completed = list.filter((s: any) => ['approved', 'done', 'completed'].includes((s.status || '').toLowerCase())).length;
+    const inProgress = list.filter((s: any) => ['in-progress', 'in_progress', 'progress'].includes((s.status || '').toLowerCase())).length;
+    const totalWeight = list.reduce((sum: number, s: any) => sum + (typeof s.weight === 'number' ? s.weight : 1.0), 0);
+    const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
+    return { list, total, completed, inProgress, totalWeight: Math.round(totalWeight * 10) / 10, percent };
+  });
+
+  function getNextSubtaskId(): string {
+    const list = Array.isArray(currentFrontmatter.subtasks) ? currentFrontmatter.subtasks : [];
+    const num = list.length + 1;
+    const preset = String(p?.preset || '').toLowerCase();
+    const isVideo = preset.includes('video') || (p?.id || '').includes('V');
+    const prefix = isVideo ? 'V' : 'ST-';
+    return `${prefix}${String(num).padStart(2, '0')}`;
+  }
+
+  function openAddSubtaskModal() {
+    const preset = String(p?.preset || '').toLowerCase();
+    const isVideo = preset.includes('video') || (p?.id || '').includes('V');
+    const nextId = getNextSubtaskId();
+    editingSubtaskId = null;
+    subtaskForm = {
+      id: nextId,
+      name: isVideo ? (nextId === 'V01' ? 'Master 60s Cut' : 'Hook Variation') : (nextId === 'ST-01' ? 'Key Visual Master' : 'Resize Variation'),
+      type: isVideo ? (nextId === 'V01' ? 'master_video' : 'hook_variation') : (nextId === 'ST-01' ? 'key_visual' : 'resize'),
+      specs: isVideo ? '9:16, 1080x1920' : '1:1, 1080x1080',
+      weight: isVideo && nextId === 'V01' ? 2.0 : 1.0,
+      status: 'draft'
+    };
+    showSubtaskModal = true;
+  }
+
+  function openEditSubtaskModal(st: any) {
+    editingSubtaskId = st.id;
+    subtaskForm = {
+      id: st.id || '',
+      name: st.name || '',
+      type: st.type || 'master_video',
+      specs: st.specs || '',
+      weight: typeof st.weight === 'number' ? st.weight : 1.0,
+      status: st.status || 'draft'
+    };
+    showSubtaskModal = true;
+  }
+
+  async function handleSaveSubtask() {
+    if (!p) return;
+    const name = subtaskForm.name.trim();
+    if (!name) {
+      appState.addToast('Deliverable / subtask name is required', 'warning');
+      return;
+    }
+    const id = (subtaskForm.id.trim() || getNextSubtaskId()).toUpperCase();
+
+    const currentList = Array.isArray(currentFrontmatter.subtasks) ? [...currentFrontmatter.subtasks] : [];
+    let updatedList: any[];
+
+    if (editingSubtaskId) {
+      updatedList = currentList.map(st => {
+        if (st.id === editingSubtaskId) {
+          return {
+            ...st,
+            id,
+            name,
+            type: subtaskForm.type,
+            specs: subtaskForm.specs.trim(),
+            weight: Number(subtaskForm.weight) || 1.0,
+            status: subtaskForm.status
+          };
+        }
+        return st;
+      });
+    } else {
+      if (currentList.some(st => String(st.id).toUpperCase() === id)) {
+        appState.addToast(`Subtask with ID "${id}" already exists. Please choose a unique ID.`, 'warning');
+        return;
+      }
+      updatedList = [
+        ...currentList,
+        {
+          id,
+          name,
+          type: subtaskForm.type,
+          specs: subtaskForm.specs.trim(),
+          weight: Number(subtaskForm.weight) || 1.0,
+          status: subtaskForm.status
+        }
+      ];
+    }
+
+    isSavingSubtask = true;
+    try {
+      await ApiClient.updateProject(p.id, { subtasks: updatedList });
+      currentFrontmatter.subtasks = updatedList;
+      if (projectStore.selectedProject) {
+        projectStore.selectedProject.subtasks = updatedList;
+      }
+      showSubtaskModal = false;
+      appState.addToast(editingSubtaskId ? 'Subtask updated successfully' : 'Deliverable / subtask added', 'success');
+    } catch (err: any) {
+      appState.addToast(`Failed to save subtask: ${err.message}`, 'error');
+    } finally {
+      isSavingSubtask = false;
+    }
+  }
+
+  async function deleteSubtask(subtaskId: string) {
+    if (!p) return;
+    const currentList = Array.isArray(currentFrontmatter.subtasks) ? currentFrontmatter.subtasks : [];
+    const updatedList = currentList.filter(st => st.id !== subtaskId);
+
+    try {
+      await ApiClient.updateProject(p.id, { subtasks: updatedList });
+      currentFrontmatter.subtasks = updatedList;
+      if (projectStore.selectedProject) {
+        projectStore.selectedProject.subtasks = updatedList;
+      }
+      appState.addToast('Deliverable / subtask removed', 'success');
+    } catch (err: any) {
+      appState.addToast(`Failed to remove subtask: ${err.message}`, 'error');
+    }
+  }
+
+  async function generatePresetSubtasks() {
+    if (!p) return;
+    const preset = String(p.preset || '').toLowerCase();
+    const isVideo = preset.includes('video') || (p.id || '').includes('V');
+    let generated: any[] = [];
+
+    if (isVideo) {
+      generated = [
+        { id: 'V01', name: 'Master 60s Cut', type: 'master_video', specs: '9:16, 1080x1920', weight: 2.0, status: 'draft' },
+        { id: 'V02', name: 'Hook Variation A', type: 'hook_variation', specs: '9:16, 1080x1920', weight: 0.5, status: 'draft' },
+        { id: 'V03', name: 'Hook Variation B', type: 'hook_variation', specs: '9:16, 1080x1920', weight: 0.5, status: 'draft' }
+      ];
+    } else {
+      generated = [
+        { id: 'KV01', name: 'Key Visual Master', type: 'key_visual', specs: '1:1, 1080x1080', weight: 1.5, status: 'draft' },
+        { id: 'RZ01', name: 'Story / Reels Resize', type: 'resize', specs: '9:16, 1080x1920', weight: 0.5, status: 'draft' },
+        { id: 'RZ02', name: 'Landscape Banner Resize', type: 'resize', specs: '16:9, 1920x1080', weight: 0.5, status: 'draft' }
+      ];
+    }
+
+    const currentList = Array.isArray(currentFrontmatter.subtasks) ? currentFrontmatter.subtasks : [];
+    const merged = [...currentList];
+    for (const g of generated) {
+      if (!merged.some(m => m.id === g.id)) {
+        merged.push(g);
+      }
+    }
+
+    try {
+      await ApiClient.updateProject(p.id, { subtasks: merged });
+      currentFrontmatter.subtasks = merged;
+      if (projectStore.selectedProject) {
+        projectStore.selectedProject.subtasks = merged;
+      }
+      appState.addToast(`Generated ${generated.length} standard deliverable subtasks!`, 'success');
+    } catch (err: any) {
+      appState.addToast(`Failed to generate subtasks: ${err.message}`, 'error');
+    }
+  }
+
   async function cycleSubtaskStatus(subtaskId: string) {
     const p = projectStore.selectedProject;
     if (!p || !currentFrontmatter.subtasks) return;
@@ -646,7 +832,12 @@
           onclick={() => (activeCanvasView = 'deliverables')}
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/></svg>
-          <span>Deliverables ({projectStore.activeDeliverables.length})</span>
+          <span>Deliverables &amp; Subtasks</span>
+          {#if subtaskStats.total > 0}
+            <span class="view-chip">{subtaskStats.completed}/{subtaskStats.total} Done</span>
+          {:else if projectStore.activeDeliverables.length > 0}
+            <span class="view-chip">{projectStore.activeDeliverables.length} files</span>
+          {/if}
         </button>
 
         <button
@@ -685,53 +876,119 @@
             />
           {/if}
         {:else if activeCanvasView === 'deliverables'}
-          <!-- Deliverables Masonry Gallery -->
+          <!-- Deliverables & Subtasks Section -->
           <div class="deliverables-gallery-container">
-            {#if currentFrontmatter.subtasks && currentFrontmatter.subtasks.length > 0}
-              <div class="subtasks-container" style="margin-bottom: 24px; padding: 16px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                  <div style="display: flex; align-items: center; gap: 8px;">
-                    <FluentIcons name="checkbox" size={16} color="#0078D4" />
-                    <h4 style="margin: 0; font-size: 13px; font-weight: 600; color: #fff;">Deliverables &amp; Subtasks</h4>
-                    <span style="font-size: 11px; color: #94A3B8;">
-                      ({currentFrontmatter.subtasks.filter(s => ['approved', 'done', 'completed'].includes((s.status || '').toLowerCase())).length}/{currentFrontmatter.subtasks.length} Done • {currentFrontmatter.subtasks.reduce((sum, s) => sum + (typeof s.weight === 'number' ? s.weight : 1), 0)} pts)
+            <div class="subtasks-container-card">
+              <div class="subtasks-card-header">
+                <div class="subtasks-header-left">
+                  <FluentIcons name="checkbox" size={20} color="var(--brand-primary, #0078D4)" />
+                  <div>
+                    <h3 class="subtasks-section-title">Deliverables &amp; Subtasks Breakdown</h3>
+                    <span class="subtasks-section-subtitle">
+                      {#if subtaskStats.total > 0}
+                        {subtaskStats.completed}/{subtaskStats.total} Completed ({subtaskStats.percent}%) • Total Weight: {subtaskStats.totalWeight} pts
+                      {:else}
+                        Track milestone deliverables, format specs, and point weights for this job
+                      {/if}
                     </span>
                   </div>
                 </div>
+                <div class="subtasks-header-actions">
+                  {#if subtaskStats.total === 0}
+                    <button type="button" class="btn-subtask-action secondary" onclick={generatePresetSubtasks}>
+                      ⚡ Auto-generate Presets
+                    </button>
+                  {/if}
+                  <button type="button" class="btn-subtask-action primary" onclick={openAddSubtaskModal}>
+                    <FluentIcons name="add" size={13} />
+                    <span>Add Deliverable</span>
+                  </button>
+                </div>
+              </div>
 
-                <div style="display: flex; flex-direction: column; gap: 6px;">
-                  {#each currentFrontmatter.subtasks as st}
+              {#if subtaskStats.total > 0}
+                <div class="subtasks-progress-track large">
+                  <div class="subtasks-progress-fill" style="width: {subtaskStats.percent}%;"></div>
+                </div>
+
+                <div class="subtasks-cards-grid">
+                  {#each subtaskStats.list as st}
                     {@const isDone = ['approved', 'done', 'completed'].includes((st.status || '').toLowerCase())}
                     {@const isProgress = ['in-progress', 'in_progress', 'progress'].includes((st.status || '').toLowerCase())}
-                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 6px;">
-                      <div style="display: flex; align-items: center; gap: 10px;">
-                        <span style="font-size: 10px; font-weight: bold; padding: 2px 6px; background: rgba(0,120,212,0.15); color: #21A1F7; border-radius: 4px;">{st.id || 'ST'}</span>
-                        <div>
-                          <div style="font-size: 12px; font-weight: 500; color: #fff;">{st.name}</div>
-                          {#if st.specs || st.type}
-                            <div style="font-size: 10.5px; color: #94A3B8;">{st.type || ''} {st.specs ? '• ' + st.specs : ''}</div>
+                    <div class="subtask-card-item" class:is-done={isDone}>
+                      <div class="subtask-card-main">
+                        <div class="subtask-card-topline">
+                          <span class="st-id-tag">{st.id || 'ST'}</span>
+                          <span class="st-pts-badge">{st.weight || 1} pts</span>
+                        </div>
+                        <h4 class="st-card-name" title={st.name}>{st.name}</h4>
+                        <div class="st-card-meta">
+                          {#if st.type}
+                            <span class="st-meta-pill type-pill">{String(st.type).replace('_', ' ')}</span>
+                          {/if}
+                          {#if st.specs}
+                            <span class="st-meta-pill specs-pill">{st.specs}</span>
                           {/if}
                         </div>
                       </div>
-                      <div style="display: flex; align-items: center; gap: 8px;">
-                        <span style="font-size: 10.5px; font-weight: bold; color: #21A1F7; background: rgba(255,255,255,0.04); padding: 2px 6px; border-radius: 4px;">{st.weight || 1} pts</span>
+
+                      <div class="subtask-card-footer">
                         <button
                           type="button"
-                          class="subtask-status-btn"
+                          class="st-status-btn-full"
+                          class:status-done={isDone}
+                          class:status-progress={isProgress}
+                          class:status-draft={!isDone && !isProgress}
                           onclick={() => cycleSubtaskStatus(st.id)}
-                          title="Click to cycle status (Draft ➔ In Progress ➔ Done)"
-                          style="cursor: pointer; border: 1px solid {isDone ? 'rgba(16,185,129,0.3)' : (isProgress ? 'rgba(0,120,212,0.3)' : 'rgba(100,116,139,0.3)')}; font-size: 10.5px; font-weight: 600; padding: 2px 10px; border-radius: 10px; background: {isDone ? 'rgba(16,185,129,0.15)' : (isProgress ? 'rgba(0,120,212,0.15)' : 'rgba(100,116,139,0.15)')}; color: {isDone ? '#10B981' : (isProgress ? '#21A1F7' : '#94A3B8')}; transition: all 0.15s ease;"
+                          title="Click to cycle status: Draft ➔ In Progress ➔ Done"
                         >
-                          {isDone ? '✓ Done' : (isProgress ? '⏳ In Progress' : 'Draft')}
+                          {isDone ? '✓ Completed' : (isProgress ? '⏳ In Progress' : 'Draft')}
                         </button>
+                        <div class="st-actions-row">
+                          <button
+                            type="button"
+                            class="st-icon-action"
+                            onclick={() => openEditSubtaskModal(st)}
+                            title="Edit Deliverable"
+                            aria-label="Edit Deliverable"
+                          >
+                            <FluentIcons name="edit" size={12} />
+                          </button>
+                          <button
+                            type="button"
+                            class="st-icon-action danger"
+                            onclick={() => deleteSubtask(st.id)}
+                            title="Remove Deliverable"
+                            aria-label="Remove Deliverable"
+                          >
+                            <FluentIcons name="dismiss" size={12} />
+                          </button>
+                        </div>
                       </div>
                     </div>
                   {/each}
                 </div>
-              </div>
-            {/if}
+              {:else}
+                <div class="subtasks-empty-hero">
+                  <div class="empty-icon-wrap">
+                    <FluentIcons name="checkbox" size={32} color="var(--text-tertiary, #94A3B8)" />
+                  </div>
+                  <h4>No Deliverables or Subtasks Configured</h4>
+                  <p>Break down this creative job into trackable outputs (e.g. Master Video 9:16, Story Resizes, Hook variations) with milestone statuses and capacity point weights.</p>
+                  <div class="empty-hero-actions">
+                    <button type="button" class="btn-subtask-action primary" onclick={openAddSubtaskModal}>
+                      <FluentIcons name="add" size={13} />
+                      <span>Add Deliverable</span>
+                    </button>
+                    <button type="button" class="btn-subtask-action secondary" onclick={generatePresetSubtasks}>
+                      ⚡ Generate Standard Set from Preset
+                    </button>
+                  </div>
+                </div>
+              {/if}
+            </div>
 
-            <div class="gallery-header">
+            <div class="gallery-header" style="margin-top: 28px;">
               <div class="gallery-title-group">
                 <h3>Production Output Assets</h3>
                 <span class="gallery-subtitle">Found in <code>05_DELIVERABLES/</code> or <code>04_Production/</code> on Synology NAS</span>
@@ -1047,6 +1304,81 @@
                   </div>
                 </div>
 
+                <!-- Subtasks & Deliverables Checklist in Inspector Panel -->
+                <div class="subtasks-inspector-section">
+                  <div class="subtasks-inspector-header">
+                    <div class="subtasks-header-left">
+                      <FluentIcons name="checkbox" size={13} color="var(--brand-primary, #0078D4)" />
+                      <span class="prop-label" style="margin-bottom: 0;">Subtasks &amp; Deliverables</span>
+                    </div>
+                    <div class="subtasks-header-right">
+                      {#if subtaskStats.total > 0}
+                        <span class="subtasks-pts-badge">{subtaskStats.completed}/{subtaskStats.total} • {subtaskStats.totalWeight} pts</span>
+                      {/if}
+                      <button
+                        type="button"
+                        class="mini-add-subtask-btn"
+                        onclick={openAddSubtaskModal}
+                        title="Add Deliverable / Subtask"
+                      >
+                        + Add
+                      </button>
+                    </div>
+                  </div>
+
+                  {#if subtaskStats.total > 0}
+                    <div class="subtasks-progress-track mini">
+                      <div class="subtasks-progress-fill" style="width: {subtaskStats.percent}%;"></div>
+                    </div>
+                    <div class="subtasks-mini-list">
+                      {#each subtaskStats.list as st}
+                        {@const isDone = ['approved', 'done', 'completed'].includes((st.status || '').toLowerCase())}
+                        {@const isProgress = ['in-progress', 'in_progress', 'progress'].includes((st.status || '').toLowerCase())}
+                        <div class="subtask-mini-item" class:is-done={isDone}>
+                          <div class="subtask-mini-left">
+                            <span class="st-id-tag mini">{st.id || 'ST'}</span>
+                            <div class="st-text-col">
+                              <span class="st-name" title={st.name}>{st.name}</span>
+                              {#if st.specs || st.type}
+                                <span class="st-specs">{st.type || ''} {st.specs ? `• ${st.specs}` : ''}</span>
+                              {/if}
+                            </div>
+                          </div>
+                          <div class="subtask-mini-right">
+                            <span class="st-pts-pill">{st.weight || 1}p</span>
+                            <button
+                              type="button"
+                              class="st-status-badge"
+                              class:status-done={isDone}
+                              class:status-progress={isProgress}
+                              class:status-draft={!isDone && !isProgress}
+                              onclick={() => cycleSubtaskStatus(st.id)}
+                              title="Click to cycle status: Draft ➔ In Progress ➔ Done"
+                            >
+                              {isDone ? '✓' : (isProgress ? '⏳' : '○')}
+                            </button>
+                            <button
+                              type="button"
+                              class="st-edit-btn"
+                              onclick={() => openEditSubtaskModal(st)}
+                              title="Edit Deliverable"
+                            >
+                              <FluentIcons name="edit" size={11} />
+                            </button>
+                          </div>
+                        </div>
+                      {/each}
+                    </div>
+                  {:else}
+                    <div class="subtasks-empty-mini">
+                      <span>No subtasks defined.</span>
+                      <button type="button" class="link-btn-mini" onclick={generatePresetSubtasks}>
+                        ⚡ Auto-generate
+                      </button>
+                    </div>
+                  {/if}
+                </div>
+
                 <!-- Approval Trail Summary -->
                 <div class="approvals-mini-section">
                   <span class="prop-label">Recent Approvals &amp; Sign-Offs</span>
@@ -1127,6 +1459,90 @@
         <div class="delete-target-info">
           <span class="target-label">Target Project:</span>
           <span class="target-val"><strong>{p.jobId || p.id}</strong> — {p.title}</span>
+        </div>
+      </div>
+    </FluentDialog>
+
+    <!-- Deliverable / Subtask Editor Dialog -->
+    <FluentDialog
+      bind:open={showSubtaskModal}
+      title={editingSubtaskId ? `Edit Deliverable (${editingSubtaskId})` : 'Add Deliverable / Subtask'}
+      confirmText={editingSubtaskId ? 'Save Changes' : 'Add Deliverable'}
+      confirmAppearance="primary"
+      loading={isSavingSubtask}
+      onConfirm={handleSaveSubtask}
+      onClose={() => (showSubtaskModal = false)}
+    >
+      <div class="subtask-modal-form">
+        <div class="subtask-form-row two-col">
+          <div class="subtask-form-group">
+            <label class="form-label" for="st-form-id">Deliverable ID</label>
+            <input
+              id="st-form-id"
+              class="form-input"
+              type="text"
+              placeholder="e.g. V01, KV01, ST-01"
+              bind:value={subtaskForm.id}
+            />
+          </div>
+          <div class="subtask-form-group">
+            <label class="form-label" for="st-form-weight">Capacity Weight (pts)</label>
+            <input
+              id="st-form-weight"
+              class="form-input"
+              type="number"
+              step="0.1"
+              min="0.1"
+              max="10.0"
+              bind:value={subtaskForm.weight}
+            />
+          </div>
+        </div>
+
+        <div class="subtask-form-group">
+          <label class="form-label" for="st-form-name">Deliverable Title / Name *</label>
+          <input
+            id="st-form-name"
+            class="form-input"
+            type="text"
+            placeholder="e.g. Master 60s Cut, Key Visual 1:1, Hook Variation"
+            bind:value={subtaskForm.name}
+          />
+        </div>
+
+        <div class="subtask-form-row two-col">
+          <div class="subtask-form-group">
+            <label class="form-label" for="st-form-type">Deliverable Type</label>
+            <select id="st-form-type" class="form-select" bind:value={subtaskForm.type}>
+              <option value="master_video">Master Video</option>
+              <option value="hook_variation">Hook Variation</option>
+              <option value="cutdown">Cutdown / Teaser</option>
+              <option value="key_visual">Key Visual</option>
+              <option value="resize">Resize / Adaptation</option>
+              <option value="print_packaging">Print / Packaging</option>
+              <option value="banner">Display / Banner</option>
+              <option value="standard">Standard Task</option>
+            </select>
+          </div>
+          <div class="subtask-form-group">
+            <label class="form-label" for="st-form-specs">Format &amp; Dimensions</label>
+            <input
+              id="st-form-specs"
+              class="form-input"
+              type="text"
+              placeholder="e.g. 9:16, 1080x1920"
+              bind:value={subtaskForm.specs}
+            />
+          </div>
+        </div>
+
+        <div class="subtask-form-group">
+          <label class="form-label" for="st-form-status">Initial Status</label>
+          <select id="st-form-status" class="form-select" bind:value={subtaskForm.status}>
+            <option value="draft">Draft (Backlog)</option>
+            <option value="in-progress">In Progress (Active)</option>
+            <option value="done">Done / Completed</option>
+          </select>
         </div>
       </div>
     </FluentDialog>
@@ -2018,5 +2434,504 @@
   }
   .target-val {
     color: var(--text-primary);
+  }
+
+  /* ═══ SUBTASKS & DELIVERABLES UI ═══════════════════════════════ */
+  .subtasks-container-card {
+    background: var(--surface-card);
+    border: 1px solid var(--surface-card-border);
+    border-radius: var(--radius-lg, 12px);
+    padding: 20px;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .subtasks-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+  }
+
+  .subtasks-header-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .subtasks-section-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0;
+  }
+
+  .subtasks-section-subtitle {
+    font-size: 11.5px;
+    color: var(--text-secondary);
+  }
+
+  .subtasks-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .btn-subtask-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: var(--radius-md, 8px);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .btn-subtask-action.primary {
+    background: var(--brand-primary, #0078D4);
+    color: #FFFFFF;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  .btn-subtask-action.primary:hover {
+    filter: brightness(1.1);
+    box-shadow: 0 2px 6px rgba(0, 120, 212, 0.3);
+  }
+
+  .btn-subtask-action.secondary {
+    background: var(--surface-card-subtle);
+    color: var(--text-secondary);
+    border: 1px solid var(--surface-card-border);
+  }
+  .btn-subtask-action.secondary:hover {
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  .subtasks-progress-track {
+    width: 100%;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 999px;
+    overflow: hidden;
+    margin-bottom: 16px;
+  }
+  .subtasks-progress-track.large {
+    height: 8px;
+  }
+  .subtasks-progress-track.mini {
+    height: 4px;
+    margin: 8px 0 10px 0;
+  }
+
+  .subtasks-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--brand-primary, #0078D4) 0%, #10B981 100%);
+    border-radius: 999px;
+    transition: width 0.3s ease;
+  }
+
+  .subtasks-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 12px;
+  }
+
+  .subtask-card-item {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    background: var(--surface-card-subtle);
+    border: 1px solid var(--surface-card-border);
+    border-radius: var(--radius-md, 8px);
+    padding: 14px;
+    transition: all 0.15s ease;
+  }
+  .subtask-card-item:hover {
+    border-color: rgba(0, 120, 212, 0.4);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  }
+  .subtask-card-item.is-done {
+    border-color: rgba(16, 185, 129, 0.3);
+    background: rgba(16, 185, 129, 0.04);
+  }
+
+  .subtask-card-topline {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+
+  .st-id-tag {
+    font-family: var(--font-mono, monospace);
+    font-size: 10.5px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: rgba(0, 120, 212, 0.15);
+    color: #21A1F7;
+  }
+  .st-id-tag.mini {
+    font-size: 9.5px;
+    padding: 1px 4px;
+  }
+
+  .st-pts-badge {
+    font-size: 10.5px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text-secondary);
+  }
+
+  .st-card-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 8px 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .st-card-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 12px;
+  }
+
+  .st-meta-pill {
+    font-size: 10.5px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-secondary);
+    text-transform: capitalize;
+  }
+  .st-meta-pill.type-pill {
+    color: #38BDF8;
+    background: rgba(56, 189, 248, 0.1);
+  }
+
+  .subtask-card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    padding-top: 10px;
+  }
+
+  .st-status-btn-full {
+    flex: 1;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 5px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.15s ease;
+  }
+
+  .st-actions-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .st-icon-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 4px;
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .st-icon-action:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text-primary);
+  }
+  .st-icon-action.danger:hover {
+    background: rgba(239, 68, 68, 0.15);
+    color: #EF4444;
+  }
+
+  /* Status Badge Colors */
+  .status-done {
+    background: rgba(16, 185, 129, 0.16) !important;
+    color: #10B981 !important;
+    border: 1px solid rgba(16, 185, 129, 0.3) !important;
+  }
+  .status-progress {
+    background: rgba(0, 120, 212, 0.16) !important;
+    color: #21A1F7 !important;
+    border: 1px solid rgba(0, 120, 212, 0.3) !important;
+  }
+  .status-draft {
+    background: rgba(148, 163, 184, 0.12) !important;
+    color: #94A3B8 !important;
+    border: 1px solid rgba(148, 163, 184, 0.25) !important;
+  }
+
+  /* Empty State Hero */
+  .subtasks-empty-hero {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 36px 20px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px dashed var(--surface-card-border);
+    border-radius: var(--radius-md, 8px);
+  }
+
+  .empty-icon-wrap {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.04);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 12px;
+  }
+
+  .subtasks-empty-hero h4 {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0 0 6px 0;
+  }
+
+  .subtasks-empty-hero p {
+    font-size: 12.5px;
+    color: var(--text-secondary);
+    max-width: 480px;
+    margin: 0 0 18px 0;
+    line-height: 1.4;
+  }
+
+  .empty-hero-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  /* ═══ INSPECTOR PROPERTIES SUBTASKS ════════════════════════════ */
+  .subtasks-inspector-section {
+    display: flex;
+    flex-direction: column;
+    padding: 12px 0;
+    border-top: 1px solid var(--surface-card-border);
+    border-bottom: 1px solid var(--surface-card-border);
+    margin-bottom: 8px;
+  }
+
+  .subtasks-inspector-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .subtasks-header-right {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .subtasks-pts-badge {
+    font-size: 10.5px;
+    font-weight: 700;
+    color: #21A1F7;
+    background: rgba(0, 120, 212, 0.12);
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+
+  .mini-add-subtask-btn {
+    font-size: 11px;
+    font-weight: 600;
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text-primary);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 2px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .mini-add-subtask-btn:hover {
+    background: var(--brand-primary, #0078D4);
+    color: #FFFFFF;
+  }
+
+  .subtasks-mini-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .subtask-mini-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    padding: 6px 8px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 6px;
+    font-size: 11.5px;
+  }
+  .subtask-mini-item.is-done {
+    border-color: rgba(16, 185, 129, 0.2);
+    background: rgba(16, 185, 129, 0.03);
+  }
+
+  .subtask-mini-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    flex: 1;
+  }
+
+  .st-text-col {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .st-name {
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .st-specs {
+    font-size: 10px;
+    color: var(--text-tertiary, #94A3B8);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .subtask-mini-right {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+
+  .st-pts-pill {
+    font-size: 9.5px;
+    font-weight: 700;
+    color: var(--text-secondary);
+  }
+
+  .st-status-badge {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 4px;
+    cursor: pointer;
+    min-width: 22px;
+    text-align: center;
+  }
+
+  .st-edit-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 3px;
+    background: transparent;
+    border: none;
+    color: var(--text-tertiary);
+    cursor: pointer;
+  }
+  .st-edit-btn:hover {
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  .subtasks-empty-mini {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 11px;
+    color: var(--text-tertiary);
+    padding: 6px 0;
+  }
+
+  .link-btn-mini {
+    align-self: flex-start;
+    font-size: 11px;
+    color: var(--brand-primary, #0078D4);
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    font-weight: 600;
+  }
+  .link-btn-mini:hover {
+    text-decoration: underline;
+  }
+
+  /* ═══ SUBTASK MODAL FORM ═══════════════════════════════════════ */
+  .subtask-modal-form {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .subtask-form-row.two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .subtask-form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .form-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+  }
+
+  .form-input, .form-select {
+    width: 100%;
+    padding: 8px 12px;
+    font-size: 12.5px;
+    color: var(--text-primary);
+    background: var(--surface-card-subtle);
+    border: 1px solid var(--surface-card-border);
+    border-radius: var(--radius-md, 8px);
+    outline: none;
+    transition: all 0.15s ease;
+    box-sizing: border-box;
+  }
+  .form-input:focus, .form-select:focus {
+    border-color: var(--brand-primary, #0078D4);
+    box-shadow: 0 0 0 2px rgba(0, 120, 212, 0.2);
   }
 </style>
