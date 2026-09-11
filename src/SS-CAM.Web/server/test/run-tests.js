@@ -1234,6 +1234,62 @@ This is the project brief content.
     }
   });
 
+  // ─── TEST 34: OrderService C# PascalCase Interop & Path Safety ──────
+  test('OrderService normalizes C# desktop PascalCase order records and prevents type errors', () => {
+    const OrderService = require('../services/OrderService');
+    const testDir = path.join(__dirname, 'temp-orders-pascal-test-' + Date.now());
+    const origRoot = config.WORKSPACE_ROOT;
+
+    try {
+      config.WORKSPACE_ROOT = testDir;
+      const ordersVault = path.join(testDir, '_Orders');
+      fs.mkdirSync(ordersVault, { recursive: true });
+      const ledgerPath = path.join(ordersVault, 'creative-orders.jsonl');
+
+      // 1. Write an order using C# desktop PascalCase schema
+      const csharpOrder = {
+        Id: "ORD-260910-6107",
+        Title: "Androlab RX prescription label",
+        Entity: "SSC",
+        Priority: "tier_0",
+        Channel: "print",
+        Format: "print_label",
+        CustomSize: "",
+        Material: "waterproof_vinyl",
+        Copy: "Compounding pharmacy label copy",
+        TargetDate: "2026-10-01",
+        Requester: "Harussani",
+        Status: "Pending"
+      };
+
+      // Also include a corrupted empty line to test resilience
+      const content = '\uFEFF' + JSON.stringify(csharpOrder) + '\n\n';
+      fs.writeFileSync(ledgerPath, content, 'utf8');
+
+      // 2. Call listOrders() — must NOT throw TypeError on path.basename
+      const list = OrderService.listOrders({});
+      assert.strictEqual(list.length, 1, 'Must parse exactly 1 order');
+      assert.strictEqual(list[0].id, 'ORD-260910-6107', 'Normalized id must match');
+      assert.strictEqual(list[0].title, 'Androlab RX prescription label');
+      assert.strictEqual(list[0].status, 'pending');
+      assert.strictEqual(list[0].priority, 'tier_0');
+      assert.strictEqual(list[0].entity, 'SSC');
+      assert.ok(Array.isArray(list[0].attachments), 'attachments must be array');
+
+      // 3. Test getOrder
+      const single = OrderService.getOrder('ORD-260910-6107');
+      assert.ok(single, 'Must find order by ID');
+      assert.strictEqual(single.id, 'ORD-260910-6107');
+
+      // 4. Test updateOrder on PascalCase order
+      const updated = OrderService.updateOrder('ORD-260910-6107', { status: 'in_progress' });
+      assert.strictEqual(updated.status, 'in_progress');
+    } finally {
+      config.WORKSPACE_ROOT = origRoot;
+      try { fs.rmSync(testDir, { recursive: true, force: true }); } catch (e) {}
+    }
+  });
+
   console.log(`\n========================================================`);
   console.log(`Test Results: ${passed} Passed, ${failed} Failed`);
   console.log(`========================================================\n`);

@@ -93,6 +93,70 @@ function getOrdersFilePath() {
   return localFile;
 }
 
+// ─── Order Normalization (Cross-Platform C# Desktop & Web Interop) ────────────
+
+/**
+ * Normalizes an order record to support both camelCase (Web) and PascalCase (C# .NET Desktop)
+ * seamlessly without throwing type errors or dropping properties.
+ */
+function normalizeOrder(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const id = String(raw.id || raw.Id || raw.orderId || '').trim();
+  if (!id) return null;
+
+  const finalMaterial = raw.material || raw.Material || raw.materialType || raw.MaterialType || '';
+  const finalChannel  = raw.channel || raw.Channel || ((raw.format && (raw.format.startsWith('print_') || raw.format === 'custom_print')) ? 'print' : 'digital');
+  const finalFormat   = raw.format || raw.Format || (finalChannel === 'print' ? 'print_packaging_box' : '9_16_video');
+  const finalStatus   = String(raw.status || raw.Status || 'pending').toLowerCase();
+  const finalPriority = String(raw.priority || raw.Priority || 'tier_1').toLowerCase();
+  const finalEntity   = String(raw.entity || raw.Entity || 'SSH').toUpperCase();
+
+  return {
+    id,
+    Id:             id,
+    title:          raw.title          || raw.Title          || '',
+    Title:          raw.title          || raw.Title          || '',
+    entity:         finalEntity,
+    Entity:         finalEntity,
+    priority:       finalPriority,
+    Priority:       finalPriority,
+    channel:        finalChannel,
+    Channel:        finalChannel,
+    format:         finalFormat,
+    Format:         finalFormat,
+    customSize:     raw.customSize     || raw.CustomSize     || '',
+    CustomSize:     raw.customSize     || raw.CustomSize     || '',
+    material:       finalMaterial,
+    Material:       finalMaterial,
+    materialType:   finalMaterial,
+    MaterialType:   finalMaterial,
+    copy:           raw.copy           || raw.Copy           || '',
+    Copy:           raw.copy           || raw.Copy           || '',
+    targetDate:     raw.targetDate     || raw.TargetDate     || '',
+    TargetDate:     raw.targetDate     || raw.TargetDate     || '',
+    attachmentNote: raw.attachmentNote || raw.AttachmentNote || '',
+    AttachmentNote: raw.attachmentNote || raw.AttachmentNote || '',
+    requester:      raw.requester      || raw.Requester      || 'Unknown',
+    Requester:      raw.requester      || raw.Requester      || 'Unknown',
+    requesterRole:  raw.requesterRole  || raw.RequesterRole  || '',
+    RequesterRole:  raw.requesterRole  || raw.RequesterRole  || '',
+    status:         finalStatus,
+    Status:         finalStatus,
+    submittedAt:    raw.submittedAt    || raw.SubmittedAt    || new Date().toISOString(),
+    SubmittedAt:    raw.submittedAt    || raw.SubmittedAt    || new Date().toISOString(),
+    updatedAt:      raw.updatedAt      || raw.UpdatedAt      || new Date().toISOString(),
+    UpdatedAt:      raw.updatedAt      || raw.UpdatedAt      || new Date().toISOString(),
+    comments:       raw.comments       || raw.Comments       || [],
+    Comments:       raw.comments       || raw.Comments       || [],
+    assignedTo:     raw.assignedTo !== undefined ? raw.assignedTo : (raw.AssignedTo !== undefined ? raw.AssignedTo : null),
+    AssignedTo:     raw.assignedTo !== undefined ? raw.assignedTo : (raw.AssignedTo !== undefined ? raw.AssignedTo : null),
+    projectId:      raw.projectId  !== undefined ? raw.projectId  : (raw.ProjectId  !== undefined ? raw.ProjectId  : null),
+    ProjectId:      raw.projectId  !== undefined ? raw.projectId  : (raw.ProjectId  !== undefined ? raw.ProjectId  : null),
+    attachments:    raw.attachments    || raw.Attachments    || [],
+    Attachments:    raw.attachments    || raw.Attachments    || []
+  };
+}
+
 function readAllOrders() {
   const filePath = getOrdersFilePath();
   if (!fs.existsSync(filePath)) {
@@ -106,8 +170,10 @@ function readAllOrders() {
       .map(line => line.replace(/^\uFEFF/, '').trim())
       .filter(Boolean)
       .map(line => {
-        try { return JSON.parse(line); }
-        catch (err) {
+        try {
+          const obj = JSON.parse(line);
+          return normalizeOrder(obj);
+        } catch (err) {
           console.error('[OrderService] readAllOrders line parse error:', err.message);
           return null;
         }
@@ -159,7 +225,9 @@ function formatFileSize(bytes) {
  * List all attachments physically stored in _Orders/<orderId>/.
  */
 function listOrderAttachments(orderId) {
+  if (!orderId || typeof orderId !== 'string') return [];
   const safeId = path.basename(orderId);
+  if (!safeId || safeId === '.' || safeId === '..') return [];
   const dir = path.join(getOrdersVaultDir(), safeId);
   if (!fs.existsSync(dir)) return [];
 
@@ -189,8 +257,9 @@ function listOrderAttachments(orderId) {
  * Accepts Buffer or base64 data string.
  */
 function saveOrderAttachment(orderId, filename, data, actor = 'Requester') {
+  if (!orderId || typeof orderId !== 'string') throw new Error('Invalid order ID.');
   const safeId = path.basename(orderId);
-  const safeFilename = path.basename(filename).replace(/[\/\\:*?"<>|]/g, '_');
+  const safeFilename = path.basename(filename || 'attachment').replace(/[\/\\:*?"<>|]/g, '_');
   if (!safeFilename) throw new Error('Invalid filename.');
 
   const dir = getOrderDir(safeId);
@@ -218,6 +287,7 @@ function saveOrderAttachment(orderId, filename, data, actor = 'Requester') {
  * Resolves the physical path of an order attachment for downloading or inline preview.
  */
 function getOrderAttachmentPath(orderId, filename) {
+  if (!orderId || typeof orderId !== 'string' || !filename || typeof filename !== 'string') return null;
   const safeId = path.basename(orderId);
   const safeFilename = path.basename(filename);
   const filePath = path.join(getOrdersVaultDir(), safeId, safeFilename);
@@ -229,6 +299,7 @@ function getOrderAttachmentPath(orderId, filename) {
  * Delete a specific attachment from the order folder.
  */
 function deleteOrderAttachment(orderId, filename) {
+  if (!orderId || typeof orderId !== 'string' || !filename || typeof filename !== 'string') throw new Error('Invalid parameters.');
   const safeId = path.basename(orderId);
   const safeFilename = path.basename(filename);
   const filePath = path.join(getOrdersVaultDir(), safeId, safeFilename);
@@ -298,13 +369,22 @@ function copyAttachmentsToProject(orderId, projectId, actor = 'Designer') {
  */
 function listOrders(filters = {}) {
   let orders = readAllOrders().reverse();
-  if (filters.status   && filters.status   !== 'all') orders = orders.filter(o => o.status   === filters.status);
-  if (filters.entity   && filters.entity   !== 'all') orders = orders.filter(o => o.entity   === filters.entity);
-  if (filters.priority && filters.priority !== 'all') orders = orders.filter(o => o.priority === filters.priority);
+  if (filters.status   && filters.status   !== 'all') {
+    const s = String(filters.status).trim().toLowerCase();
+    orders = orders.filter(o => (o.status || '').toLowerCase() === s);
+  }
+  if (filters.entity   && filters.entity   !== 'all') {
+    const e = String(filters.entity).trim().toUpperCase();
+    orders = orders.filter(o => (o.entity || '').toUpperCase() === e);
+  }
+  if (filters.priority && filters.priority !== 'all') {
+    const p = String(filters.priority).trim().toLowerCase();
+    orders = orders.filter(o => (o.priority || '').toLowerCase() === p);
+  }
 
   return orders.map(o => {
-    const liveAttachments = listOrderAttachments(o.id);
-    const nasPath = path.join(getOrdersVaultDir(), o.id);
+    const liveAttachments = o.id ? listOrderAttachments(o.id) : [];
+    const nasPath = o.id ? path.join(getOrdersVaultDir(), o.id) : '';
     return {
       ...o,
       attachments: liveAttachments,
@@ -318,10 +398,12 @@ function listOrders(filters = {}) {
  * Get a single order by ID, enriched with live attachment list and NAS path.
  */
 function getOrder(id) {
-  const order = readAllOrders().find(o => o.id === id) || null;
+  if (!id || typeof id !== 'string') return null;
+  const cleanId = String(id).trim().toLowerCase();
+  const order = readAllOrders().find(o => (o.id && o.id.toLowerCase() === cleanId) || (o.Id && o.Id.toLowerCase() === cleanId)) || null;
   if (!order) return null;
-  const liveAttachments = listOrderAttachments(order.id);
-  const nasPath = path.join(getOrdersVaultDir(), order.id);
+  const liveAttachments = order.id ? listOrderAttachments(order.id) : [];
+  const nasPath = order.id ? path.join(getOrdersVaultDir(), order.id) : '';
   return {
     ...order,
     attachments: liveAttachments,
@@ -422,8 +504,10 @@ function submitOrder(payload) {
  * Allowed status transitions: pending → in_progress → for_approval → done | cancelled
  */
 function updateOrder(id, patch) {
+  if (!id || typeof id !== 'string') throw new Error('Invalid order ID.');
+  const cleanId = String(id).trim().toLowerCase();
   const orders = readAllOrders();
-  const idx    = orders.findIndex(o => o.id === id);
+  const idx    = orders.findIndex(o => (o.id && o.id.toLowerCase() === cleanId) || (o.Id && o.Id.toLowerCase() === cleanId));
   if (idx === -1) throw new Error(`Order "${id}" not found.`);
 
   const allowed = [
