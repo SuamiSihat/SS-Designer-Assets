@@ -152,6 +152,25 @@ namespace SS_CAM.Models
             }
         }
 
+        public DateTime ParsedDeadline
+        {
+            get
+            {
+                if (!string.IsNullOrWhiteSpace(Deadline))
+                {
+                    string clean = Deadline.Trim().Trim('"', '\'');
+                    if (clean.Contains("T")) clean = clean.Substring(0, clean.IndexOf("T"));
+                    DateTime dt;
+                    if (DateTime.TryParse(clean, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out dt) ||
+                        DateTime.TryParse(clean, out dt))
+                    {
+                        return dt.Date;
+                    }
+                }
+                return ParsedCreatedDate.Date;
+            }
+        }
+
         public int AgeInDays
         {
             get

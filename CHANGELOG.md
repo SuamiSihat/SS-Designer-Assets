@@ -2,6 +2,30 @@
 
 All notable SS-CAM changes are documented here.
 
+## [4.9.1] - 2026-09-11 (Direct-Manipulation Gantt Edge Drag-to-Resize, Real-Time Grid Snapping & Holiday Conflict Guard)
+
+### Added & Refined — Interactive Gantt Edge Dragging & Real-Time Snapping (`CalendarPage.xaml.cs`, `ProjectGanttView.svelte`)
+- **Direct-Manipulation Timeline Bar Resize Handles**:
+  - **Left Edge Handle (`SizeWE` / `↔`)**: Enables dragging the project timeline bar's left boundary to adjust Start Date (`CreatedDate`), automatically snapped to month day columns and clamped so start date cannot exceed the deadline.
+  - **Right Edge Handle (`SizeWE` / `↔`)**: Enables dragging the project timeline bar's right boundary to adjust Deadline (`Deadline`), automatically snapped to month day columns and clamped so deadline cannot precede the start date.
+  - **Preserved Center Body**: Clicking the center bar region remains dedicated to selecting projects and launching the right-side `ProjectDetailDrawer`.
+- **Live Duration & Malaysian Off-Day Conflict Detection**:
+  - Automatically recalculates duration in days (`{N}d`) in real time as bars are dragged across the grid.
+  - Desktop: Live conflict guard checks `MalaysiaHolidayService.IsOffDay(newDeadline)`. If landing on a weekend or public holiday, turns bar border solid red (`#EF4444`, 2px) with holiday warning tooltip.
+  - Web Portal: Displays live `.conflict-badge` (`⚠️ {conflictReason}`) with glowing red outline (`outline: 2px solid #EF4444`, `box-shadow: 0 0 12px rgba(239, 68, 68, 0.5)`).
+- **Bidirectional Persistence & Drawer Sync**:
+  - Desktop: Writes updated dates and durations directly to `README.md` YAML frontmatter via `FrontmatterService.WriteStatus(project)`, seamlessly refreshing the `ProjectDetailDrawer` if currently open.
+  - Web: Asynchronously persists updates via `ApiClient.updateProject(project.id, { created, deadline, duration })` with optimistic UI updates and confirmation toast alerts.
+- **Model Standard**:
+  - Added `ParsedDeadline` DateTime helper property to `ProjectStatusItem` (`ProjectStatus.cs`), standardizing clean ISO date parsing across desktop views.
+
+### Release Artifacts & Verification
+| Artifact | Platform / Target | Specifications | Status |
+|---|---|---|---|
+| `dist/SS-CAM-v4.9.1.exe` | Windows 10/11 x64 | .NET Framework 4.8 WPF Single-File Binary (6.00 MB) | **Verified** |
+| `dist/SS-CAM.exe` | Windows 10/11 x64 | Latest Production Canonical Exe (6.00 MB) | **Verified** |
+| `src/SS-CAM.Web/client/dist/` | Docker / Node.js 20 | Svelte 5 + Vite Production Web Bundle | **Verified** |
+
 ## [4.9.0] - 2026-09-11 (Visual Project Timeline & Gantt Inspector Drawer, Live Studio Workstream Telemetry, Command Palette v3.5.1 & Tri-Platform Parity)
 
 ### Added & Refined — Visual Project Timeline & Interactive Gantt Inspector Drawer (`CalendarPage.xaml`)

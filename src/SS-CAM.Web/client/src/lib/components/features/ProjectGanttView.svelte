@@ -3,6 +3,7 @@
   import type { Project } from '$lib/types';
   import FluentBadge from '$lib/components/ui/FluentBadge.svelte';
   import FluentButton from '$lib/components/ui/FluentButton.svelte';
+  import { ApiClient } from '$lib/services/api';
 
   interface Props {
     projects: Project[];
@@ -161,6 +162,12 @@
 
     if (endDay < startDay) endDay = startDay;
 
+    // Real-time drag override
+    if (activeDrag && activeDrag.projectId === project.id) {
+      startDay = activeDrag.currentStartDay;
+      endDay = activeDrag.currentEndDay;
+    }
+
     const leftPercent = ((startDay - 1) / totalDays) * 100;
     const widthPercent = Math.max((1 / totalDays) * 100, ((endDay - startDay + 1) / totalDays) * 100);
 
@@ -198,6 +205,124 @@
       case 'in-progress': return 40;
       default: return 15;
     }
+  }
+
+  interface ActiveDrag {
+    projectId: string;
+    edge: 'left' | 'right';
+    originalStartDay: number;
+    originalEndDay: number;
+    currentStartDay: number;
+    currentEndDay: number;
+    startX: number;
+    colWidth: number;
+    isConflict: boolean;
+    conflictReason: string | null;
+  }
+  let activeDrag = $state<ActiveDrag | null>(null);
+
+  function startResize(e: PointerEvent, project: Project, edge: 'left' | 'right', barMetrics: { startDay: number; endDay: number }) {
+    e.stopPropagation();
+    e.preventDefault();
+
+    const target = e.currentTarget as HTMLElement;
+    const trackGrid = target.closest('.timeline-track-grid') as HTMLElement;
+    if (!trackGrid) return;
+
+    const trackRect = trackGrid.getBoundingClientRect();
+    const colWidth = trackRect.width / monthInfo.totalDays;
+
+    const originalStartDay = barMetrics.startDay;
+    const originalEndDay = barMetrics.endDay;
+
+    activeDrag = {
+      projectId: project.id,
+      edge,
+      originalStartDay,
+      originalEndDay,
+      currentStartDay: originalStartDay,
+      currentEndDay: originalEndDay,
+      startX: e.clientX,
+      colWidth,
+      isConflict: false,
+      conflictReason: null
+    };
+
+    function onPointerMove(moveEv: PointerEvent) {
+      if (!activeDrag) return;
+      const deltaX = moveEv.clientX - activeDrag.startX;
+      const deltaDays = Math.round(deltaX / activeDrag.colWidth);
+
+      if (activeDrag.edge === 'left') {
+        let newStart = activeDrag.originalStartDay + deltaDays;
+        newStart = Math.max(1, Math.min(activeDrag.currentEndDay, newStart));
+        activeDrag.currentStartDay = newStart;
+        activeDrag.isConflict = false;
+        activeDrag.conflictReason = null;
+      } else {
+        let newEnd = activeDrag.originalEndDay + deltaDays;
+        newEnd = Math.max(activeDrag.currentStartDay, Math.min(monthInfo.totalDays, newEnd));
+        activeDrag.currentEndDay = newEnd;
+
+        const targetDate = new Date(monthInfo.year, monthInfo.month, newEnd);
+        const conflict = isOffDay(targetDate);
+        activeDrag.isConflict = conflict;
+        activeDrag.conflictReason = conflict ? getOffDayReason(targetDate) : null;
+      }
+    }
+
+    async function onPointerUp() {
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', onPointerUp);
+
+      if (!activeDrag) return;
+      const drag = activeDrag;
+      const dateChanged = (drag.edge === 'left' && drag.currentStartDay !== drag.originalStartDay) ||
+                          (drag.edge === 'right' && drag.currentEndDay !== drag.originalEndDay);
+
+      if (dateChanged) {
+        const newStartDate = new Date(monthInfo.year, monthInfo.month, drag.currentStartDay);
+        const newEndDate = new Date(monthInfo.year, monthInfo.month, drag.currentEndDay);
+        const yStart = newStartDate.getFullYear();
+        const mStart = String(newStartDate.getMonth() + 1).padStart(2, '0');
+        const dStart = String(newStartDate.getDate()).padStart(2, '0');
+        const yEnd = newEndDate.getFullYear();
+        const mEnd = String(newEndDate.getMonth() + 1).padStart(2, '0');
+        const dEnd = String(newEndDate.getDate()).padStart(2, '0');
+
+        const startStr = `${yStart}-${mStart}-${dStart}`;
+        const endStr = `${yEnd}-${mEnd}-${dEnd}`;
+        const durDays = Math.max(1, drag.currentEndDay - drag.currentStartDay + 1);
+        const durStr = `${durDays}d`;
+
+        const origCreated = project.created;
+        const origDeadline = project.deadline;
+        const origDuration = project.duration;
+
+        project.created = startStr;
+        project.deadline = endStr;
+        project.duration = durStr;
+
+        try {
+          await ApiClient.updateProject(project.id, {
+            created: startStr,
+            deadline: endStr,
+            duration: durStr
+          });
+          appState.addToast(`Updated ${project.jobId || project.title} schedule: ${startStr} → ${endStr} (${durStr})`, 'success');
+        } catch (err: any) {
+          project.created = origCreated;
+          project.deadline = origDeadline;
+          project.duration = origDuration;
+          appState.addToast(`Failed to update timeline: ${err?.message || err}`, 'error');
+        }
+      }
+
+      activeDrag = null;
+    }
+
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', onPointerUp);
   }
 </script>
 
@@ -280,23 +405,61 @@
 
               <!-- Project Schedule Bar -->
               {#if bar}
+                {@const isThisDragging = activeDrag?.projectId === p.id}
+                {@const hasConflict = isThisDragging && !!activeDrag?.isConflict}
                 <div
                   class="gantt-schedule-bar"
+                  class:is-dragging={isThisDragging}
+                  class:is-conflict={hasConflict}
                   style="
                     left: {bar.leftPercent}%;
                     width: {bar.widthPercent}%;
                     background: {getStatusBarColor(p.status)};
                   "
-                  title="{p.title} ({p.status}) - {bar.durationDays} day(s) scheduled"
+                  title={isThisDragging
+                    ? (hasConflict
+                        ? `⚠️ Deadline lands on ${activeDrag?.conflictReason}! Drag to a working day or release to confirm.`
+                        : `Adjusting ${activeDrag?.edge === 'left' ? 'Start Date' : 'Deadline'} (${bar.durationDays}d)`)
+                    : `${p.title} (${p.status}) - ${bar.durationDays} day(s) scheduled. Drag edges to resize.`}
                 >
-                  <div class="bar-progress-fill" style="width: {getProgressPercent(p.status)}%;"></div>
-                  <div class="bar-content-label">
-                    <span class="bar-title-text">{p.jobId || p.id}: {p.title}</span>
-                    {#if p.subtasks && p.subtasks.length > 0}
-                      {@const doneSub = p.subtasks.filter(s => s.status === 'done' || s.isCompleted).length}
-                      <span class="bar-subtask-pill">✓ {doneSub}/{p.subtasks.length}</span>
-                    {/if}
-                    <span class="bar-days-pill">{bar.durationDays}d</span>
+                  <!-- Left Resize Handle (Start Date) -->
+                  <div
+                    class="bar-resize-handle handle-left"
+                    role="separator"
+                    aria-orientation="vertical"
+                    aria-label="Adjust start date"
+                    title="Drag to adjust Start Date"
+                    onpointerdown={(e) => startResize(e, p, 'left', bar)}
+                  >
+                    <span class="resize-gripper"></span>
+                  </div>
+
+                  <!-- Bar Content Center -->
+                  <div class="bar-center-content">
+                    <div class="bar-progress-fill" style="width: {getProgressPercent(p.status)}%;"></div>
+                    <div class="bar-content-label">
+                      <span class="bar-title-text">{p.jobId || p.id}: {p.title}</span>
+                      {#if hasConflict}
+                        <span class="conflict-badge">⚠️ {activeDrag?.conflictReason}</span>
+                      {/if}
+                      {#if p.subtasks && p.subtasks.length > 0}
+                        {@const doneSub = p.subtasks.filter(s => s.status === 'done' || s.isCompleted).length}
+                        <span class="bar-subtask-pill">✓ {doneSub}/{p.subtasks.length}</span>
+                      {/if}
+                      <span class="bar-days-pill">{bar.durationDays}d</span>
+                    </div>
+                  </div>
+
+                  <!-- Right Resize Handle (Deadline) -->
+                  <div
+                    class="bar-resize-handle handle-right"
+                    role="separator"
+                    aria-orientation="vertical"
+                    aria-label="Adjust deadline"
+                    title="Drag to adjust Deadline"
+                    onpointerdown={(e) => startResize(e, p, 'right', bar)}
+                  >
+                    <span class="resize-gripper"></span>
                   </div>
                 </div>
               {/if}
@@ -521,7 +684,7 @@
     border-radius: 6px;
     display: flex;
     align-items: center;
-    padding: 0 8px;
+    padding: 0;
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
     overflow: hidden;
     z-index: 3;
@@ -529,8 +692,72 @@
   }
 
   .gantt-schedule-bar:hover {
-    transform: scaleY(1.1);
-    filter: brightness(1.08);
+    transform: scaleY(1.08);
+    filter: brightness(1.06);
+  }
+
+  .gantt-schedule-bar.is-dragging {
+    transform: none !important;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+    z-index: 10;
+    user-select: none;
+  }
+
+  .bar-resize-handle {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: ew-resize;
+    z-index: 5;
+    touch-action: none;
+    user-select: none;
+    background: rgba(255, 255, 255, 0.08);
+    transition: background 0.15s ease;
+  }
+
+  .bar-resize-handle:hover,
+  .gantt-schedule-bar.is-dragging .bar-resize-handle {
+    background: rgba(255, 255, 255, 0.35);
+  }
+
+  .handle-left {
+    left: 0;
+    border-top-left-radius: 6px;
+    border-bottom-left-radius: 6px;
+  }
+
+  .handle-right {
+    right: 0;
+    border-top-right-radius: 6px;
+    border-bottom-right-radius: 6px;
+  }
+
+  .resize-gripper {
+    width: 2px;
+    height: 12px;
+    background: rgba(255, 255, 255, 0.7);
+    border-radius: 1px;
+    transition: height 0.15s ease, background 0.15s ease;
+  }
+
+  .bar-resize-handle:hover .resize-gripper {
+    background: #FFFFFF;
+    height: 14px;
+  }
+
+  .bar-center-content {
+    flex: 1;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    margin: 0 8px;
+    overflow: hidden;
+    position: relative;
+    pointer-events: none;
   }
 
   .bar-progress-fill {
@@ -618,8 +845,9 @@
   }
 
   .gantt-schedule-bar.is-conflict {
-    outline: 2px solid #EF4444;
+    outline: 2px solid #EF4444 !important;
     outline-offset: 1px;
+    box-shadow: 0 0 12px rgba(239, 68, 68, 0.5) !important;
   }
 
   .conflict-badge {

@@ -59,6 +59,19 @@ namespace SS_CAM.Views
         private string _drawerEditingSubtaskId = null;
         private bool _isUpdatingDrawerDates = false;
 
+        private bool _isDraggingGanttEdge = false;
+        private bool _dragIsLeftEdge = false;
+        private ProjectStatusItem _dragGanttProject = null;
+        private Border _dragGanttBar = null;
+        private Grid _dragGanttRowGrid = null;
+        private int _dragDaysInMonth = 30;
+        private DateTime _dragActiveMonth = DateTime.Today;
+        private int _dragOriginalStartDay = 1;
+        private int _dragOriginalEndDay = 1;
+        private int _dragCurrentStartDay = 1;
+        private int _dragCurrentEndDay = 1;
+        private FrameworkElement _dragCapturedHandle = null;
+
         public CalendarPage()
         {
             InitializeComponent();
@@ -1319,13 +1332,7 @@ namespace SS_CAM.Views
                         CornerRadius = new CornerRadius(4),
                         Height = 20,
                         VerticalAlignment = VerticalAlignment.Center,
-                        Margin = new Thickness(1, 0, 1, 0),
-                        Cursor = Cursors.Hand
-                    };
-                    bar.MouseLeftButtonDown += (s, ev) =>
-                    {
-                        ev.Handled = true;
-                        OpenProjectDetailDrawer(projRef);
+                        Margin = new Thickness(1, 0, 1, 0)
                     };
 
                     if (isDeadlineOffDay)
@@ -1351,10 +1358,10 @@ namespace SS_CAM.Views
                         subtaskSummary = sb.ToString();
                     }
 
-                    bar.ToolTip = string.Format("Project: {0}\nDesigner: {1}\nStatus: {2}\nStart: {3}\nDeadline: {4}{5}{6}\n\n👉 Click to inspect & edit in right drawer",
+                    bar.ToolTip = string.Format("Project: {0}\nDesigner: {1}\nStatus: {2}\nStart: {3}\nDeadline: {4}{5}{6}\n\n👉 Click center to inspect in drawer\n↔ Drag left edge to adjust Start Date\n↔ Drag right edge to adjust Deadline",
                         p.Project, p.Designer, p.Status, p.CreatedDateDisplay, p.DeadlineDisplay, warningToolTip, subtaskSummary);
 
-                    DockPanel barContent = new DockPanel { LastChildFill = true, Margin = new Thickness(4, 0, 4, 0) };
+                    DockPanel barContent = new DockPanel { LastChildFill = true, Margin = new Thickness(2, 0, 2, 0) };
 
                     if (isDeadlineOffDay)
                     {
@@ -1413,7 +1420,90 @@ namespace SS_CAM.Views
                         TextTrimming = TextTrimming.CharacterEllipsis
                     };
                     barContent.Children.Add(barText);
-                    bar.Child = barContent;
+
+                    // Center clickable region (opens drawer)
+                    Border centerRegion = new Border
+                    {
+                        Background = Brushes.Transparent,
+                        Cursor = Cursors.Hand,
+                        Child = barContent
+                    };
+                    centerRegion.MouseLeftButtonDown += (s, ev) =>
+                    {
+                        ev.Handled = true;
+                        OpenProjectDetailDrawer(projRef);
+                    };
+
+                    // Left drag-to-resize handle (Start Date)
+                    Border leftGripper = new Border
+                    {
+                        Width = 2,
+                        Height = 10,
+                        CornerRadius = new CornerRadius(1),
+                        Background = new SolidColorBrush(Color.FromArgb(120, 255, 255, 255)),
+                        HorizontalAlignment = HorizontalAlignment.Center,
+                        VerticalAlignment = VerticalAlignment.Center,
+                        IsHitTestVisible = false
+                    };
+                    Border leftHandle = new Border
+                    {
+                        Width = 7,
+                        Background = Brushes.Transparent,
+                        Cursor = Cursors.SizeWE,
+                        HorizontalAlignment = HorizontalAlignment.Left,
+                        Child = leftGripper,
+                        ToolTip = "Drag to adjust Start Date"
+                    };
+                    leftHandle.MouseEnter += (s, e) => leftGripper.Background = Brushes.White;
+                    leftHandle.MouseLeave += (s, e) => leftGripper.Background = new SolidColorBrush(Color.FromArgb(120, 255, 255, 255));
+                    leftHandle.MouseLeftButtonDown += (s, ev) =>
+                    {
+                        ev.Handled = true;
+                        StartGanttBarDrag(projRef, bar, rowGrid, daysInMonth, activeMonthDate, true, startDay, endDay, ev, leftHandle);
+                    };
+
+                    // Right drag-to-resize handle (Deadline)
+                    Border rightGripper = new Border
+                    {
+                        Width = 2,
+                        Height = 10,
+                        CornerRadius = new CornerRadius(1),
+                        Background = new SolidColorBrush(Color.FromArgb(120, 255, 255, 255)),
+                        HorizontalAlignment = HorizontalAlignment.Center,
+                        VerticalAlignment = VerticalAlignment.Center,
+                        IsHitTestVisible = false
+                    };
+                    Border rightHandle = new Border
+                    {
+                        Width = 7,
+                        Background = Brushes.Transparent,
+                        Cursor = Cursors.SizeWE,
+                        HorizontalAlignment = HorizontalAlignment.Right,
+                        Child = rightGripper,
+                        ToolTip = "Drag to adjust Deadline (End Date)"
+                    };
+                    rightHandle.MouseEnter += (s, e) => rightGripper.Background = Brushes.White;
+                    rightHandle.MouseLeave += (s, e) => rightGripper.Background = new SolidColorBrush(Color.FromArgb(120, 255, 255, 255));
+                    rightHandle.MouseLeftButtonDown += (s, ev) =>
+                    {
+                        ev.Handled = true;
+                        StartGanttBarDrag(projRef, bar, rowGrid, daysInMonth, activeMonthDate, false, startDay, endDay, ev, rightHandle);
+                    };
+
+                    Grid barGrid = new Grid();
+                    barGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(7) });
+                    barGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                    barGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(7) });
+
+                    Grid.SetColumn(leftHandle, 0);
+                    Grid.SetColumn(centerRegion, 1);
+                    Grid.SetColumn(rightHandle, 2);
+
+                    barGrid.Children.Add(leftHandle);
+                    barGrid.Children.Add(centerRegion);
+                    barGrid.Children.Add(rightHandle);
+
+                    bar.Child = barGrid;
 
                     Grid.SetColumn(bar, startDay);
                     Grid.SetColumnSpan(bar, colSpan);
@@ -1442,6 +1532,149 @@ namespace SS_CAM.Views
                 Debug.WriteLine("[CalendarPage] RenderGanttTimeline error: " + ex.Message);
             }
         }
+
+        #region Gantt Timeline Drag-to-Resize
+
+        private void StartGanttBarDrag(ProjectStatusItem project, Border bar, Grid rowGrid, int daysInMonth, DateTime activeMonthDate, bool isLeftEdge, int startDay, int endDay, MouseButtonEventArgs ev, FrameworkElement handle)
+        {
+            if (project == null || bar == null || rowGrid == null || handle == null) return;
+            try
+            {
+                _isDraggingGanttEdge = true;
+                _dragIsLeftEdge = isLeftEdge;
+                _dragGanttProject = project;
+                _dragGanttBar = bar;
+                _dragGanttRowGrid = rowGrid;
+                _dragDaysInMonth = daysInMonth;
+                _dragActiveMonth = activeMonthDate;
+                _dragOriginalStartDay = startDay;
+                _dragOriginalEndDay = endDay;
+                _dragCurrentStartDay = startDay;
+                _dragCurrentEndDay = endDay;
+                _dragCapturedHandle = handle;
+
+                handle.CaptureMouse();
+
+                MouseEventHandler moveHandler = null;
+                MouseButtonEventHandler upHandler = null;
+
+                moveHandler = (s, moveEv) =>
+                {
+                    if (!_isDraggingGanttEdge) return;
+                    Point pt = moveEv.GetPosition(_dragGanttRowGrid);
+                    double col0Width = 160.0;
+                    double availableWidth = _dragGanttRowGrid.ActualWidth - col0Width;
+                    if (availableWidth <= 0) return;
+
+                    double dayWidth = availableWidth / _dragDaysInMonth;
+                    int targetDay = (int)Math.Floor((pt.X - col0Width) / dayWidth) + 1;
+                    targetDay = Math.Max(1, Math.Min(_dragDaysInMonth, targetDay));
+
+                    if (_dragIsLeftEdge)
+                    {
+                        targetDay = Math.Min(targetDay, _dragCurrentEndDay);
+                        if (targetDay != _dragCurrentStartDay)
+                        {
+                            _dragCurrentStartDay = targetDay;
+                            int newColSpan = Math.Max(1, (_dragCurrentEndDay - _dragCurrentStartDay) + 1);
+                            Grid.SetColumn(_dragGanttBar, _dragCurrentStartDay);
+                            Grid.SetColumnSpan(_dragGanttBar, newColSpan);
+
+                            DateTime newStart = new DateTime(_dragActiveMonth.Year, _dragActiveMonth.Month, _dragCurrentStartDay);
+                            int dur = Math.Max(1, (_dragGanttProject.ParsedDeadline.Date - newStart.Date).Days + 1);
+                            _dragGanttBar.ToolTip = string.Format("Adjusting Start Date ➔ {0:dd MMM yyyy} (Duration: {1}d)", newStart, dur);
+                        }
+                    }
+                    else
+                    {
+                        targetDay = Math.Max(_dragCurrentStartDay, targetDay);
+                        if (targetDay != _dragCurrentEndDay)
+                        {
+                            _dragCurrentEndDay = targetDay;
+                            int newColSpan = Math.Max(1, (_dragCurrentEndDay - _dragCurrentStartDay) + 1);
+                            Grid.SetColumnSpan(_dragGanttBar, newColSpan);
+
+                            DateTime newDeadline = new DateTime(_dragActiveMonth.Year, _dragActiveMonth.Month, _dragCurrentEndDay);
+                            bool isConflict = MalaysiaHolidayService.IsOffDay(newDeadline);
+                            string offReason = isConflict ? MalaysiaHolidayService.GetOffDayReason(newDeadline) : null;
+                            if (isConflict)
+                            {
+                                _dragGanttBar.BorderBrush = new SolidColorBrush(Color.FromRgb(239, 68, 68));
+                                _dragGanttBar.BorderThickness = new Thickness(2);
+                                _dragGanttBar.ToolTip = string.Format("Adjusting Deadline ➔ {0:dd MMM yyyy} ⚠️ OFF-DAY ({1})!\nRelease to set, or drag to next working day.", newDeadline, offReason);
+                            }
+                            else
+                            {
+                                _dragGanttBar.BorderBrush = Brushes.Transparent;
+                                _dragGanttBar.BorderThickness = new Thickness(0);
+                                int dur = (_dragCurrentEndDay - _dragCurrentStartDay) + 1;
+                                _dragGanttBar.ToolTip = string.Format("Adjusting Deadline ➔ {0:dd MMM yyyy} ({1} days)", newDeadline, dur);
+                            }
+                        }
+                    }
+                };
+
+                upHandler = (s, upEv) =>
+                {
+                    if (!_isDraggingGanttEdge) return;
+                    _isDraggingGanttEdge = false;
+                    _dragCapturedHandle.ReleaseMouseCapture();
+
+                    handle.MouseMove -= moveHandler;
+                    handle.MouseLeftButtonUp -= upHandler;
+
+                    bool dateChanged = false;
+                    if (_dragIsLeftEdge && _dragCurrentStartDay != _dragOriginalStartDay)
+                    {
+                        DateTime newStart = new DateTime(_dragActiveMonth.Year, _dragActiveMonth.Month, _dragCurrentStartDay);
+                        _dragGanttProject.CreatedDate = newStart.ToString("yyyy-MM-dd");
+                        DateTime dl = _dragGanttProject.ParsedDeadline;
+                        if (dl >= newStart)
+                        {
+                            _dragGanttProject.Duration = string.Format("{0}d", (dl.Date - newStart.Date).Days + 1);
+                        }
+                        dateChanged = true;
+                    }
+                    else if (!_dragIsLeftEdge && _dragCurrentEndDay != _dragOriginalEndDay)
+                    {
+                        DateTime newDeadline = new DateTime(_dragActiveMonth.Year, _dragActiveMonth.Month, _dragCurrentEndDay);
+                        _dragGanttProject.Deadline = newDeadline.ToString("yyyy-MM-dd");
+                        DateTime st = _dragGanttProject.ParsedCreatedDate;
+                        if (newDeadline >= st)
+                        {
+                            _dragGanttProject.Duration = string.Format("{0}d", (newDeadline.Date - st.Date).Days + 1);
+                        }
+                        dateChanged = true;
+                    }
+
+                    if (dateChanged)
+                    {
+                        try
+                        {
+                            FrontmatterService.WriteStatus(_dragGanttProject);
+                            if (_drawerEditingProject != null && string.Equals(_drawerEditingProject.FullPath, _dragGanttProject.FullPath, StringComparison.OrdinalIgnoreCase))
+                            {
+                                OpenProjectDetailDrawer(_dragGanttProject);
+                            }
+                            RenderGanttTimeline();
+                        }
+                        catch (Exception ex)
+                        {
+                            Debug.WriteLine("[CalendarPage] DragEnd save error: " + ex.Message);
+                        }
+                    }
+                };
+
+                handle.MouseMove += moveHandler;
+                handle.MouseLeftButtonUp += upHandler;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine("[CalendarPage] StartGanttBarDrag error: " + ex.Message);
+            }
+        }
+
+        #endregion
 
         #region Project Detail Drawer & Deliverables Management
 
