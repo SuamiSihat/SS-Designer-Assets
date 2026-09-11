@@ -80,7 +80,7 @@
   $effect(() => {
     const proj = projectStore.selectedProject;
     if (proj) {
-      const vHash = `${proj.id || ''}_${proj.versionHash || ''}_${proj.status || ''}_${proj.priority || ''}`;
+      const vHash = `${proj.id || ''}_${proj.versionHash || ''}_${proj.status || ''}_${proj.priority || ''}_${(proj.subtasks || []).length}`;
       if (vHash !== lastLoadedHash) {
         lastLoadedHash = vHash;
         currentReadmeBody = proj.readmeBody || proj.briefMarkdown || '';
@@ -94,7 +94,7 @@
           priority: proj.priority,
           tags: proj.tags || [],
           creative_direction: proj.creativeDirection || {},
-          subtasks: (proj as any).subtasks || []
+          subtasks: Array.isArray((proj as any).subtasks) ? [...(proj as any).subtasks] : []
         };
         projectComments = (proj as any).comments || [];
       }
@@ -235,7 +235,9 @@
   });
 
   const subtaskStats = $derived.by(() => {
-    const list = Array.isArray(currentFrontmatter.subtasks) ? currentFrontmatter.subtasks : [];
+    const list = Array.isArray(currentFrontmatter.subtasks) && currentFrontmatter.subtasks.length > 0
+      ? currentFrontmatter.subtasks
+      : (Array.isArray(p?.subtasks) ? p.subtasks : []);
     const total = list.length;
     const completed = list.filter((s: any) => ['approved', 'done', 'completed'].includes((s.status || '').toLowerCase())).length;
     const inProgress = list.filter((s: any) => ['in-progress', 'in_progress', 'progress'].includes((s.status || '').toLowerCase())).length;
@@ -483,7 +485,8 @@
         deadline: projectStore.selectedProject.deadline,
         priority: projectStore.selectedProject.priority,
         tags: projectStore.selectedProject.tags || [],
-        creative_direction: projectStore.selectedProject.creativeDirection || {}
+        creative_direction: projectStore.selectedProject.creativeDirection || {},
+        subtasks: Array.isArray((projectStore.selectedProject as any).subtasks) ? [...(projectStore.selectedProject as any).subtasks] : []
       };
       projectComments = (projectStore.selectedProject as any).comments || [];
     }
