@@ -72,6 +72,7 @@ namespace SS_CAM.Views
             ReloadCategoryPresets();
             PopulateDropdowns();
             AutoCalculateNextProjectId();
+            UpdateDeliverableScopeInfo();
             UpdateLivePreview();
             LoadRecentProjects();
             LoadCreativeOrders();
@@ -383,6 +384,7 @@ namespace SS_CAM.Views
                 ProjectIdInput.Text = string.Format("{0}{1}", currentNum, suffix);
 
                 FilterTargetPlatformsByCategory(preset);
+                UpdateDeliverableScopeInfo();
             }
 
             if (PlatformComboBox.SelectedItem != null)
@@ -405,6 +407,151 @@ namespace SS_CAM.Views
             }
 
             UpdateLivePreview();
+        }
+
+        private void OnDeliverableScopeSelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (!IsLoaded) return;
+            UpdateDeliverableScopeInfo();
+            UpdateLivePreview();
+        }
+
+        private string GetSelectedScopeTag()
+        {
+            if (DeliverableScopeComboBox == null || DeliverableScopeComboBox.SelectedItem == null) return "single";
+            var item = DeliverableScopeComboBox.SelectedItem as ComboBoxItem;
+            if (item != null && item.Tag != null) return item.Tag.ToString();
+            return "single";
+        }
+
+        private void UpdateDeliverableScopeInfo()
+        {
+            if (TxtScopeEstimatedPoints == null || TxtScopeDescription == null) return;
+            string tag = GetSelectedScopeTag();
+            switch (tag)
+            {
+                case "video_batch_4":
+                    TxtScopeEstimatedPoints.Text = "Estimated: 3.2 pts";
+                    TxtScopeDescription.Text = "1 Master Story (60s, 2.0 pts) + 3 Hook Variations (15s, 0.4 pt each). Creates V01-V04 subtask folders.";
+                    break;
+                case "video_batch_6":
+                    TxtScopeEstimatedPoints.Text = "Estimated: 4.0 pts";
+                    TxtScopeDescription.Text = "1 Master Story (60s, 2.0 pts) + 5 Hook Variations (15s, 0.4 pt each). High performance ad blitz.";
+                    break;
+                case "video_episodes_3":
+                    TxtScopeEstimatedPoints.Text = "Estimated: 18.0 pts";
+                    TxtScopeDescription.Text = "3 Long-Form Episodes (10m, 6.0 pts each). Dedicated high-capacity episodic project.";
+                    break;
+                case "graphic_pack_3":
+                    TxtScopeEstimatedPoints.Text = "Estimated: 1.4 pts";
+                    TxtScopeDescription.Text = "1 Master Key Visual (1.0 pt) + 2 Format Resizes (9:16 & 16:9, 0.2 pt each).";
+                    break;
+                case "graphic_series_5":
+                    TxtScopeEstimatedPoints.Text = "Estimated: 5.0 pts";
+                    TxtScopeDescription.Text = "5 Unique Key Visual Artworks / Carousel Slides (1.0 pt each). Studio full-load capacity.";
+                    break;
+                case "graphic_series_10":
+                    TxtScopeEstimatedPoints.Text = "Estimated: 10.0 pts";
+                    TxtScopeDescription.Text = "10 Unique Key Visual Artworks (1.0 pt each). Massive multi-asset campaign batch.";
+                    break;
+                default:
+                    CategoryPreset preset = GetSelectedCategoryPreset();
+                    double pts = preset != null && preset.SlotWeight > 0 ? preset.SlotWeight : 1.0;
+                    TxtScopeEstimatedPoints.Text = string.Format(System.Globalization.CultureInfo.InvariantCulture, "Estimated: {0:0.#} pt", pts);
+                    TxtScopeDescription.Text = "Standard single deliverable. Occupies 1 default slot in studio capacity.";
+                    break;
+            }
+        }
+
+        private List<ProjectSubtaskItem> BuildScopeSubtasks(string scopeTag, out double categoryWeight)
+        {
+            CategoryPreset preset = GetSelectedCategoryPreset();
+            double baseWeight = preset != null && preset.SlotWeight > 0 ? preset.SlotWeight : 1.0;
+            categoryWeight = baseWeight;
+
+            List<ProjectSubtaskItem> list = new List<ProjectSubtaskItem>();
+
+            switch (scopeTag)
+            {
+                case "video_batch_4":
+                    categoryWeight = 2.0;
+                    list.Add(new ProjectSubtaskItem { Id = "V01_Master_60s", Name = "Master Story Cut (60s)", Type = "video", Weight = 2.0, Status = "draft", Specs = "1920x1080 16:9 • 60s Main Cut" });
+                    list.Add(new ProjectSubtaskItem { Id = "V02_HookA_15s", Name = "Hook Variation A (15s)", Type = "video", Weight = 0.4, Status = "draft", Specs = "1080x1920 9:16 • 15s Hook A" });
+                    list.Add(new ProjectSubtaskItem { Id = "V03_HookB_15s", Name = "Hook Variation B (15s)", Type = "video", Weight = 0.4, Status = "draft", Specs = "1080x1920 9:16 • 15s Hook B" });
+                    list.Add(new ProjectSubtaskItem { Id = "V04_HookC_15s", Name = "Hook Variation C (15s)", Type = "video", Weight = 0.4, Status = "draft", Specs = "1080x1920 9:16 • 15s Hook C" });
+                    break;
+
+                case "video_batch_6":
+                    categoryWeight = 2.0;
+                    list.Add(new ProjectSubtaskItem { Id = "V01_Master_60s", Name = "Master Story Cut (60s)", Type = "video", Weight = 2.0, Status = "draft", Specs = "1920x1080 16:9 • 60s Main Cut" });
+                    list.Add(new ProjectSubtaskItem { Id = "V02_HookA_15s", Name = "Hook Variation A (15s)", Type = "video", Weight = 0.4, Status = "draft", Specs = "1080x1920 9:16 • 15s Hook A" });
+                    list.Add(new ProjectSubtaskItem { Id = "V03_HookB_15s", Name = "Hook Variation B (15s)", Type = "video", Weight = 0.4, Status = "draft", Specs = "1080x1920 9:16 • 15s Hook B" });
+                    list.Add(new ProjectSubtaskItem { Id = "V04_HookC_15s", Name = "Hook Variation C (15s)", Type = "video", Weight = 0.4, Status = "draft", Specs = "1080x1920 9:16 • 15s Hook C" });
+                    list.Add(new ProjectSubtaskItem { Id = "V05_HookD_15s", Name = "Hook Variation D (15s)", Type = "video", Weight = 0.4, Status = "draft", Specs = "1080x1920 9:16 • 15s Hook D" });
+                    list.Add(new ProjectSubtaskItem { Id = "V06_HookE_15s", Name = "Hook Variation E (15s)", Type = "video", Weight = 0.4, Status = "draft", Specs = "1080x1920 9:16 • 15s Hook E" });
+                    break;
+
+                case "video_episodes_3":
+                    categoryWeight = 6.0;
+                    list.Add(new ProjectSubtaskItem { Id = "EP01_Episode_1", Name = "Episode 01 - Pilot / Opening", Type = "video", Weight = 6.0, Status = "draft", Specs = "1920x1080 16:9 • 10-15 min" });
+                    list.Add(new ProjectSubtaskItem { Id = "EP02_Episode_2", Name = "Episode 02 - Deep Dive", Type = "video", Weight = 6.0, Status = "draft", Specs = "1920x1080 16:9 • 10-15 min" });
+                    list.Add(new ProjectSubtaskItem { Id = "EP03_Episode_3", Name = "Episode 03 - Season Finale", Type = "video", Weight = 6.0, Status = "draft", Specs = "1920x1080 16:9 • 10-15 min" });
+                    break;
+
+                case "graphic_pack_3":
+                    categoryWeight = 1.0;
+                    list.Add(new ProjectSubtaskItem { Id = "G01_Master_KV", Name = "Master Key Visual (1:1 Feed)", Type = "graphic", Weight = 1.0, Status = "draft", Specs = "1080x1080 1:1 Feed Post" });
+                    list.Add(new ProjectSubtaskItem { Id = "G02_Resize_9x16", Name = "Format Resize (9:16 Story/Reels)", Type = "graphic", Weight = 0.2, Status = "draft", Specs = "1080x1920 9:16 Story" });
+                    list.Add(new ProjectSubtaskItem { Id = "G03_Resize_16x9", Name = "Format Resize (16:9 Web/Display)", Type = "graphic", Weight = 0.2, Status = "draft", Specs = "1920x1080 16:9 Display" });
+                    break;
+
+                case "graphic_series_5":
+                    categoryWeight = 1.0;
+                    for (int i = 1; i <= 5; i++)
+                    {
+                        list.Add(new ProjectSubtaskItem
+                        {
+                            Id = string.Format("G{0:D2}_Slide_{0}", i),
+                            Name = string.Format("Slide {0} / Key Visual", i),
+                            Type = "graphic",
+                            Weight = 1.0,
+                            Status = "draft",
+                            Specs = "1080x1080 Carousel"
+                        });
+                    }
+                    break;
+
+                case "graphic_series_10":
+                    categoryWeight = 1.0;
+                    for (int i = 1; i <= 10; i++)
+                    {
+                        list.Add(new ProjectSubtaskItem
+                        {
+                            Id = string.Format("G{0:D2}_Artwork_{0}", i),
+                            Name = string.Format("Unique Artwork #{0}", i),
+                            Type = "graphic",
+                            Weight = 1.0,
+                            Status = "draft",
+                            Specs = "1080x1080 Post"
+                        });
+                    }
+                    break;
+
+                default: // "single"
+                    string specs = PlatformSpecsText != null ? PlatformSpecsText.Text : "Standard Specs";
+                    list.Add(new ProjectSubtaskItem
+                    {
+                        Id = "DELIV_01_Master",
+                        Name = "Master Deliverable",
+                        Type = (preset != null && preset.Name != null && preset.Name.IndexOf("Video", StringComparison.OrdinalIgnoreCase) >= 0) ? "video" : "graphic",
+                        Weight = baseWeight,
+                        Status = "draft",
+                        Specs = specs
+                    });
+                    break;
+            }
+
+            return list;
         }
 
         private void OnVisualPlatformCardClicked(object sender, RoutedEventArgs e)
@@ -537,6 +684,9 @@ namespace SS_CAM.Views
             }
 
             List<string> presetFolders = GetPresetFolders(selectedPreset);
+            string scopeTag = GetSelectedScopeTag();
+            double previewWeight;
+            List<ProjectSubtaskItem> previewSubtasks = BuildScopeSubtasks(scopeTag, out previewWeight);
 
             List<string> lines = new List<string>();
             lines.Add("📁 " + folderName);
@@ -562,6 +712,18 @@ namespace SS_CAM.Views
                     else if (folder.Contains("COPYWRITING") || folder.Contains("Copywriting"))
                     {
                         lines.Add(" │   └── 📄 COPY.md");
+                    }
+                    else if (folder.Contains("WORK_IN_PROGRESS") && previewSubtasks != null && previewSubtasks.Count > 1)
+                    {
+                        foreach (var sub in previewSubtasks)
+                        {
+                            lines.Add(string.Format(" │   ├── 📁 {0} ({1:0.#} pt)", sub.Id, sub.Weight));
+                        }
+                    }
+                    else if (folder.Contains("DELIVERABLES") && previewSubtasks != null && previewSubtasks.Count > 1)
+                    {
+                        lines.Add(" │   ├── 📁 Final_Exports");
+                        lines.Add(" │   └── 📁 Thumbnails");
                     }
                 }
             }
@@ -631,6 +793,46 @@ namespace SS_CAM.Views
                     }
                 }
 
+                string scopeTag = GetSelectedScopeTag();
+                double categoryWeight = 1.0;
+                List<ProjectSubtaskItem> subtasks = BuildScopeSubtasks(scopeTag, out categoryWeight);
+
+                if (subtasks != null && subtasks.Count > 0)
+                {
+                    string wipDir = Path.Combine(targetDir, "04_WORK_IN_PROGRESS");
+                    if (!Directory.Exists(wipDir))
+                    {
+                        string altWip = Directory.GetDirectories(targetDir, "*WORK_IN_PROGRESS*").FirstOrDefault();
+                        wipDir = altWip ?? wipDir;
+                    }
+                    if (Directory.Exists(wipDir))
+                    {
+                        foreach (var sub in subtasks)
+                        {
+                            string subFolderPath = Path.Combine(wipDir, sub.Id);
+                            if (!Directory.Exists(subFolderPath))
+                            {
+                                Directory.CreateDirectory(subFolderPath);
+                                string subReadme = string.Format("# {0} — {1}\n- **Type**: {2}\n- **Weight**: {3:0.#} pts\n- **Status**: {4}\n- **Specs**: {5}\n",
+                                    sub.Id, sub.Name, sub.Type, sub.Weight, sub.Status, sub.Specs);
+                                File.WriteAllText(Path.Combine(subFolderPath, "README.md"), subReadme, Encoding.UTF8);
+                            }
+                        }
+                    }
+
+                    string delivDir = Path.Combine(targetDir, "05_DELIVERABLES");
+                    if (Directory.Exists(delivDir))
+                    {
+                        Directory.CreateDirectory(Path.Combine(delivDir, "Final_Exports"));
+                        Directory.CreateDirectory(Path.Combine(delivDir, "Thumbnails"));
+                        if (subtasks.Any(s => s.Type == "video"))
+                        {
+                            Directory.CreateDirectory(Path.Combine(delivDir, "Master_Renders"));
+                            Directory.CreateDirectory(Path.Combine(delivDir, "Social_Cuts"));
+                        }
+                    }
+                }
+
                 if (IncludeRevisionsCheck.IsChecked == true)
                     Directory.CreateDirectory(Path.Combine(targetDir, "Client_Revisions"));
 
@@ -663,7 +865,9 @@ namespace SS_CAM.Views
                     deadlineFormatted,
                     presetName,
                     orderId,
-                    string.IsNullOrWhiteSpace(canvaLink) ? null : canvaLink);
+                    string.IsNullOrWhiteSpace(canvaLink) ? null : canvaLink,
+                    subtasks,
+                    categoryWeight);
 
                 string readmeContent = string.Format("{0}\n# {1}\n\n- **Created**: {2:yyyy-MM-dd HH:mm}\n- **Designer**: {3}\n- **Project ID**: {4}\n- **Preset**: {5}\n- **Platform**: {6}\n- **Platform Specs**: {7}\n\n## Project Brief & Remarks\n{8}\n",
                     frontmatter,

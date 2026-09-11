@@ -26,6 +26,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.suamisihat.sscam.data.models.LiveTaskDto
 import com.suamisihat.sscam.data.models.ProjectItem
 import com.suamisihat.sscam.ui.theme.*
 import kotlinx.coroutines.delay
@@ -38,16 +39,37 @@ import java.util.*
  * - High-legibility Swiss typography digital clock & live date
  * - Tactile Pomodoro analog focus dial with phase indicators
  * - Next prayer time countdown ticker with audio chime status
- * - Current deliverable focus pill
+ * - Current deliverable focus pill & live studio workstream ticker
  * - One-tap exit and ambient low-brightness OLED protector
  */
 @Composable
 fun DeskCompanionMode(
     activeProjects: List<ProjectItem> = emptyList(),
+    liveTasks: List<LiveTaskDto> = emptyList(),
     onExit: () -> Unit
 ) {
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+
+    // Live studio workstream telemetry
+    val infiniteTransition = rememberInfiniteTransition(label = "pulse")
+    val pulseAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.35f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(900, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "pulseAlpha"
+    )
+
+    val activeWorkstations = remember(liveTasks) {
+        liveTasks.filter {
+            it.state.equals("working", ignoreCase = true) || it.state.equals("active", ignoreCase = true)
+        }
+    }
+    val activeCount = if (activeWorkstations.isNotEmpty()) activeWorkstations.size else liveTasks.size
+    val activeLead = activeWorkstations.firstOrNull() ?: liveTasks.firstOrNull()
 
     // Time State (Live ticking)
     var currentTime by remember { mutableStateOf(Calendar.getInstance().time) }
@@ -126,15 +148,20 @@ fun DeskCompanionMode(
                     modifier = Modifier
                         .size(8.dp)
                         .clip(CircleShape)
-                        .background(Color(0xFF10B981))
+                        .background(if (activeLead != null) Color(0xFF10B981).copy(alpha = pulseAlpha) else Color(0xFF10B981))
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "DESK STANDBY • LIVE NAS SYNC",
+                    text = if (activeLead != null) {
+                        "● $activeCount IN STUDIO • ${activeLead.designerName?.uppercase() ?: "DESIGNER"}: ${(activeLead.projectName ?: "WORKING").take(22)}"
+                    } else {
+                        "DESK STANDBY • LIVE NAS SYNC"
+                    },
                     fontSize = 9.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF9CA3AF),
-                    letterSpacing = 1.sp
+                    color = if (activeLead != null) Color.White else Color(0xFF9CA3AF),
+                    letterSpacing = 1.sp,
+                    maxLines = 1
                 )
             }
 
@@ -198,7 +225,18 @@ fun DeskCompanionMode(
                     Spacer(modifier = Modifier.height(24.dp))
 
                     // Active Focus Deliverable Card
-                    if (currentFocusTask != null) {
+                    if (activeLead != null || currentFocusTask != null) {
+                        val displayTaskTitle = activeLead?.projectName?.ifEmpty { null }
+                            ?: currentFocusTask?.title?.ifEmpty { null }
+                            ?: "Creative Asset Sprint"
+                        val displaySubtext = if (activeLead != null) {
+                            "${activeLead.designerName} • ${activeLead.formattedElapsed ?: "In Progress"}${if (!activeLead.machineName.isNullOrBlank()) " • ${activeLead.machineName}" else ""}"
+                        } else {
+                            currentFocusTask?.safeBrand?.ifEmpty { "SuamiSihat" } ?: "SuamiSihat"
+                        }
+                        val displayCategory = if (activeLead != null) "LIVE STUDIO WORKSTREAM" else "CURRENT SPRINT FOCUS"
+                        val displayColor = if (activeLead != null) Color(0xFF10B981) else Color(0xFF0078D4)
+
                         Surface(
                             color = Color(0xFF111827).copy(alpha = 0.8f),
                             shape = RoundedCornerShape(12.dp),
@@ -213,11 +251,11 @@ fun DeskCompanionMode(
                                     modifier = Modifier
                                         .size(36.dp)
                                         .clip(RoundedCornerShape(8.dp))
-                                        .background(Color(0xFF0078D4)),
+                                        .background(displayColor),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Icon(
-                                        Icons.Default.Brush,
+                                        if (activeLead != null) Icons.Default.Computer else Icons.Default.Brush,
                                         contentDescription = null,
                                         tint = Color.White,
                                         modifier = Modifier.size(20.dp)
@@ -226,17 +264,23 @@ fun DeskCompanionMode(
                                 Spacer(modifier = Modifier.width(12.dp))
                                 Column {
                                     Text(
-                                        text = "CURRENT SPRINT FOCUS",
+                                        text = displayCategory,
                                         fontSize = 8.5.sp,
                                         fontWeight = FontWeight.Bold,
-                                        color = Color(0xFF38BDF8),
+                                        color = if (activeLead != null) Color(0xFF10B981) else Color(0xFF38BDF8),
                                         letterSpacing = 1.sp
                                     )
                                     Text(
-                                        text = currentFocusTask.title?.ifEmpty { "Creative Asset Sprint" } ?: "Creative Asset Sprint",
+                                        text = displayTaskTitle,
                                         fontSize = 14.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = Color.White,
+                                        maxLines = 1
+                                    )
+                                    Text(
+                                        text = displaySubtext,
+                                        fontSize = 11.sp,
+                                        color = Color(0xFF9CA3AF),
                                         maxLines = 1
                                     )
                                 }
@@ -382,8 +426,19 @@ fun DeskCompanionMode(
                     }
                 }
 
-                // Bottom: Active Sprint Task Pill
-                if (currentFocusTask != null) {
+                // Bottom: Active Sprint / Live Studio Task Pill
+                if (activeLead != null || currentFocusTask != null) {
+                    val displayTaskTitle = activeLead?.projectName?.ifEmpty { null }
+                        ?: currentFocusTask?.title?.ifEmpty { null }
+                        ?: "Creative Asset Sprint"
+                    val displaySubtext = if (activeLead != null) {
+                        "${activeLead.designerName} • ${activeLead.formattedElapsed ?: "In Progress"}${if (!activeLead.machineName.isNullOrBlank()) " • ${activeLead.machineName}" else ""}"
+                    } else {
+                        currentFocusTask?.safeBrand?.ifEmpty { "SuamiSihat" } ?: "SuamiSihat"
+                    }
+                    val displayCategory = if (activeLead != null) "LIVE STUDIO WORKSTREAM" else "CURRENT SPRINT"
+                    val displayColor = if (activeLead != null) Color(0xFF10B981) else Color(0xFF0078D4)
+
                     Surface(
                         color = Color(0xFF111827).copy(alpha = 0.9f),
                         shape = RoundedCornerShape(14.dp),
@@ -398,11 +453,11 @@ fun DeskCompanionMode(
                                 modifier = Modifier
                                     .size(36.dp)
                                     .clip(RoundedCornerShape(8.dp))
-                                    .background(Color(0xFF0078D4)),
+                                    .background(displayColor),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
-                                    Icons.Default.Assignment,
+                                    if (activeLead != null) Icons.Default.Computer else Icons.Default.Assignment,
                                     contentDescription = null,
                                     tint = Color.White,
                                     modifier = Modifier.size(20.dp)
@@ -411,17 +466,23 @@ fun DeskCompanionMode(
                             Spacer(modifier = Modifier.width(12.dp))
                             Column {
                                 Text(
-                                    text = "CURRENT SPRINT",
+                                    text = displayCategory,
                                     fontSize = 8.5.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = Color(0xFF38BDF8),
+                                    color = if (activeLead != null) Color(0xFF10B981) else Color(0xFF38BDF8),
                                     letterSpacing = 1.sp
                                 )
                                 Text(
-                                    text = currentFocusTask.title?.ifEmpty { "Creative Asset Sprint" } ?: "Creative Asset Sprint",
+                                    text = displayTaskTitle,
                                     fontSize = 14.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = Color.White,
+                                    maxLines = 1
+                                )
+                                Text(
+                                    text = displaySubtext,
+                                    fontSize = 11.sp,
+                                    color = Color(0xFF9CA3AF),
                                     maxLines = 1
                                 )
                             }

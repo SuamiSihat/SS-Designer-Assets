@@ -1,7 +1,6 @@
 const fs = require('fs');
 const path = require('path');
 const config = require('../config');
-const WorkspaceService = require('./WorkspaceService');
 
 class TeamService {
   static getUsersDir() {
@@ -75,6 +74,69 @@ class TeamService {
       try { fs.mkdirSync(configDir, { recursive: true }); } catch (e) {}
     }
     return path.join(configDir, 'staff_directory.json');
+  }
+
+  static getLiveTasksPath() {
+    const teamDir = path.join(config.WORKSPACE_ROOT, '_Team');
+    if (!fs.existsSync(teamDir)) {
+      try { fs.mkdirSync(teamDir, { recursive: true }); } catch (e) {}
+    }
+    return path.join(teamDir, 'live_tasks.json');
+  }
+
+  /**
+   * Reads active live tasks telemetry ledger from Synology NAS (_Team/live_tasks.json).
+   * Strips UTF-8 BOM, parses JSON array, and excludes stale sessions (>16 hours).
+   */
+  static getLiveTasks() {
+    try {
+      const p = this.getLiveTasksPath();
+      if (!fs.existsSync(p)) return [];
+      let raw = fs.readFileSync(p, 'utf8');
+      if (raw.charCodeAt(0) === 0xFEFF) raw = raw.slice(1);
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return [];
+
+      const cutoff = Date.now() - 16 * 60 * 60 * 1000;
+      const roster = this.getStaffRoster();
+      const rosterMap = new Map();
+      roster.forEach(m => {
+        if (m.staffId) rosterMap.set(m.staffId.toUpperCase(), m);
+        if (m.name) rosterMap.set(m.name.toLowerCase(), m);
+      });
+
+      const COLOR_PALETTE = ['#0078D4', '#106EBE', '#7C3AED', '#D97706', '#21A1F7', '#059669', '#EF4444', '#8B5CF6'];
+
+      return parsed
+        .filter(t => {
+          if (!t) return false;
+          const hb = t.LastHeartbeat || t.StartedAt;
+          if (!hb) return true;
+          const dt = new Date(hb).getTime();
+          return isNaN(dt) || dt >= cutoff;
+        })
+        .map(t => {
+          const staffKey = (t.StaffId || '').toUpperCase();
+          const nameKey = (t.DesignerName || '').toLowerCase();
+          const member = rosterMap.get(staffKey) || rosterMap.get(nameKey);
+
+          let avatarColor = member?.avatarColor;
+          if (!avatarColor) {
+            const seed = staffKey || nameKey || 'DESIGNER';
+            let hash = 0;
+            for (let i = 0; i < seed.length; i++) hash = (hash * 31 + seed.charCodeAt(i)) >>> 0;
+            avatarColor = COLOR_PALETTE[hash % COLOR_PALETTE.length];
+          }
+
+          return {
+            ...t,
+            AvatarColor: avatarColor,
+            DesignerName: t.DesignerName || member?.name || t.StaffId || 'Designer'
+          };
+        });
+    } catch (err) {
+      return [];
+    }
   }
 
   /**
@@ -282,6 +344,7 @@ class TeamService {
       .filter(m => m.active !== false)
       .filter(isCreativeOrAdminRole);
 
+    const WorkspaceService = require('./WorkspaceService');
     const metrics = WorkspaceService.getDashboardMetrics();
     const workloadMap = {};
     metrics.designerWorkload.forEach(dw => {
@@ -336,6 +399,46 @@ class TeamService {
         return d === mName || d === mStaff || d === mUser || (mName && d.includes(mName));
       }).map(p => {
         const catCfg = resolveCategoryConfig(p.presetType, p.presetCode);
+        const subtasks = Array.isArray(p.subtasks) ? p.subtasks : [];
+        let totalPts = catCfg.weight;
+        if (subtasks.length > 0) {
+          totalPts = subtasks.reduce((sum, st) => sum + (typeof st.weight === 'number' ? st.weight : 1.0), 0);
+        } else if (typeof p.categoryWeight === 'number' && p.categoryWeight > 0) {
+          totalPts = p.categoryWeight;
+        }
+        totalPts = Math.round(totalPts * 10) / 10;
+
+        const completedSubtasksCount = subtasks.filter(st => {
+          const s = (st.status || '').toLowerCase();
+          return s === 'approved' || s === 'done' || s === 'completed';
+        }).length;
+
+        // Calculate relative deadline display matching desktop format e.g. "Due in 5d" or "Overdue 2d"
+        let deadlineDisplay = '';
+        if (p.deadline) {
+          const clean = String(p.deadline).trim();
+          const dt = new Date(clean);
+          if (!isNaN(dt.getTime())) {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const targetDt = new Date(dt);
+            targetDt.setHours(0, 0, 0, 0);
+            const diffDays = Math.ceil((targetDt.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+            const isCompleted = ['done', 'approved', 'completed'].includes((p.status || '').toLowerCase());
+            if (isCompleted) {
+              deadlineDisplay = targetDt.toISOString().substring(0, 10);
+            } else if (diffDays < 0) {
+              deadlineDisplay = `Overdue ${Math.abs(diffDays)}d`;
+            } else if (diffDays === 0) {
+              deadlineDisplay = 'Due Today';
+            } else {
+              deadlineDisplay = `Due in ${diffDays}d`;
+            }
+          } else {
+            deadlineDisplay = clean.split('T')[0];
+          }
+        }
+
         return {
           id: p.id || p.jobId,
           jobId: p.jobId || p.id,
@@ -344,11 +447,20 @@ class TeamService {
           brand: p.brand || 'SS',
           priority: p.priority || 'medium',
           deadline: p.deadline || null,
+          deadlineDisplay,
           presetType: catCfg.name,
           presetCode: p.presetCode || 'D',
           slaDays: catCfg.slaDays,
-          slotWeight: catCfg.weight,
-          shortLabel: catCfg.shortLabel
+          slotWeight: totalPts,
+          totalWeight: totalPts,
+          shortLabel: catCfg.shortLabel,
+          subtasks,
+          completedSubtasksCount,
+          totalSubtasksCount: subtasks.length,
+          subtaskProgressDisplay: subtasks.length > 0 
+            ? `${completedSubtasksCount}/${subtasks.length} Done • ${totalPts} pts`
+            : `${totalPts} pts`,
+          categoryWeight: p.categoryWeight || null
         };
       });
 
@@ -358,12 +470,21 @@ class TeamService {
         return s === 'in-progress' || s === 'review' || s === 'revision';
       };
 
-      // Calculate Category-Weighted Active In-Flight Load
+      // Calculate Category & Subtask-Weighted Active In-Flight Load
       // ONLY projects actively in-flight consume designer capacity: in-progress, review, revision
-      // Backlog (queued), on-hold (paused), done, approved, and cancelled do NOT consume active bandwidth
       let weightedLoad = 0;
       memberProjects.filter(p => isActiveStatus(p.status)).forEach(p => {
-        weightedLoad += (p.slotWeight || 1.0);
+        let pWeight = (p.slotWeight || 1.0);
+        if (Array.isArray(p.subtasks) && p.subtasks.length > 0) {
+          const activeSubtasks = p.subtasks.filter(st => {
+            const s = (st.status || 'in-progress').toLowerCase();
+            return s !== 'approved' && s !== 'done' && s !== 'completed';
+          });
+          pWeight = activeSubtasks.reduce((sum, st) => sum + (typeof st.weight === 'number' ? st.weight : 1.0), 0);
+        } else if (typeof p.categoryWeight === 'number' && p.categoryWeight > 0) {
+          pWeight = p.categoryWeight;
+        }
+        weightedLoad += pWeight;
       });
       weightedLoad = Math.round(weightedLoad * 10) / 10;
 

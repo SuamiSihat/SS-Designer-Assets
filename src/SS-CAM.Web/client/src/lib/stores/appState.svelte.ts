@@ -25,6 +25,9 @@ class AppStateStore {
   contextDrawerOpen = $state<boolean>(false);
   sseStatus = $state<'connected' | 'reconnecting' | 'disconnected'>('disconnected');
   lastSyncedAt = $state<Date | null>(null);
+  liveTasks = $state<any[]>([]);
+  activeLiveTasks = $derived(this.liveTasks.filter(t => (t.State || '').toLowerCase() === 'running'));
+  studioDrawerOpen = $state<boolean>(false);
 
   constructor() {
     this.applyTheme(this.theme);
@@ -111,6 +114,17 @@ class AppStateStore {
       }
     } catch (e) {
       // Non-critical
+    }
+  }
+
+  async loadLiveTasks() {
+    try {
+      const res = await ApiClient.getLiveTasks();
+      if (res && res.success && Array.isArray(res.liveTasks)) {
+        this.liveTasks = res.liveTasks;
+      }
+    } catch {
+      // Non-critical telemetry fallback
     }
   }
 

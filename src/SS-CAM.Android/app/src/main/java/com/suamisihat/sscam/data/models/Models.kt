@@ -7,6 +7,19 @@ data class ProjectsResponse(
     @SerializedName("projects") val projects: List<ProjectItem> = emptyList()
 )
 
+data class SubtaskItem(
+    @SerializedName("id") val id: String = "",
+    @SerializedName("name") val name: String = "",
+    @SerializedName("type") val type: String = "standard",
+    @SerializedName("weight") val weight: Double = 1.0,
+    @SerializedName("status") val status: String = "in-progress",
+    @SerializedName("specs") val specs: String = "",
+    @SerializedName("designer") val designer: String = ""
+) {
+    val isCompleted: Boolean
+        get() = status.lowercase() in listOf("approved", "done", "completed")
+}
+
 data class ProjectItem(
     @SerializedName("id") val id: String = "",
     @SerializedName("title") val title: String? = "Untitled Project",
@@ -21,8 +34,20 @@ data class ProjectItem(
     @SerializedName("tags") val tags: List<String>? = emptyList(),
     @SerializedName("deliverableCount") val deliverableCount: Int? = 0,
     @SerializedName("presetType") val presetType: String? = "",
-    @SerializedName("mediaClass") val mediaClass: String? = "image"
+    @SerializedName("mediaClass") val mediaClass: String? = "image",
+    @SerializedName("subtasks") val subtasks: List<SubtaskItem> = emptyList(),
+    @SerializedName("categoryWeight") val categoryWeight: Double? = null
 ) {
+    val totalWeight: Double
+        get() = if (subtasks.isNotEmpty()) subtasks.sumOf { it.weight } else (categoryWeight ?: 1.0)
+
+    val completedSubtasksCount: Int
+        get() = subtasks.count { it.isCompleted }
+
+    val subtasksProgressDisplay: String
+        get() = if (subtasks.isEmpty()) String.format("%.1f pts", totalWeight)
+                else "$completedSubtasksCount/${subtasks.size} Done (${String.format("%.1f", totalWeight)} pts)"
+
     val safeTitle: String
         get() = title.orEmpty().ifBlank { "Untitled Project" }
 
@@ -276,7 +301,11 @@ data class CreativeOrder(
     @SerializedName("submittedAt") val submittedAt: String = "",
     @SerializedName("updatedAt") val updatedAt: String = "",
     @SerializedName("assignedTo") val assignedTo: String? = null,
-    @SerializedName("projectId") val projectId: String? = null
+    @SerializedName("projectId") val projectId: String? = null,
+    @SerializedName("channel") val channel: String? = "digital",
+    @SerializedName("material") val material: String? = null,
+    @SerializedName("widthMm") val widthMm: Double? = null,
+    @SerializedName("heightMm") val heightMm: Double? = null
 ) {
     val safeTitle: String
         get() = title.ifBlank { "Untitled Request" }
@@ -286,6 +315,7 @@ data class CreativeOrder(
 
     val priorityBadge: String
         get() = when (priority.lowercase()) {
+            "tier_0", "pipeline", "low" -> "P0"
             "tier_3", "urgent" -> "P3"
             "tier_2", "fast-track", "high" -> "P2"
             else -> "P1"
@@ -293,6 +323,7 @@ data class CreativeOrder(
 
     val priorityLabel: String
         get() = when (priority.lowercase()) {
+            "tier_0", "pipeline", "low" -> "P0 (Pipeline)"
             "tier_3", "urgent" -> "P3 (Urgent)"
             "tier_2", "fast-track", "high" -> "P2 (Fast-Track)"
             else -> "P1 (Standard)"
@@ -303,10 +334,16 @@ data class CreativeOrder(
             "9_16_video" -> "9:16 Video"
             "1_1_feed" -> "1:1 Feed"
             "16_9_landscape" -> "16:9 Landscape"
-            "print_posm" -> "Print / POSM"
-            "print_digital" -> "Digital Banner"
+            "pkg_box_sleeve" -> "Box & Sleeve"
+            "pkg_label" -> "Bottle/Jar Label"
+            "print_posm" -> "Roll-Up / POSM"
+            "print_digital" -> "Digital / Print"
             else -> format.replace("_", " ").replaceFirstChar { it.uppercase() }
         }
+
+    val isPackagingOrPrint: Boolean
+        get() = channel?.equals("print", ignoreCase = true) == true ||
+                format in listOf("pkg_box_sleeve", "pkg_label", "print_posm", "print_digital")
 
     val statusLabel: String
         get() = when (status) {
@@ -328,6 +365,52 @@ data class CreateOrderRequest(
     @SerializedName("targetDate") val targetDate: String,
     @SerializedName("attachmentNote") val attachmentNote: String = "",
     @SerializedName("requester") val requester: String = "Harussani",
-    @SerializedName("requesterRole") val requesterRole: String = "Admin, Designer"
+    @SerializedName("requesterRole") val requesterRole: String = "Admin, Designer",
+    @SerializedName("channel") val channel: String? = "digital",
+    @SerializedName("material") val material: String? = null,
+    @SerializedName("widthMm") val widthMm: Double? = null,
+    @SerializedName("heightMm") val heightMm: Double? = null
+)
+
+// ─── Live Workstream & Workstation Telemetry ─────────────────────────
+
+data class LiveTaskDto(
+    @SerializedName("StaffId") val staffId: String = "",
+    @SerializedName("DesignerName") val designerName: String = "",
+    @SerializedName("ProjectId") val projectId: String = "",
+    @SerializedName("ProjectName") val projectName: String = "",
+    @SerializedName("Client") val client: String = "SS",
+    @SerializedName("State") val state: String = "running",
+    @SerializedName("StartedAt") val startedAt: String = "",
+    @SerializedName("LastHeartbeat") val lastHeartbeat: String = "",
+    @SerializedName("ElapsedSeconds") val elapsedSeconds: Long = 0L,
+    @SerializedName("SessionNotes") val sessionNotes: String? = null,
+    @SerializedName("MachineName") val machineName: String? = null,
+    @SerializedName("AvatarColor") val avatarColor: String? = "#21A1F7"
+) {
+    val isRunning: Boolean
+        get() = state.equals("running", ignoreCase = true)
+
+    val initials: String
+        get() = (designerName.ifBlank { staffId.ifBlank { "D" } }).take(2).uppercase()
+
+    val displayProject: String
+        get() = projectName.ifBlank { projectId.ifBlank { "Active Design Session" } }
+
+    val formattedElapsed: String
+        get() {
+            val sec = elapsedSeconds.coerceAtLeast(0)
+            val h = sec / 3600
+            val m = (sec % 3600) / 60
+            val s = sec % 60
+            return String.format("%02d:%02d:%02d", h, m, s)
+        }
+}
+
+data class LiveTasksResponse(
+    @SerializedName("success") val success: Boolean = true,
+    @SerializedName("liveTasks") val liveTasks: List<LiveTaskDto> = emptyList(),
+    @SerializedName("count") val count: Int = 0,
+    @SerializedName("activeCount") val activeCount: Int = 0
 )
 

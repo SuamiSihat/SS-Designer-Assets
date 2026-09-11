@@ -29,7 +29,8 @@ fun ManageProjectBottomSheet(
     project: ProjectItem,
     onDismiss: () -> Unit,
     onUpdateStatus: (newStatus: String) -> Unit = {},
-    onSaveReadme: (newReadme: String) -> Unit = {}
+    onSaveReadme: (newReadme: String) -> Unit = {},
+    onUpdateSubtasks: (newSubtasks: List<com.suamisihat.sscam.data.models.SubtaskItem>) -> Unit = {}
 ) {
     val colors = LocalSscamColors.current
     var selectedTab by remember { mutableStateOf(0) } // 0: Overview & Status, 1: Project README, 2: Deliverables
@@ -43,6 +44,7 @@ fun ManageProjectBottomSheet(
     val safeDeliverables = project.safeDeliverableCount
 
     var currentStatus by remember { mutableStateOf(project.normalizedStatus) }
+    var currentSubtasks by remember(project.subtasks) { mutableStateOf(project.subtasks) }
     var readmeText by remember {
         mutableStateOf(
             "# $safeTitle\n\n" +
@@ -124,6 +126,9 @@ fun ManageProjectBottomSheet(
                     IconButton(onClick = {
                         onUpdateStatus(currentStatus)
                         onSaveReadme(readmeText)
+                        if (currentSubtasks != project.subtasks) {
+                            onUpdateSubtasks(currentSubtasks)
+                        }
                         onDismiss()
                     }) {
                         Icon(Icons.Default.Check, contentDescription = "Save Changes", tint = Color.White, modifier = Modifier.size(18.dp))
@@ -335,51 +340,195 @@ fun ManageProjectBottomSheet(
                             .padding(bottom = 24.dp),
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        Text(
-                            text = "PRODUCTION DELIVERABLES ($safeDeliverables)",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = colors.textSecondary,
-                            letterSpacing = 1.sp
-                        )
+                        if (project.subtasks.isNotEmpty()) {
+                            val doneCount = currentSubtasks.count { it.isCompleted }
+                            val totalPts = currentSubtasks.sumOf { it.weight }
+                            Text(
+                                text = "DELIVERABLES & SUBTASKS ($doneCount/${currentSubtasks.size} Done • ${String.format("%.0f", totalPts)} pts)",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = colors.textSecondary,
+                                letterSpacing = 1.sp
+                            )
 
-                        listOf(
-                            Triple("KeyVisual_Final_Poster.png", "3.4 MB • 1080x1350 • NAS Rendered", SshSuccessGreen),
-                            Triple("Video_Hook_Variation_01.mp4", "18.2 MB • 1080x1920 • 9:16", Color(0xFFFBBF24)),
-                            Triple("Ad_Carousel_Dieline_Pack.zip", "42.1 MB • AI / PSD Production", SshAzure)
-                        ).forEach { (filename, meta, statusColor) ->
-                            Surface(
-                                color = colors.surface,
-                                shape = RoundedCornerShape(12.dp),
-                                border = androidx.compose.foundation.BorderStroke(1.dp, colors.border),
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(12.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.SpaceBetween
+                            currentSubtasks.forEach { st ->
+                                val statusColor = when (st.status.lowercase().trim()) {
+                                    "approved", "done", "completed" -> SshSuccessGreen
+                                    "in-progress", "in_progress", "progress" -> colors.primary
+                                    "review", "in_review" -> Color(0xFFF59E0B)
+                                    "revision" -> Color(0xFFD97706)
+                                    else -> Color(0xFF64748B) // Draft
+                                }
+                                val statusLabel = when (st.status.lowercase().trim()) {
+                                    "approved", "done", "completed" -> "Done"
+                                    "in-progress", "in_progress", "progress" -> "In Progress"
+                                    "review", "in_review" -> "Review"
+                                    "revision" -> "Revision"
+                                    else -> "Draft"
+                                }
+
+                                Surface(
+                                    color = colors.surface,
+                                    shape = RoundedCornerShape(12.dp),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, colors.border),
+                                    modifier = Modifier.fillMaxWidth()
                                 ) {
-                                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                                        Box(
-                                            modifier = Modifier
-                                                .size(36.dp)
-                                                .clip(RoundedCornerShape(8.dp))
-                                                .background(colors.card),
-                                            contentAlignment = Alignment.Center
+                                    Row(
+                                        modifier = Modifier.padding(12.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                            modifier = Modifier.weight(1f)
                                         ) {
-                                            Icon(Icons.AutoMirrored.Filled.InsertDriveFile, contentDescription = null, tint = colors.primary, modifier = Modifier.size(20.dp))
+                                            Surface(
+                                                color = colors.card,
+                                                shape = RoundedCornerShape(6.dp),
+                                                border = androidx.compose.foundation.BorderStroke(1.dp, colors.border),
+                                                modifier = Modifier.padding(end = 2.dp)
+                                            ) {
+                                                Text(
+                                                    text = st.id.ifBlank { "ST" },
+                                                    fontSize = 10.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = colors.primary,
+                                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                                )
+                                            }
+                                            Column(modifier = Modifier.weight(1f)) {
+                                                Text(
+                                                    text = st.name.ifBlank { "Untitled Deliverable" },
+                                                    fontSize = 13.sp,
+                                                    fontWeight = FontWeight.SemiBold,
+                                                    color = colors.textPrimary,
+                                                    maxLines = 1,
+                                                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                                )
+                                                val metaInfo = listOfNotNull(
+                                                    st.type.takeIf { it.isNotBlank() },
+                                                    st.specs.takeIf { it.isNotBlank() }
+                                                ).joinToString(" • ")
+                                                if (metaInfo.isNotBlank()) {
+                                                    Text(
+                                                        text = metaInfo,
+                                                        fontSize = 11.sp,
+                                                        color = colors.textSecondary,
+                                                        maxLines = 1,
+                                                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                                    )
+                                                }
+                                            }
                                         }
-                                        Column {
-                                            Text(text = filename, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = colors.textPrimary)
-                                            Text(text = meta, fontSize = 11.sp, color = colors.textSecondary)
+
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
+                                            // Weight badge
+                                            Surface(
+                                                color = colors.card,
+                                                shape = RoundedCornerShape(6.dp),
+                                                border = androidx.compose.foundation.BorderStroke(1.dp, colors.border)
+                                            ) {
+                                                Text(
+                                                    text = "${String.format("%.0f", st.weight)} pts",
+                                                    fontSize = 10.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = colors.primary,
+                                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                                )
+                                            }
+
+                                            // Status pill (Clickable to cycle status)
+                                            Surface(
+                                                color = statusColor.copy(alpha = 0.15f),
+                                                shape = RoundedCornerShape(12.dp),
+                                                border = androidx.compose.foundation.BorderStroke(1.dp, statusColor.copy(alpha = 0.4f)),
+                                                modifier = Modifier.clickable {
+                                                    val nextStatus = when (st.status.lowercase().trim()) {
+                                                        "draft" -> "in-progress"
+                                                        "in-progress", "in_progress", "progress" -> "done"
+                                                        else -> "draft"
+                                                    }
+                                                    val updated = currentSubtasks.map {
+                                                        if (it.id == st.id) it.copy(status = nextStatus) else it
+                                                    }
+                                                    currentSubtasks = updated
+                                                    onUpdateSubtasks(updated)
+                                                }
+                                            ) {
+                                                Row(
+                                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                                                    verticalAlignment = Alignment.CenterVertically,
+                                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                                ) {
+                                                    Box(
+                                                        modifier = Modifier
+                                                            .size(6.dp)
+                                                            .clip(CircleShape)
+                                                            .background(statusColor)
+                                                    )
+                                                    Text(
+                                                        text = statusLabel,
+                                                        fontSize = 10.sp,
+                                                        fontWeight = FontWeight.SemiBold,
+                                                        color = statusColor
+                                                    )
+                                                }
+                                            }
                                         }
                                     }
-                                    Box(
-                                        modifier = Modifier
-                                            .size(8.dp)
-                                            .clip(CircleShape)
-                                            .background(statusColor)
-                                    )
+                                }
+                            }
+                        } else {
+                            Text(
+                                text = "PRODUCTION DELIVERABLES ($safeDeliverables)",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = colors.textSecondary,
+                                letterSpacing = 1.sp
+                            )
+
+                            listOf(
+                                Triple("KeyVisual_Final_Poster.png", "3.4 MB • 1080x1350 • NAS Rendered", SshSuccessGreen),
+                                Triple("Video_Hook_Variation_01.mp4", "18.2 MB • 1080x1920 • 9:16", Color(0xFFFBBF24)),
+                                Triple("Ad_Carousel_Dieline_Pack.zip", "42.1 MB • AI / PSD Production", SshAzure)
+                            ).forEach { (filename, meta, statusColor) ->
+                                Surface(
+                                    color = colors.surface,
+                                    shape = RoundedCornerShape(12.dp),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, colors.border),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(12.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(36.dp)
+                                                    .clip(RoundedCornerShape(8.dp))
+                                                    .background(colors.card),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Icon(Icons.AutoMirrored.Filled.InsertDriveFile, contentDescription = null, tint = colors.primary, modifier = Modifier.size(20.dp))
+                                            }
+                                            Column {
+                                                Text(text = filename, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = colors.textPrimary)
+                                                Text(text = meta, fontSize = 11.sp, color = colors.textSecondary)
+                                            }
+                                        }
+                                        Box(
+                                            modifier = Modifier
+                                                .size(8.dp)
+                                                .clip(CircleShape)
+                                                .background(statusColor)
+                                        )
+                                    }
                                 }
                             }
                         }

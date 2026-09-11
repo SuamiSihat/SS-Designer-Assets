@@ -1,5 +1,32 @@
 # SS-CAM FIX LOG
 
+## v4.9.0 — 2026-09-11 (Art Director Ecosystem Unification: Live Studio Workstream Telemetry, Command Palette v3.5.1, Packaging Deliverables & Tri-Platform Parity)
+- **Assembly Version**: `4.9.0.0`
+- **Android Version**: `versionCode = 490`, `versionName = "4.9.0"`
+- **Web Portal Version**: `4.9.0`
+- **Live Studio Telemetry & Workstream Pulse Across Ecosystem (`TeamService.js`, `LiveTaskSyncService.cs`, `DeskCompanionMode.kt`, `TeamHubScreen.kt`)**:
+  - Implemented `GET /api/team/live-tasks` reading `<WorkspaceRoot>/_Team/live_tasks.json` with UTF-8 BOM safety and 16-hour session freshness filter.
+  - Connected Chokidar file watcher to broadcast real-time Server-Sent Events (`live_tasks:updated`) across all connected browser clients upon filesystem mutation.
+  - Added Live Workstream Card in `DashboardView.svelte` with real-time ticking stopwatches and designer initials.
+  - Added ambient Header Studio Pulse Pill in `App.svelte` (`● {N} in Studio` / `● Studio Idle`) with dropdown flyout previewing active tasks, workstation machine IDs, and direct 1-click project navigation.
+  - Connected `SscamApiService.getLiveTasks()` to `ProjectCacheManager` with disk persistence and automatic polling in Android app.
+  - Upgraded Standby Desk Companion Mode (`DeskCompanionMode.kt`) with infinite pulsing Emerald telemetry ticker (`● N IN STUDIO • DESIGNER: TASK`) and active workstation focus cards.
+  - Added elevated `LIVE STUDIO WORKSTREAM` card section in Android `TeamHubScreen.kt`.
+- **Master Brand System v3.5.1 & Command Palette Alignment (`CommandPaletteModal.svelte`, `BrandHubScreen.kt`)**:
+  - Upgraded Web Command Palette to 5 reactive category filter tabs (`All Results`, `Projects`, `Brand Colors`, `Copywriting Hooks`, `Studio Actions`).
+  - Standardized all 16 official Single-Source-of-Truth tokens (Core Blues, Luxury Golds, Canary Yellows, Canvases, Semantic Status, Grayscale 80) across Web and Android Brand Hub.
+  - Added dual-action copying (Click for HEX, <kbd>Shift</kbd> + Click for CSS variable `var(--ss-blue)`).
+  - Embedded direct-response copywriting hooks directory with 1-click copying for headlines, body, and CTAs.
+- **Packaging Deliverables & Creative Orders Intake (`DashboardCompanionScreen.kt`, `OrderFormView.svelte`, `Models.kt`)**:
+  - Added packaging dieline types (`pkg_box_sleeve`, `pkg_label`) with 300 DPI CMYK and die-cut bleed specs.
+  - Added strategic `tier_0` (`🗓️ Low / Pipeline`) priority tier across Web and Android Order Creation modals.
+  - Standardized physical substrate chips (`Art Card 260/310gsm`, `Mirrorkote Gloss`, `Synthetic Vinyl`) and millimetre dimension inputs.
+- **Packaging & Release Deliverables**:
+  - Windows Desktop: `dist/SS-CAM-v4.9.0.exe` (5.96 MB single-file) and `dist/SS-CAM.exe`.
+  - Android Companion: `app-release.aab` (5.76 MB, RSA 2048 Signed) and `app-release.apk`.
+  - Web Portal: Production assets compiled cleanly to `src/SS-CAM.Web/client/dist/`.
+  - Test Suite: 33/33 tests passing with 0 failures.
+
 ## v4.8.1 — 2026-09-10 (Global Studio Command Palette `Ctrl + K`, Art Director 60-30-10 Polish, Live Work Session Stopwatch & Status Indicator, Creative Operations Upgrade)
 - **Assembly Version**: `4.8.1.0`
 - **Creative Operations & Intake Architecture Upgrade (`OrderFormView.svelte`, `OrderService.js`, `CreativeOrder.cs`)**:

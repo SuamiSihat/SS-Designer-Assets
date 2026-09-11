@@ -22,7 +22,7 @@
 
   let showDownloadModal = $state(false);
   let commandPaletteOpen = $state(false);
-  let serverVersion = $state('4.6.2');
+  let serverVersion = $state('4.9.0');
 
   function handleGlobalKeydown(e: KeyboardEvent) {
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
@@ -51,6 +51,7 @@
 
     if (appState.currentRoute !== 'review') {
       await appState.loadCurrentUser();
+      appState.loadLiveTasks();
     }
     window.addEventListener('auth:required', () => appState.navigate('login'));
 
@@ -67,6 +68,9 @@
       const target = e.target as HTMLElement;
       if (!target.closest('.user-menu-wrapper')) {
         appState.userMenuOpen = false;
+      }
+      if (!target.closest('.studio-pulse-container')) {
+        appState.studioDrawerOpen = false;
       }
     });
 
@@ -90,6 +94,12 @@
         if (data.status === 'connected') {
           appState.lastSyncedAt = new Date();
         }
+      } else if (event === 'live_tasks:updated') {
+        appState.lastSyncedAt = new Date();
+        if (Array.isArray(data.liveTasks)) {
+          appState.liveTasks = data.liveTasks;
+        }
+        window.dispatchEvent(new CustomEvent('live_tasks:updated', { detail: data }));
       } else if (event === 'workspace:updated' || event === 'project:updated') {
         appState.lastSyncedAt = new Date();
         projectStore.loadProjects();
@@ -331,6 +341,101 @@
         </div>
 
         <div class="header-right">
+          <!-- Live Studio Pulse Pill & Flyout -->
+          <div class="studio-pulse-container" role="region" aria-label="Studio Pulse">
+            <button
+              class="studio-pulse-pill"
+              class:has-active={appState.activeLiveTasks.length > 0}
+              onclick={() => (appState.studioDrawerOpen = !appState.studioDrawerOpen)}
+              title={appState.activeLiveTasks.length > 0
+                ? `${appState.activeLiveTasks.length} active designer(s) currently working`
+                : 'Studio Pulse: All workstations idle'}
+              aria-expanded={appState.studioDrawerOpen}
+            >
+              <span class="studio-pulse-dot" class:pulsing={appState.activeLiveTasks.length > 0}></span>
+              <span class="studio-pulse-label">
+                {#if appState.activeLiveTasks.length > 0}
+                  <strong>{appState.activeLiveTasks.length}</strong> in Studio
+                {:else}
+                  Studio Idle
+                {/if}
+              </span>
+              <svg class="studio-pulse-chevron" width="10" height="10" viewBox="0 0 24 24" fill="currentColor" class:open={appState.studioDrawerOpen}>
+                <path d="M7 10l5 5 5-5z"/>
+              </svg>
+            </button>
+
+            {#if appState.studioDrawerOpen}
+              <!-- svelte-ignore a11y_no_static_element_interactions -->
+              <div class="studio-flyout" onclick={(e) => e.stopPropagation()}>
+                <div class="studio-flyout-header">
+                  <div class="studio-flyout-title">
+                    <span class="pulse-indicator"></span>
+                    Live Studio Pulse
+                  </div>
+                  <span class="studio-badge-count">{appState.activeLiveTasks.length} Active</span>
+                </div>
+                <div class="studio-flyout-body">
+                  {#if appState.activeLiveTasks.length === 0}
+                    <div class="studio-empty-state">
+                      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <circle cx="12" cy="12" r="10" />
+                        <polyline points="12 6 12 12 16 14" />
+                      </svg>
+                      <p>No active sessions right now</p>
+                      <span>Designers will appear here when desktop SS-CAM timers start.</span>
+                    </div>
+                  {:else}
+                    <div class="studio-task-list">
+                      {#each appState.activeLiveTasks as task}
+                        <div class="studio-task-row">
+                          <div class="designer-avatar-sm" style="background: {task.AvatarColor || '#21A1F7'}">
+                            {(task.DesignerName || task.StaffId || 'D').slice(0, 2).toUpperCase()}
+                          </div>
+                          <div class="studio-task-info">
+                            <div class="studio-task-top">
+                              <span class="designer-name">{task.DesignerName || task.StaffId}</span>
+                              <span class="studio-client-tag">{task.Client || 'Internal'}</span>
+                            </div>
+                            <div class="studio-task-project" title={task.ProjectName || task.ProjectId}>
+                              {task.ProjectName || task.ProjectId}
+                            </div>
+                            {#if task.SessionNotes}
+                              <div class="studio-task-notes">"{task.SessionNotes}"</div>
+                            {/if}
+                          </div>
+                          {#if task.ProjectId}
+                            <button
+                              class="studio-task-jump-btn"
+                              onclick={() => {
+                                appState.studioDrawerOpen = false;
+                                appState.navigate('project-detail', { id: task.ProjectId });
+                              }}
+                              title="Open workspace"
+                            >
+                              ↗
+                            </button>
+                          {/if}
+                        </div>
+                      {/each}
+                    </div>
+                  {/if}
+                </div>
+                <div class="studio-flyout-footer">
+                  <button
+                    class="studio-flyout-footer-btn"
+                    onclick={() => {
+                      appState.studioDrawerOpen = false;
+                      appState.navigate('dashboard');
+                    }}
+                  >
+                    View Studio Stream in Dashboard →
+                  </button>
+                </div>
+              </div>
+            {/if}
+          </div>
+
           <!-- Real-Time Vault Live Sync Pill -->
           <div
             class="live-sync-pill"
@@ -951,28 +1056,36 @@
   .header-search-btn {
     display: flex;
     align-items: center;
-    gap: 8px;
-    background: var(--bg-app);
+    gap: 9px;
+    background: var(--surface-card-subtle);
     border: 1px solid var(--surface-card-border);
     border-radius: 8px;
-    padding: 0 12px;
+    padding: 0 14px;
     width: 100%;
     max-width: 460px;
     height: 36px;
     cursor: pointer;
     text-align: left;
-    transition: all .15s ease;
+    transition: all .18s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: var(--shadow-sm);
   }
   .header-search-btn:hover {
     border-color: var(--brand-accent);
-    box-shadow: 0 0 0 3px rgba(33,161,247,.15);
-    background: rgba(255, 255, 255, 0.04);
+    box-shadow: 0 0 0 3px rgba(33, 161, 247, 0.15), var(--shadow-sm);
+    background: var(--surface-card);
   }
-  .search-ico { color: var(--text-tertiary); flex-shrink: 0; }
+  .header-search-btn:focus-visible {
+    outline: none;
+    border-color: var(--brand-accent);
+    box-shadow: 0 0 0 3px rgba(33, 161, 247, 0.25);
+  }
+  .search-ico { color: var(--brand-accent); flex-shrink: 0; opacity: 0.85; transition: opacity .15s; }
+  .header-search-btn:hover .search-ico { opacity: 1; }
   .search-placeholder {
     flex: 1;
-    color: var(--text-tertiary);
-    font-size: 13px;
+    color: var(--text-secondary);
+    font-size: 12.5px;
+    font-weight: 500;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -980,12 +1093,14 @@
   .search-shortcut {
     font-size: 10px;
     font-weight: 800;
-    padding: 2px 6px;
+    letter-spacing: 0.3px;
+    padding: 2px 7px;
     border-radius: 4px;
-    background: rgba(255, 255, 255, 0.08);
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    color: var(--text-secondary);
-    font-family: inherit;
+    background: var(--surface-card);
+    border: 1px solid var(--surface-card-border);
+    color: var(--text-tertiary);
+    font-family: var(--font-mono, monospace);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
   }
 
   .icon-btn {
@@ -1020,6 +1135,245 @@
     line-height: 14px;
     text-align: center;
     border: 1.5px solid var(--surface-card);
+  }
+
+  /* Studio Pulse Pill & Flyout */
+  .studio-pulse-container {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+  }
+  .studio-pulse-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 4.5px 11px;
+    background: var(--surface-card-subtle);
+    border: 1px solid var(--surface-card-border);
+    border-radius: 9999px;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .studio-pulse-pill:hover {
+    background: var(--surface-card);
+    border-color: var(--brand-accent);
+    color: var(--text-primary);
+  }
+  .studio-pulse-pill.has-active {
+    background: rgba(16, 185, 129, 0.08);
+    border-color: rgba(16, 185, 129, 0.28);
+    color: #059669;
+  }
+  .studio-pulse-pill.has-active:hover {
+    border-color: #10B981;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
+  }
+  .studio-pulse-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--text-tertiary);
+    flex-shrink: 0;
+  }
+  .studio-pulse-dot.pulsing {
+    background: #10B981;
+    box-shadow: 0 0 8px rgba(16, 185, 129, 0.7);
+    animation: livePulse 1.8s infinite;
+  }
+  .studio-pulse-chevron {
+    transition: transform 0.2s ease;
+    opacity: 0.6;
+  }
+  .studio-pulse-chevron.open {
+    transform: rotate(180deg);
+  }
+  .studio-flyout {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    width: 340px;
+    background: var(--surface-card);
+    border: 1px solid var(--surface-card-border);
+    border-radius: 12px;
+    box-shadow: var(--shadow-lg, 0 10px 25px -5px rgba(0, 0, 0, 0.2));
+    z-index: 1000;
+    overflow: hidden;
+    animation: flyoutFadeIn 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  @keyframes flyoutFadeIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .studio-flyout-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 14px;
+    background: var(--surface-card-subtle);
+    border-bottom: 1px solid var(--surface-card-border);
+  }
+  .studio-flyout-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+  .pulse-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #10B981;
+    box-shadow: 0 0 6px #10B981;
+  }
+  .studio-badge-count {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 9999px;
+    background: rgba(16, 185, 129, 0.12);
+    color: #059669;
+    border: 1px solid rgba(16, 185, 129, 0.25);
+  }
+  .studio-flyout-body {
+    max-height: 280px;
+    overflow-y: auto;
+    padding: 8px;
+  }
+  .studio-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 16px;
+    text-align: center;
+    color: var(--text-tertiary);
+  }
+  .studio-empty-state svg {
+    margin-bottom: 10px;
+    opacity: 0.5;
+  }
+  .studio-empty-state p {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin: 0 0 4px 0;
+  }
+  .studio-empty-state span {
+    font-size: 11.5px;
+  }
+  .studio-task-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .studio-task-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 9px 10px;
+    border-radius: 8px;
+    background: var(--surface-card-subtle);
+    border: 1px solid var(--surface-card-border);
+    transition: background 0.14s;
+  }
+  .studio-task-row:hover {
+    background: var(--surface-card-hover);
+  }
+  .designer-avatar-sm {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    color: #fff;
+    font-size: 10.5px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+  }
+  .studio-task-info {
+    flex: 1;
+    min-width: 0;
+  }
+  .studio-task-top {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 2px;
+  }
+  .designer-name {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+  .studio-client-tag {
+    font-size: 9.5px;
+    font-weight: 700;
+    padding: 1px 5px;
+    border-radius: 4px;
+    background: rgba(33, 161, 247, 0.1);
+    color: var(--brand-accent);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+  }
+  .studio-task-project {
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .studio-task-notes {
+    font-size: 11px;
+    font-style: italic;
+    color: var(--text-tertiary);
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .studio-task-jump-btn {
+    border: none;
+    background: transparent;
+    color: var(--brand-accent);
+    font-size: 14px;
+    font-weight: 700;
+    padding: 4px 6px;
+    border-radius: 4px;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background 0.12s;
+  }
+  .studio-task-jump-btn:hover {
+    background: rgba(33, 161, 247, 0.12);
+  }
+  .studio-flyout-footer {
+    padding: 8px 12px;
+    background: var(--surface-card-subtle);
+    border-top: 1px solid var(--surface-card-border);
+    text-align: center;
+  }
+  .studio-flyout-footer-btn {
+    width: 100%;
+    border: none;
+    background: transparent;
+    font-size: 11.5px;
+    font-weight: 700;
+    color: var(--brand-accent);
+    padding: 6px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.14s;
+  }
+  .studio-flyout-footer-btn:hover {
+    background: rgba(33, 161, 247, 0.08);
   }
 
   /* Live Sync Pill */

@@ -260,10 +260,27 @@ class WorkspaceService {
         }, 500);
       };
 
+      const handleFileChange = (filePath) => {
+        if (filePath && (filePath.endsWith('live_tasks.json') || filePath.includes('_Team'))) {
+          try {
+            const TeamService = require('./TeamService');
+            const SseService = require('./SseService');
+            const liveTasks = TeamService.getLiveTasks();
+            SseService.broadcast('live_tasks:updated', {
+              liveTasks,
+              count: liveTasks.length,
+              activeCount: liveTasks.filter(t => (t.State || '').toLowerCase() === 'running').length,
+              timestamp: new Date().toISOString()
+            });
+          } catch (e) {}
+        }
+        triggerRescan();
+      };
+
       this.watcher
-        .on('add', triggerRescan)
-        .on('change', triggerRescan)
-        .on('unlink', triggerRescan)
+        .on('add', handleFileChange)
+        .on('change', handleFileChange)
+        .on('unlink', handleFileChange)
         .on('addDir', triggerRescan)
         .on('unlinkDir', triggerRescan);
 
@@ -287,6 +304,18 @@ class WorkspaceService {
         count: results.length,
         timestamp: this.lastScanTime.toISOString()
       });
+
+      // Broadcast live tasks telemetry alongside workspace scan
+      try {
+        const TeamService = require('./TeamService');
+        const liveTasks = TeamService.getLiveTasks();
+        SseService.broadcast('live_tasks:updated', {
+          liveTasks,
+          count: liveTasks.length,
+          activeCount: liveTasks.filter(t => (t.State || '').toLowerCase() === 'running').length,
+          timestamp: this.lastScanTime.toISOString()
+        });
+      } catch (e) {}
     } catch (err) {
       console.error('[WorkspaceService] Scan error:', err.message);
     } finally {
@@ -382,6 +411,53 @@ class WorkspaceService {
       }
     }
 
+    const subtasks = Array.isArray(frontmatter.subtasks) ? frontmatter.subtasks : (Array.isArray(frontmatter.deliverables) ? frontmatter.deliverables : []);
+    const categoryWeight = typeof frontmatter.category_weight === 'number' ? frontmatter.category_weight : (typeof frontmatter.weight === 'number' ? frontmatter.weight : null);
+
+    let totalWeight = 1.0;
+    if (subtasks.length > 0) {
+      totalWeight = subtasks.reduce((sum, st) => sum + (typeof st.weight === 'number' ? st.weight : 1.0), 0);
+    } else if (categoryWeight && categoryWeight > 0) {
+      totalWeight = categoryWeight;
+    } else if (presetCode === 'V') {
+      totalWeight = 2.0;
+    } else if (presetCode === 'P') {
+      totalWeight = 2.5;
+    } else if (presetCode === 'W') {
+      totalWeight = 1.5;
+    }
+    totalWeight = Math.round(totalWeight * 10) / 10;
+
+    const completedSubtasksCount = subtasks.filter(st => {
+      const s = (st.status || '').toLowerCase();
+      return s === 'approved' || s === 'done' || s === 'completed';
+    }).length;
+
+    let deadlineDisplay = '';
+    if (deadline) {
+      const clean = String(deadline).trim();
+      const dt = new Date(clean);
+      if (!isNaN(dt.getTime())) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const targetDt = new Date(dt);
+        targetDt.setHours(0, 0, 0, 0);
+        const diffDays = Math.ceil((targetDt.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+        const isCompleted = ['done', 'approved', 'completed'].includes((status || '').toLowerCase());
+        if (isCompleted) {
+          deadlineDisplay = targetDt.toISOString().substring(0, 10);
+        } else if (diffDays < 0) {
+          deadlineDisplay = `Overdue ${Math.abs(diffDays)}d`;
+        } else if (diffDays === 0) {
+          deadlineDisplay = 'Due Today';
+        } else {
+          deadlineDisplay = `Due in ${diffDays}d`;
+        }
+      } else {
+        deadlineDisplay = clean.split('T')[0];
+      }
+    }
+
     return {
       id: folderName,
       folderName,
@@ -399,6 +475,7 @@ class WorkspaceService {
       department: frontmatter.department || 'General',
       created,
       deadline,
+      deadlineDisplay,
       completedAt,
       duration: frontmatter.duration || '',
       revision: frontmatter.revision || 0,
@@ -410,6 +487,14 @@ class WorkspaceService {
       creativeDirection: frontmatter.creative_direction || {},
       copywriting: frontmatter.copywriting || { status: 'draft' },
       approvals: frontmatter.approvals || [],
+      subtasks,
+      completedSubtasksCount,
+      totalSubtasksCount: subtasks.length,
+      totalWeight,
+      subtaskProgressDisplay: subtasks.length > 0
+        ? `${completedSubtasksCount}/${subtasks.length} Done • ${totalWeight} pts`
+        : `${totalWeight} pts`,
+      categoryWeight,
       versionHash,
       readmeBody: body || '',
       briefMarkdown: body || ''
@@ -543,6 +628,63 @@ class WorkspaceService {
           if (frontmatter.creative_direction) project.creativeDirection = frontmatter.creative_direction;
           if (frontmatter.copywriting) project.copywriting = frontmatter.copywriting;
           if (frontmatter.approvals) project.approvals = frontmatter.approvals;
+          if (frontmatter.subtasks) {
+            project.subtasks = Array.isArray(frontmatter.subtasks) ? frontmatter.subtasks : [];
+          } else if (frontmatter.deliverables) {
+            project.subtasks = Array.isArray(frontmatter.deliverables) ? frontmatter.deliverables : [];
+          }
+          if (typeof frontmatter.category_weight === 'number') {
+            project.categoryWeight = frontmatter.category_weight;
+          } else if (typeof frontmatter.weight === 'number') {
+            project.categoryWeight = frontmatter.weight;
+          }
+
+          const liveSubtasks = project.subtasks || [];
+          let liveTotalWeight = 1.0;
+          if (liveSubtasks.length > 0) {
+            liveTotalWeight = liveSubtasks.reduce((sum, st) => sum + (typeof st.weight === 'number' ? st.weight : 1.0), 0);
+          } else if (project.categoryWeight && project.categoryWeight > 0) {
+            liveTotalWeight = project.categoryWeight;
+          } else if (project.presetCode === 'V') {
+            liveTotalWeight = 2.0;
+          } else if (project.presetCode === 'P') {
+            liveTotalWeight = 2.5;
+          } else if (project.presetCode === 'W') {
+            liveTotalWeight = 1.5;
+          }
+          project.totalWeight = Math.round(liveTotalWeight * 10) / 10;
+          project.completedSubtasksCount = liveSubtasks.filter(st => {
+            const s = (st.status || '').toLowerCase();
+            return s === 'approved' || s === 'done' || s === 'completed';
+          }).length;
+          project.totalSubtasksCount = liveSubtasks.length;
+          project.subtaskProgressDisplay = liveSubtasks.length > 0
+            ? `${project.completedSubtasksCount}/${liveSubtasks.length} Done • ${project.totalWeight} pts`
+            : `${project.totalWeight} pts`;
+
+          if (project.deadline) {
+            const clean = String(project.deadline).trim();
+            const dt = new Date(clean);
+            if (!isNaN(dt.getTime())) {
+              const today = new Date();
+              today.setHours(0, 0, 0, 0);
+              const targetDt = new Date(dt);
+              targetDt.setHours(0, 0, 0, 0);
+              const diffDays = Math.ceil((targetDt.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+              const isCompleted = ['done', 'approved', 'completed'].includes((project.status || '').toLowerCase());
+              if (isCompleted) {
+                project.deadlineDisplay = targetDt.toISOString().substring(0, 10);
+              } else if (diffDays < 0) {
+                project.deadlineDisplay = `Overdue ${Math.abs(diffDays)}d`;
+              } else if (diffDays === 0) {
+                project.deadlineDisplay = 'Due Today';
+              } else {
+                project.deadlineDisplay = `Due in ${diffDays}d`;
+              }
+            } else {
+              project.deadlineDisplay = clean.split('T')[0];
+            }
+          }
         }
         project.versionHash = versionHash;
         project.readmeBody = body || '';

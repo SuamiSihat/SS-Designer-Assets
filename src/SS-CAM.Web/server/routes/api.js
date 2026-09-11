@@ -53,6 +53,21 @@ router.get('/auth/roster', (req, res) => {
   }
 });
 
+// ─── REAL-TIME LIVE STUDIO TASKS & TELEMETRY ROUTE ───────────────────
+router.get('/team/live-tasks', (req, res) => {
+  try {
+    const liveTasks = TeamService.getLiveTasks();
+    res.json({
+      success: true,
+      liveTasks,
+      count: liveTasks.length,
+      activeCount: liveTasks.filter(t => (t.State || '').toLowerCase() === 'running').length
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message, liveTasks: [] });
+  }
+});
+
 router.post('/auth/login', (req, res) => {
   const { username, password } = req.body;
   
@@ -765,7 +780,7 @@ router.put('/projects/:id', authenticateToken, requirePermission('project:edit')
       return res.status(404).json({ error: 'Project not found' });
     }
 
-    const { frontmatter, status, priority, manager, designer, department, brand, deadline, body, expectedHash } = req.body;
+    const { frontmatter, status, priority, manager, designer, department, brand, deadline, subtasks, creative_direction, copywriting, body, expectedHash } = req.body;
     const { frontmatter: existingFm, body: existingBody } = FrontmatterService.readProjectReadme(project.fullPath);
 
     const mergedFm = {
@@ -777,7 +792,10 @@ router.put('/projects/:id', authenticateToken, requirePermission('project:edit')
       ...(designer !== undefined ? { designer } : {}),
       ...(department !== undefined ? { department } : {}),
       ...(brand !== undefined ? { brand } : {}),
-      ...(deadline !== undefined ? { deadline } : {})
+      ...(deadline !== undefined ? { deadline } : {}),
+      ...(subtasks !== undefined ? { subtasks } : (frontmatter && frontmatter.subtasks ? { subtasks: frontmatter.subtasks } : {})),
+      ...(creative_direction !== undefined ? { creative_direction } : {}),
+      ...(copywriting !== undefined ? { copywriting } : {})
     };
 
     const result = FrontmatterService.writeProjectReadme(
@@ -796,6 +814,9 @@ router.put('/projects/:id', authenticateToken, requirePermission('project:edit')
       if (mergedFm.brand !== undefined) project.brand = mergedFm.brand;
       if (mergedFm.department !== undefined) project.department = mergedFm.department;
       if (mergedFm.deadline !== undefined) project.deadline = mergedFm.deadline;
+      if (mergedFm.subtasks !== undefined) project.subtasks = mergedFm.subtasks;
+      if (mergedFm.creative_direction !== undefined) project.creativeDirection = mergedFm.creative_direction;
+      if (mergedFm.copywriting !== undefined) project.copywriting = mergedFm.copywriting;
       project.versionHash = result.versionHash;
     }
 
@@ -813,7 +834,8 @@ router.put('/projects/:id', authenticateToken, requirePermission('project:edit')
       projectId: req.params.id, 
       manager: mergedFm.manager,
       status: mergedFm.status, 
-      priority: mergedFm.priority 
+      priority: mergedFm.priority,
+      subtasks: mergedFm.subtasks
     });
 
     const refreshedProject = WorkspaceService.getProjectById(req.params.id) || project;

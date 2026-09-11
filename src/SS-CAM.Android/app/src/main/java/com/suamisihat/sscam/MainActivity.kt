@@ -204,6 +204,25 @@ object ProjectCacheManager {
         prefs.edit().putString(KEY_ORDERS_JSON, json).apply()
     }
 
+    private const val KEY_LIVETASKS_JSON = "cached_livetasks_json"
+
+    fun getCachedLiveTasks(context: android.content.Context): List<com.suamisihat.sscam.data.models.LiveTaskDto> {
+        val prefs = context.getSharedPreferences(PREFS_NAME, android.content.Context.MODE_PRIVATE)
+        val json = prefs.getString(KEY_LIVETASKS_JSON, null) ?: return emptyList()
+        return try {
+            val type = object : com.google.gson.reflect.TypeToken<List<com.suamisihat.sscam.data.models.LiveTaskDto>>() {}.type
+            gson.fromJson(json, type) ?: emptyList()
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+    fun saveLiveTasks(context: android.content.Context, tasks: List<com.suamisihat.sscam.data.models.LiveTaskDto>) {
+        val prefs = context.getSharedPreferences(PREFS_NAME, android.content.Context.MODE_PRIVATE)
+        val json = gson.toJson(tasks)
+        prefs.edit().putString(KEY_LIVETASKS_JSON, json).apply()
+    }
+
     private fun getSeedOrders(): List<CreativeOrder> {
         return emptyList()
     }
@@ -254,6 +273,9 @@ fun CompanionAppScreen(
     var orders by remember {
         mutableStateOf<List<CreativeOrder>>(ProjectCacheManager.getCachedOrders(context))
     }
+    var liveTasks by remember {
+        mutableStateOf<List<com.suamisihat.sscam.data.models.LiveTaskDto>>(ProjectCacheManager.getCachedLiveTasks(context))
+    }
     var authToken by remember { mutableStateOf<String?>(AuthPreferences.getSavedToken(context)) }
 
     var notifications by remember {
@@ -279,6 +301,7 @@ fun CompanionAppScreen(
                     try { SyncQueueManager.flushQueue(context, api) } catch (e: Exception) { }
                     val projRes = api.getProjects()
                     val teamRes = api.getTeam()
+                    val liveTaskRes = try { api.getLiveTasks() } catch (e: Exception) { null }
                     val orderRes = try { api.getOrders() } catch (e: Exception) { null }
                     val notifRes = try { api.getNotifications() } catch (e: Exception) { null }
 
@@ -290,6 +313,10 @@ fun CompanionAppScreen(
                         teamRes.body()!!.allStaff
                     } else emptyList()
 
+                    val fetchedLiveTasks = if (liveTaskRes?.isSuccessful == true && liveTaskRes.body() != null) {
+                        liveTaskRes.body()!!.liveTasks
+                    } else emptyList()
+
                     val fetchedOrders = if (orderRes?.isSuccessful == true && orderRes.body() != null) {
                         orderRes.body()!!.orders
                     } else emptyList()
@@ -299,7 +326,7 @@ fun CompanionAppScreen(
                     } else null
 
                     withContext(Dispatchers.Main) {
-                        if (fetchedProjects.isNotEmpty() || fetchedStaff.isNotEmpty() || fetchedOrders.isNotEmpty()) {
+                        if (fetchedProjects.isNotEmpty() || fetchedStaff.isNotEmpty() || fetchedOrders.isNotEmpty() || fetchedLiveTasks.isNotEmpty()) {
                             if (fetchedProjects.isNotEmpty()) {
                                 projects = fetchedProjects
                                 ProjectCacheManager.saveProjects(context, fetchedProjects)
@@ -307,6 +334,10 @@ fun CompanionAppScreen(
                             if (fetchedStaff.isNotEmpty()) {
                                 staffList = fetchedStaff
                                 ProjectCacheManager.saveStaff(context, fetchedStaff)
+                            }
+                            if (fetchedLiveTasks.isNotEmpty()) {
+                                liveTasks = fetchedLiveTasks
+                                ProjectCacheManager.saveLiveTasks(context, fetchedLiveTasks)
                             }
                             if (fetchedOrders.isNotEmpty()) {
                                 orders = fetchedOrders
@@ -316,7 +347,9 @@ fun CompanionAppScreen(
                                 notifications = fetchedNotifs
                             }
                             isLiveSync = true
-                            syncMessage = "Live NAS Synced (${projects.size} deliverables • ${orders.size} orders)"
+                            val activeLiveCount = liveTasks.count { it.isRunning }
+                            val livePart = if (activeLiveCount > 0) " • $activeLiveCount active" else ""
+                            syncMessage = "Live NAS Synced (${projects.size} deliverables • ${orders.size} orders$livePart)"
                         } else {
                             syncMessage = "NAS Live API: HTTP ${projRes.code()}"
                         }
@@ -458,6 +491,12 @@ fun CompanionAppScreen(
                     }
                 }
             }
+        )
+    } else if (isDeskModeActive) {
+        DeskCompanionMode(
+            activeProjects = projects,
+            liveTasks = liveTasks,
+            onExit = { isDeskModeActive = false }
         )
     } else {
         Scaffold(
@@ -831,6 +870,68 @@ fun CompanionAppScreen(
                                         }
                                     }
                                 },
+                                onUpdateProjectStatus = { projectId, newStatus ->
+                                    val apiStatus = when (newStatus.lowercase()) {
+                                        "in_progress", "inprogress" -> "in-progress"
+                                        "in_review", "inreview" -> "in-review"
+                                        "revision", "revision_requested" -> "revision"
+                                        "done", "approved", "completed" -> "done"
+                                        "stuck" -> "stuck"
+                                        "queued", "on_hold", "on-hold" -> "on-hold"
+                                        else -> newStatus
+                                    }
+                                    projects = projects.map {
+                                        if (it.id == projectId) it.copy(status = apiStatus) else it
+                                    }
+                                    coroutineScope.launch {
+                                        try {
+                                            val api = SscamApiService.create(authToken = authToken)
+                                            api.updateProject(projectId, mapOf("status" to apiStatus))
+                                            Toast.makeText(context, "Status updated to $apiStatus", Toast.LENGTH_SHORT).show()
+                                            refreshLiveData()
+                                        } catch (e: Exception) {
+                                            Toast.makeText(context, "Status update failed: ${e.message}", Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
+                                },
+                                onSaveReadme = { projectId, newReadme ->
+                                    coroutineScope.launch {
+                                        try {
+                                            val api = SscamApiService.create(authToken = authToken)
+                                            api.updateProject(projectId, mapOf("body" to newReadme))
+                                            Toast.makeText(context, "README synced with NAS storage", Toast.LENGTH_SHORT).show()
+                                            refreshLiveData()
+                                        } catch (e: Exception) {
+                                            Toast.makeText(context, "README sync failed: ${e.message}", Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
+                                },
+                                onUpdateSubtasks = { projectId, newSubtasks ->
+                                    projects = projects.map {
+                                        if (it.id == projectId) it.copy(subtasks = newSubtasks) else it
+                                    }
+                                    coroutineScope.launch {
+                                        try {
+                                            val api = SscamApiService.create(authToken = authToken)
+                                            val subtasksPayload = newSubtasks.map { st ->
+                                                mapOf(
+                                                    "id" to st.id,
+                                                    "name" to st.name,
+                                                    "type" to st.type,
+                                                    "weight" to st.weight,
+                                                    "status" to st.status,
+                                                    "specs" to st.specs,
+                                                    "designer" to st.designer
+                                                )
+                                            }
+                                            api.updateProject(projectId, mapOf("subtasks" to subtasksPayload))
+                                            Toast.makeText(context, "Deliverables updated", Toast.LENGTH_SHORT).show()
+                                            refreshLiveData()
+                                        } catch (e: Exception) {
+                                            Toast.makeText(context, "Subtask sync failed: ${e.message}", Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
+                                },
                                 onCreateNewTask = { title, desc, brand, priority ->
                                     coroutineScope.launch {
                                         try {
@@ -880,6 +981,7 @@ fun CompanionAppScreen(
                             CompanionScreen.Team -> TeamHubScreen(
                                 staffList = staffList,
                                 projects = projects,
+                                liveTasks = liveTasks,
                                 initialSubTab = teamSubTab
                             )
                             CompanionScreen.Wellbeing -> WellbeingHubScreen(

@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.suamisihat.sscam.data.models.LiveTaskDto
 import com.suamisihat.sscam.data.models.ProjectItem
 import com.suamisihat.sscam.data.models.StaffMember
 import com.suamisihat.sscam.ui.components.*
@@ -38,6 +39,7 @@ fun parseHexColor(hex: String, fallback: Color = SshAzureLight): Color {
 fun TeamHubScreen(
     staffList: List<StaffMember> = emptyList(),
     projects: List<ProjectItem> = emptyList(),
+    liveTasks: List<LiveTaskDto> = emptyList(),
     initialSubTab: Int = 0
 ) {
     var selectedTab by remember { mutableStateOf(initialSubTab.coerceIn(0, 1)) }
@@ -57,7 +59,7 @@ fun TeamHubScreen(
         )
 
         when (selectedTab) {
-            0 -> TeamWorkloadContentView(staffList = staffList, projects = projects)
+            0 -> TeamWorkloadContentView(staffList = staffList, projects = projects, liveTasks = liveTasks)
             1 -> QuickNotesContentView()
         }
     }
@@ -66,7 +68,8 @@ fun TeamHubScreen(
 @Composable
 fun TeamWorkloadContentView(
     staffList: List<StaffMember> = emptyList(),
-    projects: List<ProjectItem> = emptyList()
+    projects: List<ProjectItem> = emptyList(),
+    liveTasks: List<LiveTaskDto> = emptyList()
 ) {
     val colors = LocalSscamColors.current
 
@@ -83,6 +86,129 @@ fun TeamWorkloadContentView(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
+        // 0. Live Studio Workstream (Active Workstations)
+        if (liveTasks.isNotEmpty()) {
+            val activeTasks = liveTasks.filter {
+                it.state.equals("working", ignoreCase = true) || it.state.equals("active", ignoreCase = true)
+            }
+            val displayTasks = if (activeTasks.isNotEmpty()) activeTasks else liveTasks
+
+            item {
+                FluentCard(
+                    cornerRadius = 16.dp,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(8.dp)
+                                        .clip(CircleShape)
+                                        .background(SshSuccessGreen)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    "LIVE STUDIO WORKSTREAM",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = colors.primary,
+                                    letterSpacing = 0.5.sp
+                                )
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(if (colors.isMonochrome) Color(0xFFF4F4F5) else SshSuccessGreen.copy(alpha = 0.15f))
+                                    .border(0.5.dp, if (colors.isMonochrome) Color(0xFFD4D4D8) else Color.Transparent, RoundedCornerShape(4.dp))
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    "${displayTasks.size} ACTIVE NOW",
+                                    fontSize = 9.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (colors.isMonochrome) Color(0xFF18181B) else SshSuccessGreen
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        displayTasks.forEachIndexed { index, task ->
+                            if (index > 0) {
+                                HorizontalDivider(
+                                    modifier = Modifier.padding(vertical = 8.dp),
+                                    color = colors.border.copy(alpha = 0.5f),
+                                    thickness = 0.5.dp
+                                )
+                            }
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(36.dp)
+                                        .clip(CircleShape)
+                                        .background(parseHexColor(task.avatarColor ?: "#0078D4")),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        task.initials,
+                                        color = Color.White,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 12.sp
+                                    )
+                                }
+
+                                Spacer(modifier = Modifier.width(10.dp))
+
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            task.designerName ?: "Designer",
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 13.sp,
+                                            color = colors.textPrimary
+                                        )
+                                        Text(
+                                            task.formattedElapsed ?: "Active",
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = colors.accent
+                                        )
+                                    }
+                                    Text(
+                                        task.projectName ?: "Creative Asset Session",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = colors.textSecondary,
+                                        maxLines = 1
+                                    )
+                                    if (!task.sessionNotes.isNullOrBlank()) {
+                                        Text(
+                                            task.sessionNotes,
+                                            fontSize = 10.sp,
+                                            color = colors.textMuted,
+                                            maxLines = 1
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         if (displayStaff.isEmpty()) {
             item {
                 FluentCard(

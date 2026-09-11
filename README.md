@@ -4,7 +4,7 @@
 
 Standardized Project Vaults · ClickUp 3.0 Workspace · Copywriting Studio · Brand Asset Inspector · Synology NAS Native · Multi-Platform
 
-[![Release](https://img.shields.io/badge/release-v4.8.1-blue?style=flat-square)](https://github.com/SuamiSihat/ss_cam/releases/tag/v4.8.1)
+[![Release](https://img.shields.io/badge/release-v4.9.0-blue?style=flat-square)](https://github.com/SuamiSihat/ss_cam/releases/tag/v4.9.0)
 [![Platform](https://img.shields.io/badge/platform-Windows%2010%2F11%20%7C%20Linux%20%7C%20Android%20%7C%20Docker-blue?style=flat-square)](https://github.com/SuamiSihat/ss_cam)
 [![Framework](https://img.shields.io/badge/.NET%20Framework-4.8%20%7C%20.NET%208.0%20%7C%20Compose-purple?style=flat-square)](https://dotnet.microsoft.com)
 [![Web Stack](https://img.shields.io/badge/web-Svelte%205%20%2B%20Node.js%2020-ff3e00?style=flat-square)](https://svelte.dev)
@@ -12,6 +12,34 @@ Standardized Project Vaults · ClickUp 3.0 Workspace · Copywriting Studio · Br
 [![License](https://img.shields.io/badge/licence-Internal%20Use-orange?style=flat-square)](./installer/EULA.txt)
 
 ---
+
+## 🚀 What's New in v4.9.0 ("Art Director Ecosystem Unification: Live Studio Workstream Telemetry, Command Palette v3.5.1, Packaging Deliverables & Tri-Platform Parity")
+
+* **📡 Live Studio Telemetry & Workstream Pulse (Web, Desktop, Android)**:
+  * **Unified Telemetry Feed**: Real-time synchronization of active designer tasks via `<WorkspaceRoot>/_Team/live_tasks.json` with 16-hour session freshness filter and UTF-8 BOM safety.
+  * **Web Management Portal**: Added elevated Live Studio Radar card on the main dashboard with digital stopwatches for each active designer workstation, paired with the top header pulse indicator (`● {N} in Studio` / `● Studio Idle`) and interactive task flyout.
+  * **Android Native Companion**: Connected `DeskCompanionMode` with an infinite pulsing Emerald ticker (`● N IN STUDIO • DESIGNER: TASK`), live workstation sprint card, and elevated Team Hub live workstream section with designer initials avatars and session notes.
+* **⚡ Master Brand System v3.5.1 & Command Palette Alignment**:
+  * **Web Command Palette (`Ctrl + K`)**: Added 5 reactive category filter tabs (`All`, `Projects`, `Brand Colors`, `Copywriting Hooks`, `Studio Actions`), the 16 official Single-Source-of-Truth tokens with regular (HEX) and <kbd>Shift</kbd> (CSS variable) copy actions, and pre-scaffolded direct-response marketing hooks directory.
+  * **Android Brand Hub**: Integrated the 16 official v3.5.1 color tokens with 1-tap clipboard copying, packaging dieline specs, and 7 high-converting Malay marketing hooks.
+* **📦 Packaging Deliverables & Creative Orders Intake**:
+  * Integrated dedicated packaging dieline formats (`pkg_box_sleeve` — Box & Sleeve, `pkg_label` — Bottle/Jar/Vial Label) with 300 DPI CMYK and die-cut bleed specs.
+  * Added strategic `tier_0` (`🗓️ Low / Pipeline`) priority tier with automated +21 day delivery threshold guidance across Web and Mobile order forms.
+* **🛡️ Production Release Packaging**:
+  * Windows Desktop portable binary `dist/SS-CAM-v4.9.0.exe` (5.96 MB).
+  * Android production app bundle `app-release.aab` (5.76 MB, RSA 2048 cryptographically verified) and standalone release `app-release.apk`.
+
+
+* **📋 Deliverables & Subtask Management Engine (`README.md` Frontmatter)**:
+  * Unified deliverables schema structuring actual artwork outputs directly in `subtasks:` YAML frontmatter (ID, Name, Type, Weight, Status, Specs, Designer).
+  * Subtask weight points dynamically aggregate to compute total project complexity points and calculate progress completion ratios across the studio.
+  * 1-click status cycling (`Draft` ➔ `In Progress` ➔ `Done`) seamlessly available across Desktop Task Manager, Web Deliverables Gallery, and Android Companion.
+* **🔄 Tri-Platform Real-Time Synchronization Architecture**:
+  * **Windows Desktop (WPF 4.8)**: `WorkspaceWatcherService` watches Synology NAS directories (`D:\SynologyDrive\Creative-Team`) with 600ms debouncing. Both `DashboardPage` (KPI telemetry, recent projects, overdue metrics) and `TaskManagerPage` (Kanban boards, queue counts) subscribe and automatically re-render without manual refreshes.
+  * **Web Management Portal (Svelte 5 / Node.js 20)**: `WorkspaceService` watches filesystem via Chokidar, parses YAML frontmatter with `js-yaml`, and broadcasts Server-Sent Events (SSE `project:updated` / `workspace:updated`) to all connected browser clients. `PUT /api/projects/:id` accepts and merges subtask arrays with SHA-256 version hash optimistic locking.
+  * **Android Native Companion (Jetpack Compose / Retrofit)**: Integrated `updateProject` API in `SscamApiService`, powering instant optimistic local UI updates and real-time synchronization of project statuses, subtask deliverables, and `README.md` body edits from mobile devices.
+* **🛡️ Frontmatter Parser Hierarchy Guard ([FrontmatterService.cs](file:///d:/HaNa_Innovation/ss_cam/src/SS-CAM/Services/FrontmatterService.cs))**:
+  * Fixed parser indentation handling so child subtask statuses (e.g. `status: draft` under `subtasks:`) do not unintentionally overwrite top-level project status.
 
 ## 🚀 What's New in v4.8.1 ("Command Palette, 60-30-10 Polish, Live Work Stopwatch & Creative Operations")
 

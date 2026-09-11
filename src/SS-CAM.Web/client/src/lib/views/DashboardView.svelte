@@ -13,12 +13,43 @@
   let activeLens = $state<DashboardLens>('studio');
   let myNotifications = $state<ActivityNotification[]>([]);
   let isLoadingPersonal = $state<boolean>(false);
+  let currentSecondTicker = $state<number>(0);
+  let tickerInterval: any = null;
 
-  onMount(async () => {
-    await projectStore.loadDashboard();
-    await projectStore.loadProjects();
-    await loadPersonalActivity();
+  onMount(() => {
+    projectStore.loadDashboard();
+    projectStore.loadProjects();
+    loadPersonalActivity();
+    appState.loadLiveTasks();
+
+    tickerInterval = setInterval(() => {
+      currentSecondTicker += 1;
+    }, 1000);
+
+    return () => {
+      if (tickerInterval) clearInterval(tickerInterval);
+    };
   });
+
+  function getLiveElapsedDisplay(task: any, _tick: number): string {
+    let totalSec = 0;
+    if (task.StartedAt) {
+      const start = new Date(task.StartedAt).getTime();
+      if (!isNaN(start)) {
+        totalSec = Math.max(0, Math.floor((Date.now() - start) / 1000));
+      }
+    }
+    if (totalSec <= 0 && task.ElapsedSeconds) {
+      totalSec = Number(task.ElapsedSeconds) || 0;
+    }
+    const h = Math.floor(totalSec / 3600);
+    const m = Math.floor((totalSec % 3600) / 60);
+    const s = totalSec % 60;
+    const hh = h.toString().padStart(2, '0');
+    const mm = m.toString().padStart(2, '0');
+    const ss = s.toString().padStart(2, '0');
+    return `${hh}:${mm}:${ss}`;
+  }
 
   async function handleTimeRangeChange(range: string) {
     await projectStore.loadDashboard({ timeRange: range });
@@ -36,6 +67,28 @@
     } finally {
       isLoadingPersonal = false;
     }
+  }
+
+  function formatDeadlineDisplay(deadline?: string | null, status?: string): string {
+    if (!deadline) return '';
+    const clean = String(deadline).trim();
+    const dt = new Date(clean);
+    if (isNaN(dt.getTime())) return clean.split('T')[0];
+
+    const isCompleted = ['done', 'approved', 'completed'].includes((status || '').toLowerCase());
+    if (isCompleted) {
+      return dt.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const target = new Date(dt);
+    target.setHours(0, 0, 0, 0);
+    const diffDays = Math.ceil((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
+    if (diffDays < 0) return `Overdue ${Math.abs(diffDays)}d`;
+    if (diffDays === 0) return 'Due Today';
+    return `Due in ${diffDays}d`;
   }
 
   const kpis = $derived(projectStore.dashboardData?.kpis || {
@@ -287,6 +340,103 @@
         </div>
       </div>
     {/if}
+
+    <!-- Live Studio Activity Stream Card -->
+    <div class="studio-livestream-card">
+      <div class="livestream-header">
+        <div class="livestream-header-left">
+          <span class="livestream-pulse-ring" class:pulsing={appState.activeLiveTasks.length > 0}></span>
+          <div>
+            <div class="livestream-title-row">
+              <h2 class="livestream-title">Live Studio Workstream</h2>
+              <span class="livestream-status-badge" class:active={appState.activeLiveTasks.length > 0}>
+                {appState.activeLiveTasks.length > 0 ? `${appState.activeLiveTasks.length} Workstation${appState.activeLiveTasks.length > 1 ? 's' : ''} Active` : 'All Stations Idle'}
+              </span>
+            </div>
+            <p class="livestream-subtitle">Real-time designer active sessions synced from desktop SS-CAM work clocks</p>
+          </div>
+        </div>
+
+        <div class="livestream-header-actions">
+          <button
+            class="refresh-stream-btn"
+            onclick={() => appState.loadLiveTasks()}
+            title="Check workstation heartbeat"
+            aria-label="Refresh live tasks"
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/>
+            </svg>
+            <span>Heartbeat</span>
+          </button>
+        </div>
+      </div>
+
+      {#if appState.activeLiveTasks.length === 0}
+        <div class="livestream-empty">
+          <div class="livestream-empty-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <circle cx="12" cy="12" r="10"/>
+              <polyline points="12 6 12 12 16 14"/>
+            </svg>
+          </div>
+          <div class="livestream-empty-text">
+            <strong>All Workstations Currently Idle</strong>
+            <span>When designers launch projects in desktop SS-CAM, active work sessions stream live here in real-time.</span>
+          </div>
+        </div>
+      {:else}
+        <div class="livestream-grid">
+          {#each appState.activeLiveTasks as task}
+            {@const elapsed = getLiveElapsedDisplay(task, currentSecondTicker)}
+            {@const designerInitials = (task.DesignerName || task.StaffId || 'D').slice(0, 2).toUpperCase()}
+            <div class="livestream-task-chip">
+              <div class="livestream-chip-top">
+                <div class="livestream-designer">
+                  <div class="designer-avatar" style="background: {task.AvatarColor || 'var(--brand-accent)'};">
+                    {designerInitials}
+                  </div>
+                  <div class="designer-meta">
+                    <span class="designer-name">{task.DesignerName || task.StaffId}</span>
+                    <span class="designer-workstation">{task.MachineName || 'Studio PC'}</span>
+                  </div>
+                </div>
+
+                <div class="livestream-clock" title="Session duration">
+                  <span class="clock-icon">⏱</span>
+                  <span class="clock-digits">{elapsed}</span>
+                </div>
+              </div>
+
+              <div class="livestream-chip-body">
+                <div class="task-client-badge">{task.Client || 'INTERNAL'}</div>
+                <div class="task-project-name" title={task.ProjectName || task.ProjectId}>
+                  {task.ProjectName || task.ProjectId}
+                </div>
+                {#if task.SessionNotes}
+                  <div class="task-notes" title={task.SessionNotes}>
+                    "{task.SessionNotes}"
+                  </div>
+                {/if}
+              </div>
+
+              <div class="livestream-chip-footer">
+                <span class="pulse-status-dot"></span>
+                <span class="task-state-label">{task.State || 'Designing'}</span>
+                {#if task.ProjectId}
+                  <button
+                    class="task-jump-btn"
+                    onclick={() => appState.navigate('project-detail', { id: task.ProjectId })}
+                  >
+                    Open Workspace ↗
+                  </button>
+                {/if}
+              </div>
+            </div>
+          {/each}
+        </div>
+      {/if}
+    </div>
 
     <!-- Creative Pipeline Funnel & Sub-Brand Balance -->
     <div class="studio-distribution-grid">
@@ -584,9 +734,20 @@
                   <h4 class="queue-title">{proj.title}</h4>
                   <div class="queue-footer">
                     <span class="queue-brand">Brand: {proj.brand || 'SS'}</span>
+                    {#if proj.subtasks && proj.subtasks.length > 0}
+                      {@const done = proj.completedSubtasksCount !== undefined ? proj.completedSubtasksCount : proj.subtasks.filter((s: any) => ['approved', 'done', 'completed'].includes((s.status || '').toLowerCase())).length}
+                      {@const pts = proj.totalWeight || proj.subtasks.reduce((sum: number, s: any) => sum + (typeof s.weight === 'number' ? s.weight : 1), 0)}
+                      <span class="queue-pts-pill" title="{done}/{proj.subtasks.length} Subtasks Done">
+                        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right: 2px; vertical-align: -1px; display: inline-block;">
+                          <circle cx="12" cy="12" r="9"/>
+                          <circle cx="12" cy="12" r="4"/>
+                        </svg>
+                        {done}/{proj.subtasks.length} Done • {pts} pts
+                      </span>
+                    {/if}
                     <span class="queue-deadline">
                       <FluentIcons name="calendar" size={11} />
-                      <span style="margin-left: 3px;">{proj.deadline || 'No deadline'}</span>
+                      <span style="margin-left: 3px;">{proj.deadlineDisplay || formatDeadlineDisplay(proj.deadline, proj.status) || 'No deadline'}</span>
                     </span>
                     <span class="queue-action-link">Open Workspace →</span>
                   </div>
@@ -941,6 +1102,278 @@
     color: #FFFFFF;
     padding: 2px 6px;
     border-radius: 9999px;
+  }
+
+  /* Live Studio Workstream Card */
+  .studio-livestream-card {
+    background: var(--surface-card);
+    border: 1px solid var(--surface-card-border);
+    border-radius: var(--radius-md, 12px);
+    padding: 16px 20px;
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    transition: border-color 0.2s;
+  }
+  .livestream-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .livestream-header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .livestream-pulse-ring {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--text-tertiary);
+    flex-shrink: 0;
+  }
+  .livestream-pulse-ring.pulsing {
+    background: #10B981;
+    box-shadow: 0 0 10px rgba(16, 185, 129, 0.8);
+    animation: livePulse 1.8s infinite;
+  }
+  @keyframes livePulse {
+    0% { transform: scale(0.95); opacity: 0.8; }
+    50% { transform: scale(1.25); opacity: 1; }
+    100% { transform: scale(0.95); opacity: 0.8; }
+  }
+  .livestream-title-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .livestream-title {
+    font-size: 15px;
+    font-weight: 800;
+    color: var(--text-primary);
+    margin: 0;
+    letter-spacing: -0.2px;
+  }
+  .livestream-status-badge {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 9999px;
+    background: var(--surface-card-subtle);
+    border: 1px solid var(--surface-card-border);
+    color: var(--text-secondary);
+  }
+  .livestream-status-badge.active {
+    background: rgba(16, 185, 129, 0.1);
+    border-color: rgba(16, 185, 129, 0.25);
+    color: #059669;
+  }
+  .livestream-subtitle {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin: 2px 0 0 0;
+  }
+  .livestream-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .refresh-stream-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--surface-card-border);
+    background: var(--surface-card-subtle);
+    color: var(--text-secondary);
+    font-size: 11.5px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.14s ease;
+  }
+  .refresh-stream-btn:hover {
+    background: var(--surface-card);
+    border-color: var(--brand-accent);
+    color: var(--brand-accent);
+  }
+  .livestream-empty {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 16px;
+    border-radius: 8px;
+    background: var(--surface-card-subtle);
+    border: 1px dashed var(--surface-card-border);
+  }
+  .livestream-empty-icon {
+    color: var(--text-tertiary);
+    display: flex;
+    align-items: center;
+  }
+  .livestream-empty-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .livestream-empty-text strong {
+    font-size: 12.5px;
+    color: var(--text-primary);
+  }
+  .livestream-empty-text span {
+    font-size: 11.5px;
+    color: var(--text-secondary);
+  }
+  .livestream-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 12px;
+  }
+  .livestream-task-chip {
+    background: var(--surface-card-subtle);
+    border: 1px solid var(--surface-card-border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
+  }
+  .livestream-task-chip:hover {
+    transform: translateY(-2px);
+    border-color: var(--brand-accent);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+    background: var(--surface-card);
+  }
+  .livestream-chip-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .livestream-designer {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .designer-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    color: #fff;
+    font-size: 11.5px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+  }
+  .designer-meta {
+    display: flex;
+    flex-direction: column;
+  }
+  .designer-name {
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+  .designer-workstation {
+    font-size: 10.5px;
+    color: var(--text-tertiary);
+    font-family: var(--font-mono, monospace);
+  }
+  .livestream-clock {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: rgba(33, 161, 247, 0.08);
+    border: 1px solid rgba(33, 161, 247, 0.22);
+    padding: 3px 8px;
+    border-radius: 6px;
+  }
+  .clock-icon {
+    font-size: 11px;
+  }
+  .clock-digits {
+    font-family: var(--font-mono, monospace);
+    font-size: 12px;
+    font-weight: 800;
+    color: var(--brand-accent);
+    letter-spacing: 0.5px;
+  }
+  .livestream-chip-body {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .task-client-badge {
+    align-self: flex-start;
+    font-size: 9.5px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    color: var(--brand-accent);
+    background: rgba(33, 161, 247, 0.1);
+    padding: 1px 6px;
+    border-radius: 4px;
+  }
+  .task-project-name {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .task-notes {
+    font-size: 11.5px;
+    font-style: italic;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .livestream-chip-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 8px;
+    border-top: 1px solid var(--surface-card-border);
+    margin-top: 2px;
+  }
+  .pulse-status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #10B981;
+    display: inline-block;
+    box-shadow: 0 0 6px #10B981;
+    margin-right: 4px;
+  }
+  .task-state-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    flex: 1;
+  }
+  .task-jump-btn {
+    border: none;
+    background: transparent;
+    color: var(--brand-accent);
+    font-size: 11.5px;
+    font-weight: 700;
+    cursor: pointer;
+    padding: 2px 6px;
+    border-radius: 4px;
+    transition: background 0.12s;
+  }
+  .task-jump-btn:hover {
+    background: rgba(33, 161, 247, 0.1);
   }
 
   /* Studio Pipeline & Distribution */
@@ -1336,9 +1769,23 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
     font-size: 11.5px;
     color: var(--text-secondary);
     margin-top: 4px;
+  }
+
+  .queue-pts-pill {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 4px;
+    background: rgba(168, 85, 247, 0.1);
+    color: #C084FC;
+    border: 1px solid rgba(168, 85, 247, 0.2);
+    display: inline-flex;
+    align-items: center;
   }
 
   .queue-action-link {

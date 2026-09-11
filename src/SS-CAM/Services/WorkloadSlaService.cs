@@ -124,35 +124,38 @@ namespace SS_CAM.Services
                             DesignerWorkloadItem workload = map[designerName];
                             workload.TotalProjects++;
 
-                            // Parse README.md status if available
-                            string readmePath = Path.Combine(sub, "README.md");
-                            string status = "in-progress";
-                            bool isOverdue = false;
+                            // Parse project status and subtasks
+                            ProjectStatusItem projStatus = FrontmatterService.ReadStatus(sub);
+                            string status = string.IsNullOrEmpty(projStatus.Status) ? "in-progress" : projStatus.Status.ToLowerInvariant();
+                            bool isOverdue = projStatus.IsOverdue;
 
-                            if (File.Exists(readmePath))
+                            workload.TotalWeight += projStatus.TotalWeight;
+                            workload.TotalDeliverablesCount += projStatus.TotalSubtasksCount > 0 ? projStatus.TotalSubtasksCount : 1;
+
+                            if (status == "in-progress")
                             {
-                                try
-                                {
-                                    string text = File.ReadAllText(readmePath);
-                                    status = ExtractFrontmatterValue(text, "status", "in-progress").ToLower();
-                                    string deadlineStr = ExtractFrontmatterValue(text, "deadline", "");
-                                    DateTime deadline;
-                                    if (DateTime.TryParse(deadlineStr, out deadline) && deadline < DateTime.Today && status != "done" && status != "approved")
-                                    {
-                                        isOverdue = true;
-                                    }
-                                }
-                                catch (Exception ex)
-                                {
-                                    System.Diagnostics.Debug.WriteLine("[WorkloadSlaService] Readme parse warning: " + ex.Message);
-                                }
+                                workload.InProgressCount++;
+                                workload.ActiveWeight += projStatus.ActiveWeight;
                             }
-
-                            if (status == "in-progress") workload.InProgressCount++;
-                            else if (status == "review") workload.ReviewCount++;
-                            else if (status == "revision") workload.RevisionCount++;
-                            else if (status == "done" || status == "approved") workload.DoneCount++;
-                            else workload.InProgressCount++;
+                            else if (status == "review")
+                            {
+                                workload.ReviewCount++;
+                                workload.ActiveWeight += projStatus.ActiveWeight;
+                            }
+                            else if (status == "revision")
+                            {
+                                workload.RevisionCount++;
+                                workload.ActiveWeight += projStatus.ActiveWeight;
+                            }
+                            else if (status == "done" || status == "approved")
+                            {
+                                workload.DoneCount++;
+                            }
+                            else
+                            {
+                                workload.InProgressCount++;
+                                workload.ActiveWeight += projStatus.ActiveWeight;
+                            }
 
                             if (isOverdue) workload.OverdueCount++;
                         }
@@ -190,21 +193,31 @@ namespace SS_CAM.Services
                 }
 
                 item.ActiveCount = item.InProgressCount + item.ReviewCount + item.RevisionCount;
-                item.CapacityPercent = Math.Min(100.0, Math.Round((item.ActiveCount / 4.0) * 100.0, 0));
+                item.ActiveWeight = Math.Round(item.ActiveWeight, 1);
+                item.TotalWeight = Math.Round(item.TotalWeight, 1);
 
-                if (item.ActiveCount <= 2)
+                // Capacity calculation based on Creative Units (Standard recommended bandwidth: 5.0 slot points)
+                double effectiveLoad = item.ActiveWeight > 0 ? item.ActiveWeight : (double)item.ActiveCount;
+                item.CapacityPercent = Math.Min(100.0, Math.Round((effectiveLoad / 5.0) * 100.0, 0));
+
+                if (effectiveLoad <= 2.5)
                 {
                     item.CapacityStatus = "Optimal Bandwidth";
                     item.CapacityColor = "#10B981"; // Emerald green
                 }
-                else if (item.ActiveCount <= 4)
+                else if (effectiveLoad <= 4.5)
                 {
                     item.CapacityStatus = "High Load";
                     item.CapacityColor = "#F59E0B"; // Amber warning
                 }
-                else
+                else if (effectiveLoad <= 5.5)
                 {
                     item.CapacityStatus = "At Capacity";
+                    item.CapacityColor = "#F97316"; // Orange
+                }
+                else
+                {
+                    item.CapacityStatus = "Overloaded";
                     item.CapacityColor = "#EF4444"; // Red critical
                 }
 

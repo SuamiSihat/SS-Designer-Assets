@@ -53,6 +53,13 @@ namespace SS_CAM.Services
 
                 string tagsRaw = GetValue(fm, "tags", "");
                 item.Tags = ParseTags(tagsRaw);
+                string catWeightStr = GetValue(fm, "category_weight", GetValue(fm, "weight", ""));
+                double cw;
+                if (double.TryParse(catWeightStr, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out cw) && cw > 0)
+                {
+                    item.CategoryWeight = cw;
+                }
+                item.Subtasks = ParseSubtasks(lines);
                 item.CanvaUrl = GetValue(fm, "canva_url", "");
                 if (string.IsNullOrWhiteSpace(item.CanvaUrl))
                 {
@@ -71,7 +78,10 @@ namespace SS_CAM.Services
                                 }
                             }
                         }
-                        catch { }
+                        catch (Exception ex)
+                        {
+                            Debug.WriteLine("[FrontmatterService] ReadStatus Open_In_Canva.url error: " + ex.Message);
+                        }
                     }
                 }
             }
@@ -145,11 +155,31 @@ namespace SS_CAM.Services
                 sb.AppendLine(string.Format("duration: {0}", item.Duration));
             if (!string.IsNullOrWhiteSpace(item.CanvaUrl))
                 sb.AppendLine(string.Format("canva_url: {0}", item.CanvaUrl));
+            if (item.CategoryWeight > 0)
+                sb.AppendLine(string.Format(System.Globalization.CultureInfo.InvariantCulture, "category_weight: {0:0.#}", item.CategoryWeight));
             if (item.Tags != null && item.Tags.Count > 0)
                 sb.AppendLine(string.Format("tags: [{0}]", string.Join(", ", item.Tags.ToArray())));
             else
                 sb.AppendLine("tags: []");
             sb.AppendLine(string.Format("revision: {0}", item.Revision));
+
+            if (item.Subtasks != null && item.Subtasks.Count > 0)
+            {
+                sb.AppendLine("subtasks:");
+                foreach (var st in item.Subtasks)
+                {
+                    sb.AppendLine(string.Format("  - id: \"{0}\"", (st.Id ?? "").Replace("\"", "\\\"")));
+                    sb.AppendLine(string.Format("    name: \"{0}\"", (st.Name ?? "").Replace("\"", "\\\"")));
+                    sb.AppendLine(string.Format("    type: {0}", string.IsNullOrWhiteSpace(st.Type) ? "standard" : st.Type));
+                    sb.AppendLine(string.Format(System.Globalization.CultureInfo.InvariantCulture, "    weight: {0:0.#}", st.Weight > 0 ? st.Weight : 1.0));
+                    sb.AppendLine(string.Format("    status: {0}", string.IsNullOrWhiteSpace(st.Status) ? "in-progress" : st.Status));
+                    if (!string.IsNullOrWhiteSpace(st.Specs))
+                        sb.AppendLine(string.Format("    specs: \"{0}\"", st.Specs.Replace("\"", "\\\"")));
+                    if (!string.IsNullOrWhiteSpace(st.AssignedDesigner))
+                        sb.AppendLine(string.Format("    designer: {0}", st.AssignedDesigner));
+                }
+            }
+
             sb.AppendLine(Delimiter);
 
             if (!string.IsNullOrWhiteSpace(body))
@@ -168,7 +198,7 @@ namespace SS_CAM.Services
         /// <summary>
         /// Generates the default frontmatter block for a new project.
         /// </summary>
-        public static string BuildDefaultFrontmatter(string designerStaffId, string client, string deadline = null, string categoryPreset = null, string orderId = null, string canvaUrl = null)
+        public static string BuildDefaultFrontmatter(string designerStaffId, string client, string deadline = null, string categoryPreset = null, string orderId = null, string canvaUrl = null, List<ProjectSubtaskItem> subtasks = null, double categoryWeight = 1.0)
         {
             StringBuilder sb = new StringBuilder();
             sb.AppendLine(Delimiter);
@@ -179,6 +209,10 @@ namespace SS_CAM.Services
             sb.AppendLine(string.Format("created: {0}", DateTime.Today.ToString("yyyy-MM-dd")));
             sb.AppendLine("priority: medium");
             sb.AppendLine("duration: ");
+            if (categoryWeight > 0)
+            {
+                sb.AppendLine(string.Format(System.Globalization.CultureInfo.InvariantCulture, "category_weight: {0:0.#}", categoryWeight));
+            }
             if (!string.IsNullOrWhiteSpace(categoryPreset))
             {
                 sb.AppendLine(string.Format("category_preset: \"{0}\"", categoryPreset.Replace("\"", "\\\"")));
@@ -193,6 +227,24 @@ namespace SS_CAM.Services
             }
             sb.AppendLine("tags: []");
             sb.AppendLine("revision: 0");
+
+            if (subtasks != null && subtasks.Count > 0)
+            {
+                sb.AppendLine("subtasks:");
+                foreach (var st in subtasks)
+                {
+                    sb.AppendLine(string.Format("  - id: \"{0}\"", (st.Id ?? "").Replace("\"", "\\\"")));
+                    sb.AppendLine(string.Format("    name: \"{0}\"", (st.Name ?? "").Replace("\"", "\\\"")));
+                    sb.AppendLine(string.Format("    type: {0}", string.IsNullOrWhiteSpace(st.Type) ? "standard" : st.Type));
+                    sb.AppendLine(string.Format(System.Globalization.CultureInfo.InvariantCulture, "    weight: {0:0.#}", st.Weight > 0 ? st.Weight : 1.0));
+                    sb.AppendLine(string.Format("    status: {0}", string.IsNullOrWhiteSpace(st.Status) ? "in-progress" : st.Status));
+                    if (!string.IsNullOrWhiteSpace(st.Specs))
+                        sb.AppendLine(string.Format("    specs: \"{0}\"", st.Specs.Replace("\"", "\\\"")));
+                    if (!string.IsNullOrWhiteSpace(st.AssignedDesigner))
+                        sb.AppendLine(string.Format("    designer: {0}", st.AssignedDesigner));
+                }
+            }
+
             sb.AppendLine(Delimiter);
             return sb.ToString();
         }
@@ -234,11 +286,21 @@ namespace SS_CAM.Services
             for (int i = 1; i < lines.Length; i++)
             {
                 if (lines[i].Trim() == Delimiter) return result;
-                int colon = lines[i].IndexOf(':');
+
+                string rawLine = lines[i];
+                if (string.IsNullOrWhiteSpace(rawLine)) continue;
+
+                // In YAML frontmatter, top-level keys must start at column 0 (no leading whitespace and not list items)
+                if (char.IsWhiteSpace(rawLine[0]) || rawLine.TrimStart().StartsWith("-"))
+                {
+                    continue;
+                }
+
+                int colon = rawLine.IndexOf(':');
                 if (colon > 0)
                 {
-                    string key = lines[i].Substring(0, colon).Trim();
-                    string val = lines[i].Substring(colon + 1).Trim();
+                    string key = rawLine.Substring(0, colon).Trim();
+                    string val = rawLine.Substring(colon + 1).Trim();
                     if (val.Length >= 2 && ((val.StartsWith("\"") && val.EndsWith("\"")) || (val.StartsWith("'") && val.EndsWith("'"))))
                     {
                         val = val.Substring(1, val.Length - 2).Trim();
@@ -290,6 +352,134 @@ namespace SS_CAM.Services
                 if (!string.IsNullOrWhiteSpace(tag)) tags.Add(tag);
             }
             return tags;
+        }
+
+        public static bool UpdateSubtaskStatus(string projectFolderPath, string subtaskId, string newStatus)
+        {
+            if (string.IsNullOrWhiteSpace(projectFolderPath) || string.IsNullOrWhiteSpace(subtaskId)) return false;
+            try
+            {
+                ProjectStatusItem item = ReadStatus(projectFolderPath);
+                if (item == null || item.Subtasks == null || item.Subtasks.Count == 0) return false;
+
+                var matched = item.Subtasks.Find(s => string.Equals(s.Id, subtaskId, StringComparison.OrdinalIgnoreCase));
+                if (matched == null) return false;
+
+                matched.Status = newStatus.ToLowerInvariant().Trim();
+
+                // If all subtasks are approved, optionally promote project status
+                bool allDone = true;
+                foreach (var st in item.Subtasks)
+                {
+                    if (!st.IsCompleted) { allDone = false; break; }
+                }
+
+                if (allDone && (item.Status == "in-progress" || item.Status == "review"))
+                {
+                    item.Status = "approved";
+                }
+
+                WriteStatus(item);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine("[FrontmatterService] UpdateSubtaskStatus error: " + ex.Message);
+                return false;
+            }
+        }
+
+        private static List<ProjectSubtaskItem> ParseSubtasks(string[] lines)
+        {
+            List<ProjectSubtaskItem> list = new List<ProjectSubtaskItem>();
+            if (lines == null || lines.Length == 0) return list;
+
+            int startIndex = -1;
+            int endIndex = lines.Length;
+
+            for (int i = 0; i < lines.Length; i++)
+            {
+                if (lines[i].Trim() == Delimiter)
+                {
+                    if (startIndex == -1) startIndex = i;
+                    else { endIndex = i; break; }
+                }
+            }
+
+            if (startIndex == -1) return list;
+
+            bool inSubtasks = false;
+            ProjectSubtaskItem current = null;
+
+            for (int i = startIndex + 1; i < endIndex; i++)
+            {
+                string line = lines[i];
+                string trimmed = line.Trim();
+
+                if (trimmed.StartsWith("subtasks:", StringComparison.OrdinalIgnoreCase) ||
+                    trimmed.StartsWith("deliverables:", StringComparison.OrdinalIgnoreCase))
+                {
+                    inSubtasks = true;
+                    continue;
+                }
+
+                if (inSubtasks)
+                {
+                    if (!string.IsNullOrWhiteSpace(line) && !char.IsWhiteSpace(line[0]))
+                    {
+                        if (current != null) { list.Add(current); current = null; }
+                        inSubtasks = false;
+                        continue;
+                    }
+
+                    if (trimmed.StartsWith("-", StringComparison.Ordinal))
+                    {
+                        if (current != null) list.Add(current);
+                        current = new ProjectSubtaskItem();
+
+                        string afterDash = trimmed.Substring(1).Trim();
+                        if (!string.IsNullOrWhiteSpace(afterDash))
+                        {
+                            ParseSubtaskProperty(current, afterDash);
+                        }
+                    }
+                    else if (current != null && !string.IsNullOrWhiteSpace(trimmed))
+                    {
+                        ParseSubtaskProperty(current, trimmed);
+                    }
+                }
+            }
+
+            if (current != null) list.Add(current);
+            return list;
+        }
+
+        private static void ParseSubtaskProperty(ProjectSubtaskItem item, string propLine)
+        {
+            int colon = propLine.IndexOf(':');
+            if (colon <= 0) return;
+
+            string key = propLine.Substring(0, colon).Trim().ToLowerInvariant();
+            string val = propLine.Substring(colon + 1).Trim();
+            if (val.Length >= 2 && ((val.StartsWith("\"") && val.EndsWith("\"")) || (val.StartsWith("'") && val.EndsWith("'"))))
+            {
+                val = val.Substring(1, val.Length - 2).Trim();
+            }
+
+            if (key == "id") item.Id = val;
+            else if (key == "name" || key == "title") item.Name = val;
+            else if (key == "type" || key == "category") item.Type = val;
+            else if (key == "weight" || key == "points")
+            {
+                double w;
+                if (double.TryParse(val, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out w))
+                {
+                    item.Weight = w;
+                }
+            }
+            else if (key == "status") item.Status = val.ToLowerInvariant();
+            else if (key == "specs" || key == "dimensions" || key == "format") item.Specs = val;
+            else if (key == "designer" || key == "assigned") item.AssignedDesigner = val;
         }
     }
 }

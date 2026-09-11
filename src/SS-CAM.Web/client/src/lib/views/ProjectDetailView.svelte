@@ -93,7 +93,8 @@
           deadline: proj.deadline,
           priority: proj.priority,
           tags: proj.tags || [],
-          creative_direction: proj.creativeDirection || {}
+          creative_direction: proj.creativeDirection || {},
+          subtasks: (proj as any).subtasks || []
         };
         projectComments = (proj as any).comments || [];
       }
@@ -210,6 +211,42 @@
       selectedManager = p.manager || 'Unassigned';
     } finally {
       isUpdatingManager = false;
+    }
+  }
+
+  async function cycleSubtaskStatus(subtaskId: string) {
+    const p = projectStore.selectedProject;
+    if (!p || !currentFrontmatter.subtasks) return;
+
+    const nextStatusMap: Record<string, string> = {
+      'draft': 'in-progress',
+      'in-progress': 'done',
+      'progress': 'done',
+      'in_progress': 'done',
+      'done': 'draft',
+      'approved': 'draft',
+      'completed': 'draft'
+    };
+
+    const updatedSubtasks = currentFrontmatter.subtasks.map((st: any) => {
+      if (st.id === subtaskId) {
+        const cur = (st.status || 'draft').toLowerCase();
+        const next = nextStatusMap[cur] || 'in-progress';
+        return { ...st, status: next };
+      }
+      return st;
+    });
+
+    currentFrontmatter.subtasks = updatedSubtasks;
+    try {
+      await ApiClient.updateProject(p.id, { subtasks: updatedSubtasks });
+      if (projectStore.selectedProject) {
+        projectStore.selectedProject.subtasks = updatedSubtasks;
+      }
+      appState.addToast('Subtask status updated', 'success');
+    } catch (err: any) {
+      appState.addToast(`Failed to update subtask: ${err.message}`, 'error');
+      await projectStore.loadProjectDetail(p.id);
     }
   }
 
@@ -650,6 +687,50 @@
         {:else if activeCanvasView === 'deliverables'}
           <!-- Deliverables Masonry Gallery -->
           <div class="deliverables-gallery-container">
+            {#if currentFrontmatter.subtasks && currentFrontmatter.subtasks.length > 0}
+              <div class="subtasks-container" style="margin-bottom: 24px; padding: 16px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <FluentIcons name="checkbox" size={16} color="#0078D4" />
+                    <h4 style="margin: 0; font-size: 13px; font-weight: 600; color: #fff;">Deliverables &amp; Subtasks</h4>
+                    <span style="font-size: 11px; color: #94A3B8;">
+                      ({currentFrontmatter.subtasks.filter(s => ['approved', 'done', 'completed'].includes((s.status || '').toLowerCase())).length}/{currentFrontmatter.subtasks.length} Done • {currentFrontmatter.subtasks.reduce((sum, s) => sum + (typeof s.weight === 'number' ? s.weight : 1), 0)} pts)
+                    </span>
+                  </div>
+                </div>
+
+                <div style="display: flex; flex-direction: column; gap: 6px;">
+                  {#each currentFrontmatter.subtasks as st}
+                    {@const isDone = ['approved', 'done', 'completed'].includes((st.status || '').toLowerCase())}
+                    {@const isProgress = ['in-progress', 'in_progress', 'progress'].includes((st.status || '').toLowerCase())}
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 6px;">
+                      <div style="display: flex; align-items: center; gap: 10px;">
+                        <span style="font-size: 10px; font-weight: bold; padding: 2px 6px; background: rgba(0,120,212,0.15); color: #21A1F7; border-radius: 4px;">{st.id || 'ST'}</span>
+                        <div>
+                          <div style="font-size: 12px; font-weight: 500; color: #fff;">{st.name}</div>
+                          {#if st.specs || st.type}
+                            <div style="font-size: 10.5px; color: #94A3B8;">{st.type || ''} {st.specs ? '• ' + st.specs : ''}</div>
+                          {/if}
+                        </div>
+                      </div>
+                      <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size: 10.5px; font-weight: bold; color: #21A1F7; background: rgba(255,255,255,0.04); padding: 2px 6px; border-radius: 4px;">{st.weight || 1} pts</span>
+                        <button
+                          type="button"
+                          class="subtask-status-btn"
+                          onclick={() => cycleSubtaskStatus(st.id)}
+                          title="Click to cycle status (Draft ➔ In Progress ➔ Done)"
+                          style="cursor: pointer; border: 1px solid {isDone ? 'rgba(16,185,129,0.3)' : (isProgress ? 'rgba(0,120,212,0.3)' : 'rgba(100,116,139,0.3)')}; font-size: 10.5px; font-weight: 600; padding: 2px 10px; border-radius: 10px; background: {isDone ? 'rgba(16,185,129,0.15)' : (isProgress ? 'rgba(0,120,212,0.15)' : 'rgba(100,116,139,0.15)')}; color: {isDone ? '#10B981' : (isProgress ? '#21A1F7' : '#94A3B8')}; transition: all 0.15s ease;"
+                        >
+                          {isDone ? '✓ Done' : (isProgress ? '⏳ In Progress' : 'Draft')}
+                        </button>
+                      </div>
+                    </div>
+                  {/each}
+                </div>
+              </div>
+            {/if}
+
             <div class="gallery-header">
               <div class="gallery-title-group">
                 <h3>Production Output Assets</h3>

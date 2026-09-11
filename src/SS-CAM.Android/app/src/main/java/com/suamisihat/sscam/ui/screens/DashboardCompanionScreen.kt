@@ -1179,9 +1179,10 @@ fun DashboardCompanionScreen(
                     Text("Priority Tier", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = colors.textSecondary)
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         listOf(
+                            "tier_0" to "P0 Pipeline",
                             "tier_1" to "Standard",
                             "tier_2" to "Fast-Track",
                             "tier_3" to "Urgent"
@@ -1195,7 +1196,7 @@ fun DashboardCompanionScreen(
                             ) {
                                 Text(
                                     text = label,
-                                    fontSize = 10.5.sp,
+                                    fontSize = 9.5.sp,
                                     fontWeight = if (newPriority == prio) FontWeight.Bold else FontWeight.Medium,
                                     color = if (newPriority == prio) Color.White else colors.textPrimary,
                                     textAlign = androidx.compose.ui.text.style.TextAlign.Center,
@@ -1206,15 +1207,16 @@ fun DashboardCompanionScreen(
                     }
 
                     // Format Selector
-                    Text("Format", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = colors.textSecondary)
+                    Text("Format & Deliverable Type", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = colors.textSecondary)
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         listOf(
                             "9_16_video" to "9:16 Video",
                             "1_1_feed" to "1:1 Feed",
-                            "print_posm" to "Print POSM"
+                            "pkg_box_sleeve" to "Box/Sleeve",
+                            "pkg_label" to "Label"
                         ).forEach { (fmt, label) ->
                             Surface(
                                 color = if (newFormat == fmt) colors.primary else if (colors.isDark) Color(0xFF1E293B) else Color(0xFFF1F5F9),
@@ -1225,7 +1227,7 @@ fun DashboardCompanionScreen(
                             ) {
                                 Text(
                                     text = label,
-                                    fontSize = 10.sp,
+                                    fontSize = 9.5.sp,
                                     fontWeight = if (newFormat == fmt) FontWeight.Bold else FontWeight.Medium,
                                     color = if (newFormat == fmt) Color.White else colors.textPrimary,
                                     textAlign = androidx.compose.ui.text.style.TextAlign.Center,

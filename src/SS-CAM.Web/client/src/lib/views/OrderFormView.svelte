@@ -550,6 +550,35 @@
     }
     return str;
   }
+
+  function getChannelInfo(order: CreativeOrder) {
+    const isPrint = order.channel === 'print' || 
+      (order.format && (order.format.startsWith('print_') || order.format === 'custom_print'));
+    const allFormats = [...DIGITAL_FORMATS, ...PRINT_FORMATS, ...LEGACY_FORMATS];
+    const fmt = allFormats.find(f => f.id === order.format);
+    const mat = PRINT_MATERIALS.find(m => m.id === (order.material || order.materialType));
+    
+    let icon = '📱';
+    if (isPrint) {
+      if (order.format === 'print_label') icon = '🏷️';
+      else if (order.format === 'print_banner_rollup') icon = '🚩';
+      else if (order.format === 'print_posm') icon = '🖼️';
+      else icon = '📦';
+    } else {
+      if (order.format === '16_9_landscape') icon = '🖥️';
+      else if (order.format === '1_1_feed' || order.format === '4_5_portrait') icon = '📸';
+      else if (order.format === 'print_digital') icon = '🌐';
+      else icon = '📱';
+    }
+
+    return {
+      isPrint,
+      formatLabel: fmt?.label || order.format?.replace(/_/g, ' ') || 'Deliverable',
+      icon,
+      customSize: order.customSize,
+      materialLabel: mat ? mat.label.split('(')[0].trim() : (order.material || order.materialType || null)
+    };
+  }
 </script>
 
 <!-- ══════════════════════════════════════════════════════════════════════════ -->
@@ -981,6 +1010,7 @@
             {@const sm  = STATUS_META[order.status] ?? STATUS_META.pending}
             {@const pr  = PRIORITY_COLOR[order.priority]}
             {@const expanded = activeOrderId === order.id}
+            {@const ch  = getChannelInfo(order)}
             <tr
               class="order-row {expanded ? 'row-open' : ''}"
               aria-expanded={expanded}
@@ -1001,17 +1031,36 @@
               <td>
                 {#if pr}
                   <span
-                    class="priority-tag"
+                    class="priority-tag {order.priority === 'tier_0' ? 'priority-tier0' : ''}"
                     style="color: {pr.fg}; background: {pr.bg}; border-color: {pr.border};"
-                  >{priorityLabel(order.priority)}</span>
+                  >
+                    {#if order.priority === 'tier_0'}🗓️ {/if}
+                    {#if order.priority === 'tier_3'}⚡ {/if}
+                    {priorityLabel(order.priority)}
+                  </span>
                 {:else}
                   <span class="priority-tag">—</span>
                 {/if}
               </td>
               <td>
-                <span class="meta-cell" title={formatLabel(order.format, order.material || order.materialType, order.customSize)}>
-                  {formatLabel(order.format, order.material || order.materialType, order.customSize)}
-                </span>
+                <div class="format-cell-cluster">
+                  <div class="format-badge-row">
+                    <span class="channel-chip {ch.isPrint ? 'chip-print' : 'chip-digital'}">
+                      <span class="channel-icon">{ch.icon}</span>
+                      <span>{ch.formatLabel}</span>
+                    </span>
+                  </div>
+                  {#if ch.customSize || ch.materialLabel}
+                    <div class="format-sub-row">
+                      {#if ch.customSize}
+                        <span class="size-chip" title="Custom Dimensions">📐 {ch.customSize}</span>
+                      {/if}
+                      {#if ch.materialLabel}
+                        <span class="mat-chip" title="Print Substrate">🏷️ {ch.materialLabel}</span>
+                      {/if}
+                    </div>
+                  {/if}
+                </div>
               </td>
               <td>
                 <span class="meta-cell">{fmtDate(order.targetDate)}</span>
@@ -1021,9 +1070,12 @@
               </td>
               <td>
                 <span
-                  class="status-tag"
+                  class="status-tag {order.status === 'done' ? 'status-backlog' : ''}"
                   style="color: {sm.fg}; background: {sm.bg};"
-                >{sm.label}</span>
+                >
+                  {#if order.status === 'done'}<span class="lock-icon" title="Brief locked in backlog">🔒 </span>{/if}
+                  {sm.label}
+                </span>
               </td>
               <td class="col-actions" onclick={(e) => e.stopPropagation()}>
                 <div class="action-cluster">
@@ -1057,18 +1109,29 @@
                       </div>
                       <div class="detail-col">
                         <span class="detail-label">Format &amp; Specifications</span>
-                        <span class="detail-val">{formatLabel(order.format, order.material || order.materialType, order.customSize)}</span>
+                        <div class="spec-pills-wrap">
+                          <span class="channel-chip {ch.isPrint ? 'chip-print' : 'chip-digital'}">
+                            <span class="channel-icon">{ch.icon}</span>
+                            <span>{ch.isPrint ? 'Print, Packaging & POSM' : 'Digital & Social Screen'} · {ch.formatLabel}</span>
+                          </span>
+                          {#if ch.customSize}
+                            <span class="size-chip">📐 {ch.customSize}</span>
+                          {/if}
+                          {#if ch.materialLabel}
+                            <span class="mat-chip">🏷️ {ch.materialLabel}</span>
+                          {/if}
+                        </div>
                       </div>
                       {#if order.material || order.materialType}
                         <div class="detail-col">
-                          <span class="detail-label">Print Material</span>
-                          <span class="detail-val">{PRINT_MATERIALS.find(m => m.id === (order.material || order.materialType))?.label ?? (order.material || order.materialType)}</span>
+                          <span class="detail-label">Print Material &amp; Finishing</span>
+                          <span class="detail-val">🏷️ {PRINT_MATERIALS.find(m => m.id === (order.material || order.materialType))?.label ?? (order.material || order.materialType)}</span>
                         </div>
                       {/if}
                       {#if order.customSize}
                         <div class="detail-col">
                           <span class="detail-label">Custom Dimensions</span>
-                          <span class="detail-val">{order.customSize}</span>
+                          <span class="detail-val">📐 {order.customSize}</span>
                         </div>
                       {/if}
                       {#if order.attachmentNote}
@@ -1958,13 +2021,19 @@
     letter-spacing: 0.3px;
   }
   .priority-tag {
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
     font-size: 11.5px;
     font-weight: 700;
     padding: 2px 8px;
     border-radius: var(--radius-sm);
     border: 1px solid transparent;
     white-space: nowrap;
+  }
+  .priority-tier0 {
+    letter-spacing: 0.3px;
+    border: 1px dashed #94A3B8 !important;
   }
   .meta-cell {
     color: var(--text-secondary);
@@ -1973,12 +2042,94 @@
   .status-tag {
     display: inline-flex;
     align-items: center;
-    gap: 0;
+    gap: 4px;
     font-size: 11.5px;
     font-weight: 700;
     padding: 3px 9px;
     border-radius: var(--radius-pill);
     white-space: nowrap;
+  }
+  .status-backlog {
+    border: 1px solid #A7F3D0;
+    font-weight: 800;
+  }
+  .lock-icon {
+    font-size: 10px;
+    line-height: 1;
+  }
+
+  /* Contextual Format & Packaging Chips */
+  .format-cell-cluster {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    max-width: 250px;
+  }
+  .format-badge-row {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .format-sub-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-wrap: wrap;
+    margin-top: 1px;
+  }
+  .channel-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: var(--radius-sm);
+    white-space: nowrap;
+  }
+  .channel-icon {
+    font-size: 11px;
+    line-height: 1;
+  }
+  .chip-digital {
+    background: rgba(33, 161, 247, 0.12);
+    color: #0284C7;
+    border: 1px solid rgba(33, 161, 247, 0.25);
+  }
+  .chip-print {
+    background: rgba(189, 154, 115, 0.14);
+    color: #9A7B4F;
+    border: 1px solid rgba(189, 154, 115, 0.3);
+  }
+  .size-chip {
+    font-size: 10px;
+    font-weight: 700;
+    font-family: var(--font-mono);
+    color: var(--text-secondary);
+    background: var(--surface-card);
+    border: 1px solid var(--surface-card-border);
+    padding: 1px 5px;
+    border-radius: 4px;
+  }
+  .mat-chip {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-tertiary);
+    background: var(--surface-card);
+    border: 1px solid var(--surface-card-border);
+    padding: 1px 5px;
+    border-radius: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 170px;
+  }
+  .spec-pills-wrap {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-top: 3px;
   }
 
   /* Row Actions */

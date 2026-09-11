@@ -499,6 +499,11 @@ export class ApiClient {
       body: JSON.stringify(payload)
     });
   }
+
+  // ─── Live Studio Tasks & Telemetry ───
+  static getLiveTasks(): Promise<{ success: boolean; liveTasks: any[]; count: number; activeCount: number }> {
+    return this.request('/team/live-tasks');
+  }
 }
 
 

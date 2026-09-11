@@ -41,6 +41,15 @@ data class SubsidiaryBrand(
     val targetAudience: String
 )
 
+data class BrandColorToken(
+    val name: String,
+    val hex: String,
+    val color: Color,
+    val token: String,
+    val role: String,
+    val category: String
+)
+
 data class CopySnippet(
     val category: String,
     val hook: String,
@@ -71,6 +80,30 @@ fun BrandHubScreen() {
         Toast.makeText(context, "Copied $text ($label) to clipboard!", Toast.LENGTH_SHORT).show()
     }
 
+    val officialTokens = remember {
+        listOf(
+            // Primary Palette
+            BrandColorToken("Prussian Blue", "#022057", Color(0xFF022057), "--ss-prussian-blue", "30% Foundation Structure", "Primary"),
+            BrandColorToken("SS Blue", "#043388", Color(0xFF043388), "--ss-blue", "Core Corporate Identity", "Primary"),
+            BrandColorToken("Azure Accent", "#21A1F7", Color(0xFF21A1F7), "--ss-azure", "10% High-Conversion CTA", "Primary"),
+            BrandColorToken("Malibu Tint", "#6DC6EC", Color(0xFF6DC6EC), "--ss-malibu", "Glows & Interactive Washes", "Primary"),
+            BrandColorToken("Porcelain White", "#FCFAF6", Color(0xFFFCFAF6), "--ss-neutral-white", "Base Light Canvas Surface", "Primary"),
+            BrandColorToken("Neutral Black", "#1C1C1C", Color(0xFF1C1C1C), "--ss-neutral-black", "Carbon Typography", "Primary"),
+            // Secondary Warm & Vitality
+            BrandColorToken("Lion Gold", "#BD9A73", Color(0xFFBD9A73), "--ss-lion", "Luxury Gold Accent", "Warmth & Vitality"),
+            BrandColorToken("Fawn Warm", "#CCAC8D", Color(0xFFCCAC8D), "--ss-fawn", "Subtle Warm Surface", "Warmth & Vitality"),
+            BrandColorToken("Arylide Yellow", "#E5D15C", Color(0xFFE5D15C), "--ss-arylide", "Vitality Highlight", "Warmth & Vitality"),
+            BrandColorToken("Banana Yellow", "#FCE53D", Color(0xFFFCE53D), "--ss-banana", "Conversion Badges & Yellow CTA", "Warmth & Vitality"),
+            // Canvas & Semantic Status
+            BrandColorToken("Canvas Light", "#F8FAFC", Color(0xFFF8FAFC), "--f-color-canvas-light", "60% Light Mode Canvas", "Surfaces & Status"),
+            BrandColorToken("Void Dark", "#090D16", Color(0xFF090D16), "--f-color-void-dark", "60% Dark Void Canvas", "Surfaces & Status"),
+            BrandColorToken("Semantic Success", "#107C10", Color(0xFF107C10), "--color-brand-success", "Verified Status & Feedback", "Surfaces & Status"),
+            BrandColorToken("Semantic Warning", "#D83B01", Color(0xFFD83B01), "--color-brand-warning", "Caution & Low Inventory", "Surfaces & Status"),
+            BrandColorToken("Semantic Danger", "#A80000", Color(0xFFA80000), "--color-brand-error", "Clinical Alerts & Errors", "Surfaces & Status"),
+            BrandColorToken("Neutral Gray 80", "#575756", Color(0xFF575756), "--neutral-80", "Secondary Framing & Text", "Surfaces & Status")
+        )
+    }
+
     val subsidiaries = remember {
         listOf(
             SubsidiaryBrand("SSH", "SuamiSihat Holding", "Corporate Group & Executive", Color(0xFF022057), "#022057", SshWarmGoldBright, "#D4AF37", "Executives, Stakeholders & Master Brand"),
@@ -87,7 +120,8 @@ fun BrandHubScreen() {
             MediaSpec("Instagram Feed Square", "1:1", "1080 × 1080 px", "Carousel graphics & single product posts", "🖼️"),
             MediaSpec("Meta / IG Portrait", "4:5", "1080 × 1350 px", "Feed-filling high CTR mobile ad banners", "📱"),
             MediaSpec("YouTube / Web Master", "16:9", "1920 × 1080 px", "Landscape video, tutorial & web hero", "🖥️"),
-            MediaSpec("Packaging Dieline", "Vector / Print", "300 DPI CMYK", "Physical product box, pouch & bottle labels", "📦")
+            MediaSpec("Box & Sleeve Packaging", "Vector Dieline", "300 DPI CMYK", "Product outer box, sliding sleeve & dieline bleed (pkg_box_sleeve)", "📦"),
+            MediaSpec("Bottle / Jar Label", "Vector Dieline", "300 DPI CMYK", "Polypropylene water-resistant label wrap (pkg_label)", "🏷️")
         )
     }
 
@@ -102,14 +136,38 @@ fun BrandHubScreen() {
             CopySnippet(
                 "🌿 Natural Herbal Formula",
                 "Rahsia Ketahanan Lelaki Berprestasi Tanpa Bahan Kimia Terlarang",
-                "100% ekstrak semulajadi lulus KKM. Disokong ujian makmal untuk memastikan stamina dan aliran darah optimum sepanjang hari.",
+                "100% ekstrak semulajadi lulus KKM. Disokong ujian makmal untuk memastikan stamina dan aliran darah optimum sepanjang hari tanpa kesan sampingan berbahaya.",
                 "Konsultasi Percuma Bersama Pakar"
             ),
             CopySnippet(
-                "🔥 Flash Sale / Promo",
+                "🔥 Flash Sale / Urgency Promo",
                 "Jualan Kilat SuamiSihat: Jimat Sehingga 40% + Hadiah Percuma",
                 "Stok terhad untuk 100 pembeli terawal sahaja. Penghantaran pantas terus ke pintu rumah anda dengan bungkusan rahsia.",
                 "Beli Sekarang di TikTok Shop"
+            ),
+            CopySnippet(
+                "🩺 Clinical Consultation & Trust",
+                "Bukan Sekadar Suplemen — Bimbingan Kesihatan Lelaki Menyeluruh",
+                "Setiap pesanan didatangkan dengan akses peribadi kepada pakar nutrisi bertauliah untuk memantau perkembangan anda secara privasi dan profesional.",
+                "Hubungi Pakar Kesihatan Anda"
+            ),
+            CopySnippet(
+                "📦 Discreet Express Packaging",
+                "Privasi 100% Terjamin — Tiada Label Produk Pada Bungkusan Luar",
+                "Kami faham kepentingan privasi anda. Kotak luaran neutral tanpa sebarang nama produk sensitif, dihantar terus dengan kurier ekspres & sokongan COD.",
+                "Pesan Dengan Privasi Penuh"
+            ),
+            CopySnippet(
+                "🏆 Real Transformation & Social Proof",
+                "Lebih 25,000 Lelaki Malaysia Telah Merasai Perbezaan Ketara",
+                "Lihat testimoni tulen dari pengguna berumur 28 hingga 55 tahun yang berjaya mengembalikan kecergasan dan keharmonian rumahtangga.",
+                "Tengok Testimoni Sebenar"
+            ),
+            CopySnippet(
+                "⏳ Limited Batch / FOMO Release",
+                "Batch Pengeluaran Terhad: Hanya 300 Botol Tersedia Bulan Ini",
+                "Kualiti herba premium memerlukan masa penapaian khas. Sekali habis, perlu tunggu 6 minggu untuk batch seterusnya. Tempah slot anda sekarang.",
+                "Kunci Slot Pesanan Anda"
             )
         )
     }
@@ -142,6 +200,56 @@ fun BrandHubScreen() {
                                 Text("Official SuamiSihat Palette Standard", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = colors.textPrimary)
                                 Spacer(modifier = Modifier.height(6.dp))
                                 Text("• 60% Canvas & Foundation (Breathing Room)\n• 30% Structural Surfaces & Cards\n• 10% High-Impact Conversion Accent", fontSize = 12.sp, color = colors.textSecondary)
+                            }
+                        }
+                    }
+
+                    item {
+                        FluentSectionHeader(title = "Master Brand Tokens (16 Official Swatches)", trailingText = "v3.5.1 SSoT")
+                    }
+
+                    items(officialTokens) { token ->
+                        FluentCard(modifier = Modifier.fillMaxWidth()) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { copyToClipboard(token.hex, token.name) }
+                                    .padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(36.dp)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(token.color)
+                                        .border(
+                                            1.dp,
+                                            if (token.hex == "#FCFAF6" || token.hex == "#F8FAFC") Color(0xFFD1D5DB) else Color.Transparent,
+                                            RoundedCornerShape(8.dp)
+                                        )
+                                )
+
+                                Spacer(modifier = Modifier.width(12.dp))
+
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(token.name, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = colors.textPrimary)
+                                        Text(token.hex, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = colors.primary)
+                                    }
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(token.role, fontSize = 11.sp, color = colors.textSecondary)
+                                        Text(token.token, fontSize = 10.sp, color = colors.textMuted)
+                                    }
+                                }
                             }
                         }
                     }

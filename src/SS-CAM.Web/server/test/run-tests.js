@@ -1143,6 +1143,97 @@ This is the project brief content.
     }
   });
 
+  // ─── TEST 33: TeamService Live Studio Tasks Telemetry & BOM Safety ────
+  test('TeamService discovers, parses, and cleans live studio task telemetry with BOM safety', () => {
+    const TeamService = require('../services/TeamService');
+    const origRoot = config.WORKSPACE_ROOT;
+    const testDir = path.join(__dirname, 'temp-livetasks-test-' + Date.now());
+
+    try {
+      config.WORKSPACE_ROOT = testDir;
+      const teamDir = path.join(testDir, '_Team');
+      fs.mkdirSync(teamDir, { recursive: true });
+
+      const liveTasksJsonPath = path.join(teamDir, 'live_tasks.json');
+
+      // 1. When file does not exist, returns empty array
+      const emptyTasks = TeamService.getLiveTasks();
+      assert.ok(Array.isArray(emptyTasks), 'Must return array when live_tasks.json does not exist');
+      assert.strictEqual(emptyTasks.length, 0);
+
+      // 2. Write mock live tasks with UTF-8 BOM (\uFEFF)
+      const now = new Date();
+      const mockTasks = [
+        {
+          StaffId: 'SS0004',
+          DesignerName: 'Harussani',
+          ProjectId: '202608_0085D_SS_Rejal_Premium_Packaging',
+          ProjectName: 'SS Rejal Premium Packaging',
+          Client: 'SS',
+          State: 'Running',
+          StartedAt: new Date(now.getTime() - 42 * 60 * 1000).toISOString(),
+          LastHeartbeat: now.toISOString(),
+          ElapsedSeconds: 2520,
+          SessionNotes: 'Polishing 3D box fold UV map and print cutline specs',
+          MachineName: 'STUDIO-AD-01'
+        },
+        {
+          StaffId: 'SS0003',
+          DesignerName: 'Farhan',
+          ProjectId: '202609_0012S_SS_TikTok_Motion_Ads',
+          ProjectName: 'TikTok Motion Ads Loop',
+          Client: 'SS',
+          State: 'Running',
+          StartedAt: new Date(now.getTime() - 15 * 60 * 1000).toISOString(),
+          LastHeartbeat: now.toISOString(),
+          ElapsedSeconds: 900,
+          SessionNotes: 'Motion graphic keyframing',
+          MachineName: 'STUDIO-DESK-03'
+        },
+        {
+          StaffId: 'SS0002',
+          DesignerName: 'Stale Designer',
+          ProjectId: '202601_0001D_SS_Old_Project',
+          ProjectName: 'Old Project',
+          Client: 'SS',
+          State: 'Running',
+          StartedAt: new Date(now.getTime() - 48 * 3600 * 1000).toISOString(),
+          LastHeartbeat: new Date(now.getTime() - 24 * 3600 * 1000).toISOString(), // > 16h stale
+          ElapsedSeconds: 3600,
+          MachineName: 'STALE-PC'
+        }
+      ];
+
+      // Write with BOM
+      const bomBuffer = Buffer.concat([
+        Buffer.from([0xEF, 0xBB, 0xBF]),
+        Buffer.from(JSON.stringify(mockTasks, null, 2), 'utf8')
+      ]);
+      fs.writeFileSync(liveTasksJsonPath, bomBuffer);
+
+      // 3. Read and filter tasks
+      const liveTasks = TeamService.getLiveTasks();
+      assert.ok(Array.isArray(liveTasks), 'Must return array of live tasks');
+      assert.strictEqual(liveTasks.length, 2, 'Stale task (> 16h) must be filtered out');
+
+      const adTask = liveTasks.find(t => t.StaffId === 'SS0004');
+      assert.ok(adTask, 'Harussani live task must be parsed');
+      assert.strictEqual(adTask.DesignerName, 'Harussani');
+      assert.strictEqual(adTask.Client, 'SS');
+      assert.strictEqual(adTask.MachineName, 'STUDIO-AD-01');
+      assert.strictEqual(adTask.ElapsedSeconds, 2520);
+      assert.strictEqual(adTask.SessionNotes, 'Polishing 3D box fold UV map and print cutline specs');
+      assert.ok(adTask.AvatarColor, 'Avatar color must be enriched');
+
+      const motionTask = liveTasks.find(t => t.StaffId === 'SS0003');
+      assert.ok(motionTask, 'Farhan live task must be parsed');
+      assert.strictEqual(motionTask.DesignerName, 'Farhan');
+    } finally {
+      config.WORKSPACE_ROOT = origRoot;
+      try { fs.rmSync(testDir, { recursive: true, force: true }); } catch (e) {}
+    }
+  });
+
   console.log(`\n========================================================`);
   console.log(`Test Results: ${passed} Passed, ${failed} Failed`);
   console.log(`========================================================\n`);

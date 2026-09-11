@@ -64,6 +64,12 @@ interface SscamApiService {
         @Body request: CreateProjectRequest
     ): Response<ProjectItem>
 
+    @PUT("api/projects/{id}")
+    suspend fun updateProject(
+        @Path("id") projectId: String,
+        @Body updates: Map<String, @JvmSuppressWildcards Any?>
+    ): Response<Map<String, Any>>
+
     @GET("api/deliverables")
     suspend fun getDeliverables(
         @Query("projectId") projectId: String? = null
@@ -71,6 +77,9 @@ interface SscamApiService {
 
     @GET("api/team")
     suspend fun getTeam(): Response<TeamResponse>
+
+    @GET("api/team/live-tasks")
+    suspend fun getLiveTasks(): Response<LiveTasksResponse>
 
     @POST("api/projects/{id}/decision")
     suspend fun submitDecision(

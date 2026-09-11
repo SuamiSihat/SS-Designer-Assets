@@ -58,6 +58,28 @@
     }
   }
 
+  function formatDeadlineDisplay(deadline?: string | null, status?: string): string {
+    if (!deadline) return '';
+    const clean = String(deadline).trim();
+    const dt = new Date(clean);
+    if (isNaN(dt.getTime())) return clean.split('T')[0];
+
+    const isCompleted = ['done', 'approved', 'completed'].includes((status || '').toLowerCase());
+    if (isCompleted) {
+      return dt.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const target = new Date(dt);
+    target.setHours(0, 0, 0, 0);
+    const diffDays = Math.ceil((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
+    if (diffDays < 0) return `Overdue ${Math.abs(diffDays)}d`;
+    if (diffDays === 0) return 'Due Today';
+    return `Due in ${diffDays}d`;
+  }
+
   async function loadTeam(silent = false) {
     if (!silent) isLoading = true;
     else isRefreshing = true;
@@ -693,14 +715,24 @@
                           {proj.shortLabel || 'Graphic'} · {proj.slaDays || 3}d SLA
                         </span>
                       {/if}
-                      {#if proj.slotWeight}
-                        <span class="chip-weight" title="Capacity Weight: {proj.slotWeight} slot pts">
-                          {proj.slotWeight} pt{proj.slotWeight > 1 ? 's' : ''}
+                      {#if proj.subtasks && proj.subtasks.length > 0}
+                        {@const completedCount = proj.completedSubtasksCount !== undefined ? proj.completedSubtasksCount : proj.subtasks.filter((s: any) => ['approved', 'done', 'completed'].includes((s.status || '').toLowerCase())).length}
+                        {@const totalPts = proj.totalWeight || proj.slotWeight || proj.subtasks.reduce((sum: number, s: any) => sum + (typeof s.weight === 'number' ? s.weight : 1), 0)}
+                        <span class="chip-weight chip-subtasks" title="{completedCount}/{proj.subtasks.length} subtasks completed • {totalPts} total points">
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right: 3px; vertical-align: -1px; display: inline-block;">
+                            <circle cx="12" cy="12" r="9"/>
+                            <circle cx="12" cy="12" r="4"/>
+                          </svg>
+                          {completedCount}/{proj.subtasks.length} Done • {totalPts} pts
+                        </span>
+                      {:else if proj.slotWeight || proj.totalWeight}
+                        <span class="chip-weight" title="Capacity Weight: {proj.totalWeight || proj.slotWeight} slot pts">
+                          {proj.totalWeight || proj.slotWeight} pt{(proj.totalWeight || proj.slotWeight) > 1 ? 's' : ''}
                         </span>
                       {/if}
-                      {#if proj.deadline}
-                        <span class="chip-deadline" title="Target Deadline">
-                          Due {proj.deadline}
+                      {#if proj.deadlineDisplay || proj.deadline}
+                        <span class="chip-deadline" title="Target Deadline: {proj.deadline ? String(proj.deadline).split('T')[0] : ''}">
+                          {proj.deadlineDisplay || formatDeadlineDisplay(proj.deadline, proj.status)}
                         </span>
                       {/if}
                     </div>
@@ -1504,6 +1536,8 @@
     color: #C084FC;
     border: 1px solid rgba(168, 85, 247, 0.2);
     white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
   }
 
   .chip-deadline {

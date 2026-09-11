@@ -1,6 +1,6 @@
 # SS-CAM Project Roadmap
 
-> **Living document.** Updated with every release. Last updated: 2026-09-09.
+> **Living document.** Updated with every release. Last updated: 2026-09-11.
 
 ---
 
@@ -48,10 +48,12 @@
 | **v4.7.0** | 2026-09-09 | **Velocity Navigation Engine, Canva Cloud Bridge, Per-User Team Storage & Visual Timeline Alignment**: 0 ms desktop navigation (`NavigationCacheMode="Required"`), Canva Creative Cloud Bridge with platform auto-size launcher and `.url` scaffolding, per-user team storage architecture (`_Team/Users/{staffId}/avatar.jpg` + `profile.json`), bi-directional avatar synchronization across Web/Desktop/Android, Big Calendar 3-letter day names (`Mon..Sun`), holiday-strict red highlighting, and off-day schedule conflict prevention |
 | **v4.8.0** | 2026-09-09 | **Interactive Visual Asset Revision Diff Slider, Copywriting Studio Live Preview & Cross-Platform Avatar Sync**: 5-mode Fluent 2 Visual Diff Inspector (Vertical/Horizontal Split swipe, Side-by-Side dual view, Opacity Blend onion skin, 32bpp Euclidean Pixel Difference mapping), automated revision pair detection (`_v1` → `_v2`, `draft` → `final`), synchronized lockstep zoom & pan, Copywriting Studio split-view live preview (WhatsApp chat & Meta Ad feed simulation with OG previews and 1-click exporters), per-user team storage architecture, and zero-warning Source Guardian audit |
 | **v4.8.1** | 2026-09-10 | **Global Studio Command Palette (`Ctrl + K`), Art Director 60-30-10 Polish, Live Work Session Stopwatch, Real-Time Team Task Stream & Creative Operations Upgrade**: Universal keyboard quick-launcher for 15 modules, brand colors, and copy hooks; 60-30-10 Fluent 2 visual hierarchy; live stopwatch, project status pill, and crash-resilient session tracker drawer; real-time studio live tasks feed on Main Dashboard (`LiveTaskSyncService`); team task start/resume desktop toast notifications; comprehensive resolution of dropdown text cropping, baseline clipping, and mnemonic underscore stripping across all views; Creative Request low-priority intake tier (`tier_0`), contextual Digital vs. Print format & material architecture, full request editing, "Added to Backlog" intake refinement, and pure production queue cleanup |
+| **v4.8.2** | 2026-09-11 | **Art Director Deliverables & Subtask Engine, Tri-Platform Real-Time Sync & Dashboard KPI Automation**: Canonical deliverables & subtask management architecture (`subtasks:` frontmatter schema with weight points, deliverable specs, and designer attribution); 1-tap interactive status progression (`Draft` ➔ `In Progress` ➔ `Done`) across Desktop Task Manager, Web Deliverables Gallery, and Android Companion; Desktop FileSystemWatcher integration in `DashboardPage` and `TaskManagerPage` ensuring 100% real-time KPI card telemetry; Web Portal REST API `PUT /api/projects/:id` subtask ingestion, live memory cache refresh, and SSE `project:updated` broadcasting; Android Native Companion `updateProject` API wiring with instant optimistic state updates and direct `README.md` syncing; and YAML frontmatter parser nesting hierarchy fix in `FrontmatterService.cs` preventing child subtask statuses from overriding top-level project status |
+| **v4.9.0** | 2026-09-11 | **Art Director Ecosystem Unification (Live Studio Workstream Telemetry, Command Palette v3.5.1, Packaging Deliverables & Tri-Platform Parity)**: Tri-platform live studio telemetry (`_Team/live_tasks.json`, Web Live Radar & Top Pulse Pill, Android Standby Desk Companion pulsing ticker & Team Hub live workstream); Master Brand System v3.5.1 (16 official SSoT color tokens with Shift-click CSS token copy, 7 high-converting Malay marketing hooks); packaging dieline deliverables (`pkg_box_sleeve`, `pkg_label`) with custom dimensions and material substrates; `tier_0` Low/Pipeline intake priority; and full Android Companion App release build (`app-release.aab` 5.76 MB RSA-signed + standalone APK) |
 
 ---
 
-## 🎯 Active Milestone — v4.9.0: Smart Ingester & Copywriting Diff Engine (Target: Q4 2026)
+## 🎯 Active Milestone — v4.10.0: Smart Ingester & Copywriting Diff Engine (Target: Q4 2026)
 
 ### 1. Drag-and-Drop Folder Ingester
 * Drag external assets directly onto project cards in Project Creator or Search Copy to automatically ingest and organize into `01_BRIEF_ASSETS`, `02_SOURCE`, etc.
@@ -61,16 +63,6 @@
 
 ### 3. AI Brief Intelligence & Style Preflight Assistant
 * Integrated LLM assistant to validate brief completeness, detect tone deviations, and auto-suggest missing brand tokens.
-
----
-
-## 🔮 Planned — v4.9.0: Global Studio Command Palette & Ingester (Target: Q4 2026)
-
-### 1. Global Command Palette (`Ctrl + K`)
-* Universal keyboard launcher for jumping to projects, copying brand hex codes, searching snippets, or toggling radio stations without leaving the current view.
-
-### 2. Drag-and-Drop Folder Ingester
-* Drag external assets directly onto project cards in Project Creator to automatically organize into `01_BRIEF_ASSETS`, `02_SOURCE_FILES`, etc.
 
 ---
 

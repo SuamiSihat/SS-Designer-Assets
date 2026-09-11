@@ -22,6 +22,7 @@ namespace SS_CAM.Views
         private string _workspaceRoot = "";
         private List<ProjectStatusItem> _allProjects = new List<ProjectStatusItem>();
         private ProjectStatusItem _editingProject = null;
+        private string _editingSubtaskId = null;
 
         private bool _isPopulatingFilter = false;
         private bool _isPopulatingDetail = false;
@@ -276,13 +277,13 @@ namespace SS_CAM.Views
                 foreach (ProjectStatusItem p in _allProjects)
                 {
                     if (p == null) continue;
-                    string status = (p.Status ?? "").ToLowerInvariant();
-                    string priority = (p.Priority ?? "").ToLowerInvariant();
+                    string status = (p.Status ?? "").Trim().Trim('"', '\'').ToLowerInvariant();
+                    string priority = (p.Priority ?? "").Trim().Trim('"', '\'').ToLowerInvariant();
                     string deadlineDisp = p.DeadlineDisplay ?? "";
 
-                    if (status == "in-progress" || status == "revision") inProgressCount++;
-                    else if (status == "review") reviewCount++;
-                    else if (status == "done" || status == "approved") doneCount++;
+                    if (status == "in-progress" || status == "in_progress" || status == "inprogress" || status == "in progress" || status == "revision" || status == "revision_required" || status == "revision-required") inProgressCount++;
+                    else if (status == "review" || status == "in-review" || status == "in_review") reviewCount++;
+                    else if (status == "done" || status == "approved" || status == "completed") doneCount++;
 
                     if (status != "done" && status != "approved" && status != "completed")
                     {
@@ -446,12 +447,12 @@ namespace SS_CAM.Views
                 foreach (ProjectStatusItem p in projects)
                 {
                     if (p == null) continue;
-                    string s = (p.Status ?? "").ToLowerInvariant();
+                    string s = (p.Status ?? "").Trim().Trim('"', '\'').ToLowerInvariant();
                     if (s == "backlog") backlog.Add(p);
-                    else if (s == "in-progress") inProgress.Add(p);
-                    else if (s == "review") review.Add(p);
-                    else if (s == "revision") revision.Add(p);
-                    else if (s == "done" || s == "approved") done.Add(p);
+                    else if (s == "in-progress" || s == "in_progress" || s == "inprogress" || s == "in progress") inProgress.Add(p);
+                    else if (s == "review" || s == "in-review" || s == "in_review") review.Add(p);
+                    else if (s == "revision" || s == "revision-required" || s == "revision_required") revision.Add(p);
+                    else if (s == "done" || s == "approved" || s == "completed") done.Add(p);
                     else other.Add(p);   // on-hold, untracked, empty
                 }
 
@@ -749,18 +750,23 @@ namespace SS_CAM.Views
                 FrameworkElement targetEl = sender as FrameworkElement;
                 string targetStatus = targetEl != null ? targetEl.Tag as string : null;
 
-                if (item != null && !string.IsNullOrEmpty(targetStatus) && !string.Equals(item.Status, targetStatus, StringComparison.OrdinalIgnoreCase))
+                if (item != null && !string.IsNullOrEmpty(targetStatus))
                 {
-                    item.Status = targetStatus;
-                    FrontmatterService.WriteStatus(item);
+                    string cur = (item.Status ?? "").Trim().Trim('"', '\'').ToLowerInvariant();
+                    string tgt = targetStatus.Trim().Trim('"', '\'').ToLowerInvariant();
+                    if (!string.Equals(cur, tgt, StringComparison.OrdinalIgnoreCase))
+                    {
+                        item.Status = targetStatus;
+                        FrontmatterService.WriteStatus(item);
 
-                    NotificationService.ShowSuccess(
-                        "Project Status Updated",
-                        string.Format("'{0}' moved to {1}", item.Project, targetStatus),
-                        item.FullPath);
+                        NotificationService.ShowSuccess(
+                            "Project Status Updated",
+                            string.Format("'{0}' moved to {1}", item.Project, targetStatus),
+                            item.FullPath);
 
-                    UpdateMetricSummaryCards();
-                    ApplyFiltersAndUpdateBoard();
+                        UpdateMetricSummaryCards();
+                        ApplyFiltersAndUpdateBoard();
+                    }
                 }
             }
             catch (Exception ex)
@@ -812,6 +818,11 @@ namespace SS_CAM.Views
             if (DetailDuration != null) DetailDuration.Text = item.Duration ?? "";
             DetailRevision.Text = item.Revision.ToString();
             if (DetailDesigner != null) DetailDesigner.Text = item.Designer ?? "";
+
+            // Populate Subtasks section
+            _editingSubtaskId = null;
+            if (SubtaskEditorCard != null) SubtaskEditorCard.Visibility = Visibility.Collapsed;
+            PopulateDetailSubtasks(item);
 
             // Load README body content notes
             string body = FrontmatterService.ReadBody(item.FullPath);
@@ -1043,6 +1054,224 @@ namespace SS_CAM.Views
             catch (Exception ex)
             {
                 DetailSaveStatus.Text = string.Format("Error: {0}", ex.Message);
+            }
+        }
+
+        private void PopulateDetailSubtasks(ProjectStatusItem item)
+        {
+            if (item == null) return;
+            try
+            {
+                if (ListDetailSubtasks != null)
+                {
+                    ListDetailSubtasks.ItemsSource = null;
+                    ListDetailSubtasks.ItemsSource = item.Subtasks;
+                }
+                if (DetailSubtasksProgressBar != null)
+                {
+                    DetailSubtasksProgressBar.Value = item.SubtaskProgressPercent;
+                }
+                if (TxtDetailSubtasksProgress != null)
+                {
+                    TxtDetailSubtasksProgress.Text = string.Format("({0}/{1} Done • {2:0.#} pts)", item.CompletedSubtasksCount, item.TotalSubtasksCount, item.TotalWeight);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("[TaskManagerPage] PopulateDetailSubtasks error: " + ex.Message);
+            }
+        }
+
+        private void OnSubtaskStatusToggleClicked(object sender, RoutedEventArgs e)
+        {
+            FrameworkElement btn = sender as FrameworkElement;
+            string subtaskId = btn != null ? btn.Tag as string : null;
+            if (string.IsNullOrWhiteSpace(subtaskId) || _editingProject == null || _editingProject.Subtasks == null) return;
+
+            var st = _editingProject.Subtasks.Find(s => string.Equals(s.Id, subtaskId, StringComparison.OrdinalIgnoreCase));
+            if (st == null) return;
+
+            // Cycle: Draft -> In Progress -> Done -> Draft
+            string currentStatus = (st.Status ?? "draft").ToLowerInvariant().Trim();
+            if (currentStatus == "draft") st.Status = "in-progress";
+            else if (currentStatus == "in-progress" || currentStatus == "progress" || currentStatus == "review" || currentStatus == "revision") st.Status = "done";
+            else st.Status = "draft";
+
+            // Save immediately to README.md
+            FrontmatterService.WriteStatus(_editingProject);
+            PopulateDetailSubtasks(_editingProject);
+            ApplyFiltersAndUpdateBoard();
+            UpdateMetricSummaryCards();
+        }
+
+        private void OnAddSubtaskClicked(object sender, RoutedEventArgs e)
+        {
+            if (_editingProject == null) return;
+            if (_editingProject.Subtasks == null) _editingProject.Subtasks = new List<ProjectSubtaskItem>();
+
+            int nextNum = _editingProject.Subtasks.Count + 1;
+            bool isVideo = (!string.IsNullOrEmpty(_editingProject.Project) && _editingProject.Project.IndexOf("V_", StringComparison.OrdinalIgnoreCase) >= 0);
+            string id = string.Format("{0}{1:D2}", isVideo ? "V" : "KV", nextNum);
+            string name = isVideo ? (nextNum == 1 ? "Master Story Cut 60s" : string.Format("Hook Variation {0} 15s", (char)('A' + nextNum - 2))) : string.Format("Key Visual {0}", nextNum);
+            double weight = isVideo ? (nextNum == 1 ? 2.0 : 0.4) : (nextNum == 1 ? 1.0 : 0.2);
+
+            _editingSubtaskId = null; // New item mode
+            if (TxtSubtaskEditorTitle != null) TxtSubtaskEditorTitle.Text = "Add Deliverable / Subtask";
+            if (EditSubtaskId != null) EditSubtaskId.Text = id;
+            if (EditSubtaskName != null) EditSubtaskName.Text = name;
+            if (EditSubtaskSpecs != null) EditSubtaskSpecs.Text = isVideo ? "9:16, 1080x1920" : "1:1, 1080x1080";
+            if (EditSubtaskType != null) EditSubtaskType.Text = isVideo ? (nextNum == 1 ? "master_video" : "hook_variation") : (nextNum == 1 ? "key_visual" : "resize");
+            if (EditSubtaskWeight != null) EditSubtaskWeight.Text = weight.ToString("0.#");
+            if (EditSubtaskStatus != null) EditSubtaskStatus.SelectedIndex = 0; // Default: Draft
+
+            if (SubtaskEditorCard != null)
+            {
+                SubtaskEditorCard.Visibility = Visibility.Visible;
+                if (EditSubtaskName != null) EditSubtaskName.Focus();
+            }
+        }
+
+        private void OnEditSubtaskClicked(object sender, RoutedEventArgs e)
+        {
+            FrameworkElement btn = sender as FrameworkElement;
+            string subtaskId = btn != null ? btn.Tag as string : null;
+            if (string.IsNullOrWhiteSpace(subtaskId) || _editingProject == null || _editingProject.Subtasks == null) return;
+
+            var st = _editingProject.Subtasks.Find(s => string.Equals(s.Id, subtaskId, StringComparison.OrdinalIgnoreCase));
+            if (st == null) return;
+
+            _editingSubtaskId = st.Id;
+            if (TxtSubtaskEditorTitle != null) TxtSubtaskEditorTitle.Text = string.Format("Edit Deliverable: {0}", st.Id);
+            if (EditSubtaskId != null) EditSubtaskId.Text = st.Id ?? "";
+            if (EditSubtaskName != null) EditSubtaskName.Text = st.Name ?? "";
+            if (EditSubtaskSpecs != null) EditSubtaskSpecs.Text = st.Specs ?? "";
+            if (EditSubtaskType != null) EditSubtaskType.Text = st.Type ?? "";
+            if (EditSubtaskWeight != null) EditSubtaskWeight.Text = st.Weight.ToString("0.#");
+
+            if (EditSubtaskStatus != null)
+            {
+                string norm = (st.Status ?? "draft").ToLowerInvariant().Trim();
+                if (norm == "done" || norm == "approved") EditSubtaskStatus.SelectedIndex = 2;
+                else if (norm == "in-progress" || norm == "progress" || norm == "review" || norm == "revision") EditSubtaskStatus.SelectedIndex = 1;
+                else EditSubtaskStatus.SelectedIndex = 0; // Draft
+            }
+
+            if (SubtaskEditorCard != null)
+            {
+                SubtaskEditorCard.Visibility = Visibility.Visible;
+                if (EditSubtaskName != null) EditSubtaskName.Focus();
+            }
+        }
+
+        private void OnCancelSubtaskEditClicked(object sender, RoutedEventArgs e)
+        {
+            _editingSubtaskId = null;
+            if (SubtaskEditorCard != null)
+            {
+                SubtaskEditorCard.Visibility = Visibility.Collapsed;
+            }
+        }
+
+        private void OnSaveSubtaskEditClicked(object sender, RoutedEventArgs e)
+        {
+            if (_editingProject == null) return;
+            if (_editingProject.Subtasks == null) _editingProject.Subtasks = new List<ProjectSubtaskItem>();
+
+            string id = EditSubtaskId != null ? EditSubtaskId.Text.Trim() : "";
+            string name = EditSubtaskName != null ? EditSubtaskName.Text.Trim() : "";
+            string specs = EditSubtaskSpecs != null ? EditSubtaskSpecs.Text.Trim() : "";
+            string type = EditSubtaskType != null ? EditSubtaskType.Text.Trim() : "";
+            string weightRaw = EditSubtaskWeight != null ? EditSubtaskWeight.Text.Trim() : "";
+
+            if (string.IsNullOrWhiteSpace(id)) id = string.Format("ST{0:D2}", _editingProject.Subtasks.Count + 1);
+            if (string.IsNullOrWhiteSpace(name)) name = "Untitled Deliverable";
+            if (string.IsNullOrWhiteSpace(specs)) specs = "1080x1080";
+            if (string.IsNullOrWhiteSpace(type)) type = "artwork";
+
+            // Clean specs if selected from verbose combo item like "9:16, 1080x1920 (Reels...)"
+            if (specs.Contains("(") && specs.IndexOf("(") > 3)
+            {
+                specs = specs.Substring(0, specs.IndexOf("(")).Trim();
+            }
+
+            // Parse weight safely
+            double weight = 1.0;
+            if (!string.IsNullOrWhiteSpace(weightRaw))
+            {
+                string match = System.Text.RegularExpressions.Regex.Match(weightRaw, @"\d+(\.\d+)?").Value;
+                if (!double.TryParse(match, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out weight))
+                {
+                    weight = 1.0;
+                }
+            }
+
+            // Map status
+            string status = "draft";
+            if (EditSubtaskStatus != null)
+            {
+                if (EditSubtaskStatus.SelectedIndex == 1) status = "in-progress";
+                else if (EditSubtaskStatus.SelectedIndex == 2) status = "done";
+                else status = "draft";
+            }
+
+            if (!string.IsNullOrWhiteSpace(_editingSubtaskId))
+            {
+                var existing = _editingProject.Subtasks.Find(s => string.Equals(s.Id, _editingSubtaskId, StringComparison.OrdinalIgnoreCase));
+                if (existing != null)
+                {
+                    existing.Id = id;
+                    existing.Name = name;
+                    existing.Specs = specs;
+                    existing.Type = type;
+                    existing.Weight = weight;
+                    existing.Status = status;
+                }
+                NotificationService.ShowSuccess("Deliverable Updated", string.Format("Updated '{0}' ({1:0.#} pts)", name, weight), _editingProject.FullPath);
+            }
+            else
+            {
+                var newItem = new ProjectSubtaskItem
+                {
+                    Id = id,
+                    Name = name,
+                    Specs = specs,
+                    Type = type,
+                    Weight = weight,
+                    Status = status,
+                    AssignedDesigner = _editingProject.Designer ?? ""
+                };
+                _editingProject.Subtasks.Add(newItem);
+                NotificationService.ShowSuccess("Deliverable Added", string.Format("Added '{0}' ({1:0.#} pts)", name, weight), _editingProject.FullPath);
+            }
+
+            _editingSubtaskId = null;
+            if (SubtaskEditorCard != null) SubtaskEditorCard.Visibility = Visibility.Collapsed;
+
+            FrontmatterService.WriteStatus(_editingProject);
+            PopulateDetailSubtasks(_editingProject);
+            ApplyFiltersAndUpdateBoard();
+            UpdateMetricSummaryCards();
+        }
+
+        private void OnRemoveSubtaskClicked(object sender, RoutedEventArgs e)
+        {
+            FrameworkElement btn = sender as FrameworkElement;
+            string subtaskId = btn != null ? btn.Tag as string : null;
+            if (string.IsNullOrWhiteSpace(subtaskId) || _editingProject == null || _editingProject.Subtasks == null) return;
+
+            var st = _editingProject.Subtasks.Find(s => string.Equals(s.Id, subtaskId, StringComparison.OrdinalIgnoreCase));
+            if (st != null)
+            {
+                if (string.Equals(_editingSubtaskId, st.Id, StringComparison.OrdinalIgnoreCase))
+                {
+                    _editingSubtaskId = null;
+                    if (SubtaskEditorCard != null) SubtaskEditorCard.Visibility = Visibility.Collapsed;
+                }
+                _editingProject.Subtasks.Remove(st);
+                FrontmatterService.WriteStatus(_editingProject);
+                PopulateDetailSubtasks(_editingProject);
+                ApplyFiltersAndUpdateBoard();
+                UpdateMetricSummaryCards();
             }
         }
 

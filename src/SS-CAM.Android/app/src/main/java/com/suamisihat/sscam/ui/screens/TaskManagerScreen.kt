@@ -43,7 +43,10 @@ fun TaskManagerScreen(
     projects: List<ProjectItem>,
     onSignOff: (ProjectItem) -> Unit = {},
     onRevise: (ProjectItem) -> Unit = {},
-    onCreateNewTask: (title: String, desc: String, brand: String, priority: String) -> Unit = { _, _, _, _ -> }
+    onCreateNewTask: (title: String, desc: String, brand: String, priority: String) -> Unit = { _, _, _, _ -> },
+    onUpdateProjectStatus: (projectId: String, newStatus: String) -> Unit = { _, _ -> },
+    onSaveReadme: (projectId: String, newReadme: String) -> Unit = { _, _ -> },
+    onUpdateSubtasks: (projectId: String, newSubtasks: List<com.suamisihat.sscam.data.models.SubtaskItem>) -> Unit = { _, _ -> }
 ) {
     val context = LocalContext.current
     val colors = LocalSscamColors.current
@@ -261,10 +264,13 @@ fun TaskManagerScreen(
                 project = projectToManage,
                 onDismiss = { selectedProjectForManage = null },
                 onUpdateStatus = { newStatus ->
-                    android.widget.Toast.makeText(context, "Status updated to '$newStatus'", android.widget.Toast.LENGTH_SHORT).show()
+                    onUpdateProjectStatus(projectToManage.id, newStatus)
                 },
-                onSaveReadme = { _ ->
-                    android.widget.Toast.makeText(context, "README.md synced with NAS storage", android.widget.Toast.LENGTH_SHORT).show()
+                onSaveReadme = { newReadme ->
+                    onSaveReadme(projectToManage.id, newReadme)
+                },
+                onUpdateSubtasks = { updatedSubtasks ->
+                    onUpdateSubtasks(projectToManage.id, updatedSubtasks)
                 }
             )
         }

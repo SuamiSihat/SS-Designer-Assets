@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 
 namespace SS_CAM.Models
@@ -16,6 +16,9 @@ namespace SS_CAM.Models
         public int Revision { get; set; }
         public List<string> Tags { get; set; }
         public bool HasFrontmatter { get; set; }
+
+        public List<ProjectSubtaskItem> Subtasks { get; set; }
+        public double CategoryWeight { get; set; }
 
         public string Duration { get; set; }
 
@@ -48,10 +51,91 @@ namespace SS_CAM.Models
             Priority = "medium";
             Revision = 0;
             Tags = new List<string>();
+            Subtasks = new List<ProjectSubtaskItem>();
+            CategoryWeight = 1.0;
             HasFrontmatter = false;
             CreatedDate = "";
             Duration = "";
             CanvaUrl = "";
+        }
+
+        public int TotalSubtasksCount
+        {
+            get { return Subtasks != null ? Subtasks.Count : 0; }
+        }
+
+        public int CompletedSubtasksCount
+        {
+            get { return Subtasks != null ? Subtasks.FindAll(s => s.IsCompleted).Count : 0; }
+        }
+
+        public double TotalWeight
+        {
+            get
+            {
+                if (Subtasks != null && Subtasks.Count > 0)
+                {
+                    double sum = 0;
+                    for (int i = 0; i < Subtasks.Count; i++) sum += Subtasks[i].Weight;
+                    return Math.Round(sum, 1);
+                }
+                if (CategoryWeight > 0) return Math.Round(CategoryWeight, 1);
+                if (!string.IsNullOrEmpty(Project))
+                {
+                    if (Project.IndexOf("V_", StringComparison.OrdinalIgnoreCase) >= 0) return 2.0;
+                    if (Project.IndexOf("P_", StringComparison.OrdinalIgnoreCase) >= 0) return 2.5;
+                    if (Project.IndexOf("W_", StringComparison.OrdinalIgnoreCase) >= 0) return 1.5;
+                }
+                return 1.0;
+            }
+        }
+
+        public double ActiveWeight
+        {
+            get
+            {
+                if (Subtasks != null && Subtasks.Count > 0)
+                {
+                    double sum = 0;
+                    for (int i = 0; i < Subtasks.Count; i++)
+                    {
+                        if (!Subtasks[i].IsCompleted) sum += Subtasks[i].Weight;
+                    }
+                    return Math.Round(sum, 1);
+                }
+                return IsCompletedStatus ? 0.0 : TotalWeight;
+            }
+        }
+
+        public double SubtaskProgressPercent
+        {
+            get
+            {
+                if (TotalSubtasksCount == 0) return IsCompletedStatus ? 100.0 : 0.0;
+                return Math.Min(100.0, Math.Round(((double)CompletedSubtasksCount / TotalSubtasksCount) * 100.0, 0));
+            }
+        }
+
+        public string SubtaskProgressDisplay
+        {
+            get
+            {
+                if (TotalSubtasksCount == 0) return string.Format("{0:0.#} pts", TotalWeight);
+                return string.Format("{0}/{1} Done • {2:0.#} pts", CompletedSubtasksCount, TotalSubtasksCount, TotalWeight);
+            }
+        }
+
+        public System.Windows.Visibility SubtaskProgressVisibility
+        {
+            get
+            {
+                return TotalSubtasksCount > 0 ? System.Windows.Visibility.Visible : System.Windows.Visibility.Collapsed;
+            }
+        }
+
+        public bool IsHighLoad
+        {
+            get { return ActiveWeight >= 4.0 || TotalWeight >= 5.0; }
         }
 
         public DateTime ParsedCreatedDate
@@ -118,16 +202,17 @@ namespace SS_CAM.Models
         {
             get
             {
-                if (Status == "in-progress") return "In Progress";
-                if (Status == "on-hold") return "On Hold";
-                if (Status == "revision") return "Revision Required";
-                if (Status == "approved") return "Approved";
-                if (Status == "review") return "Review Queue";
-                if (Status == "done") return "Done";
-                if (Status == "backlog") return "Backlog";
+                string s = (Status ?? "").Trim().Trim('"', '\'').ToLowerInvariant();
+                if (s == "in-progress" || s == "in_progress" || s == "inprogress" || s == "in progress") return "In Progress";
+                if (s == "on-hold" || s == "on_hold" || s == "onhold" || s == "on hold") return "On Hold";
+                if (s == "revision" || s == "revision_required" || s == "revision-required") return "Revision Required";
+                if (s == "approved") return "Approved";
+                if (s == "review" || s == "in-review" || s == "in_review") return "Review Queue";
+                if (s == "done" || s == "completed") return "Done";
+                if (s == "backlog") return "Backlog";
                 if (string.IsNullOrWhiteSpace(Status)) return "Untracked";
-                string s = Status;
-                return char.ToUpper(s[0]) + s.Substring(1);
+                string clean = Status.Trim();
+                return char.ToUpper(clean[0]) + clean.Substring(1);
             }
         }
 
@@ -135,11 +220,12 @@ namespace SS_CAM.Models
         {
             get
             {
-                if (Status == "done" || Status == "approved") return "#10B981";
-                if (Status == "review") return "#F59E0B";
-                if (Status == "revision") return "#D97706";
-                if (Status == "in-progress") return "#0078D4";
-                if (Status == "on-hold") return "#64748B";
+                string s = (Status ?? "").Trim().Trim('"', '\'').ToLowerInvariant();
+                if (s == "done" || s == "approved" || s == "completed") return "#10B981";
+                if (s == "review" || s == "in-review" || s == "in_review") return "#F59E0B";
+                if (s == "revision" || s == "revision_required" || s == "revision-required") return "#D97706";
+                if (s == "in-progress" || s == "in_progress" || s == "inprogress" || s == "in progress") return "#0078D4";
+                if (s == "on-hold" || s == "on_hold" || s == "onhold" || s == "on hold") return "#64748B";
                 return "#8B5CF6";
             }
         }
@@ -180,7 +266,7 @@ namespace SS_CAM.Models
         {
             get
             {
-                string s = (Status ?? "").ToLowerInvariant().Trim();
+                string s = (Status ?? "").Trim().Trim('"', '\'').ToLowerInvariant();
                 return s == "done" || s == "approved" || s == "completed";
             }
         }
@@ -292,6 +378,73 @@ namespace SS_CAM.Models
                 string[] parts = d.Split(new[] { ' ', '_', '-' }, StringSplitOptions.RemoveEmptyEntries);
                 if (parts.Length >= 2) return (parts[0][0].ToString() + parts[1][0].ToString()).ToUpper();
                 return d.Substring(0, 1).ToUpper();
+            }
+        }
+    }
+
+    public class ProjectSubtaskItem
+    {
+        public string Id { get; set; }           // e.g. "V01", "KV01"
+        public string Name { get; set; }         // e.g. "Master 60s Cut", "Feed 1080x1080"
+        public string Type { get; set; }         // master_video | hook_variation | key_visual | resize | cutdown
+        public double Weight { get; set; }       // e.g. 2.0, 0.4, 1.0, 0.2
+        public string Status { get; set; }       // draft | in-progress | review | approved
+        public string Specs { get; set; }        // "1080x1920, 60s"
+        public string AssignedDesigner { get; set; }
+
+        public ProjectSubtaskItem()
+        {
+            Id = "";
+            Name = "";
+            Type = "standard";
+            Weight = 1.0;
+            Status = "draft";
+            Specs = "";
+            AssignedDesigner = "";
+        }
+
+        public bool IsCompleted
+        {
+            get
+            {
+                string s = (Status ?? "").ToLowerInvariant().Trim();
+                return s == "approved" || s == "done" || s == "completed";
+            }
+        }
+
+        public string StatusBadgeColor
+        {
+            get
+            {
+                string s = (Status ?? "").ToLowerInvariant().Trim();
+                if (s == "approved" || s == "done") return "#10B981";
+                if (s == "in-progress" || s == "progress") return "#0078D4";
+                if (s == "review") return "#F59E0B";
+                if (s == "revision") return "#D97706";
+                return "#64748B";
+            }
+        }
+
+        public string StatusDisplay
+        {
+            get
+            {
+                string s = (Status ?? "").ToLowerInvariant().Trim();
+                if (s == "done" || s == "approved") return "Done";
+                if (s == "in-progress" || s == "progress") return "In Progress";
+                if (s == "draft") return "Draft";
+                if (s == "review") return "Review";
+                if (s == "revision") return "Revision";
+                if (string.IsNullOrWhiteSpace(s)) return "Draft";
+                return char.ToUpper(s[0]) + s.Substring(1);
+            }
+        }
+
+        public string WeightDisplay
+        {
+            get
+            {
+                return string.Format("{0:0.#} pt{1}", Weight, Weight == 1.0 ? "" : "s");
             }
         }
     }

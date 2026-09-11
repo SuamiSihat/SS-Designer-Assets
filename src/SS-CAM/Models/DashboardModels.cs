@@ -51,14 +51,33 @@ namespace SS_CAM.Models
         public int RevisionCount { get; set; }
         public int DoneCount { get; set; }
         public int OverdueCount { get; set; }
+        public double ActiveWeight { get; set; }
+        public double TotalWeight { get; set; }
+        public int TotalDeliverablesCount { get; set; }
         public double CapacityPercent { get; set; }
         public string CapacityStatus { get; set; }
         public string CapacityColor { get; set; }
+
+        public string ActiveWeightDisplay
+        {
+            get { return string.Format("{0:0.#} pts", ActiveWeight); }
+        }
+
+        public string WorkloadSubtitle
+        {
+            get
+            {
+                return string.Format("{0} active • {1:0.#} pts", ActiveCount, ActiveWeight);
+            }
+        }
 
         public DesignerWorkloadItem()
         {
             CapacityStatus = "Optimal";
             CapacityColor = "#10B981"; // Success Green
+            ActiveWeight = 0;
+            TotalWeight = 0;
+            TotalDeliverablesCount = 0;
         }
     }
 

@@ -2,6 +2,45 @@
 
 All notable SS-CAM changes are documented here.
 
+## [4.9.0] - 2026-09-11 (Art Director Ecosystem Unification: Live Studio Workstream Telemetry, Command Palette v3.5.1, Packaging Deliverables & Tri-Platform Parity)
+
+### Added & Refined — Live Studio Telemetry & Workstream Pulse (Web, Desktop, Android)
+- **Live Studio Telemetry Backend (`TeamService.js`, `WorkspaceService.js`, `api.js`)**:
+  - Implemented `GET /api/team/live-tasks` reading `<WorkspaceRoot>/_Team/live_tasks.json` with UTF-8 BOM safety and 16-hour session freshness filter.
+  - Connected Chokidar file watcher to broadcast real-time Server-Sent Events (`live_tasks:updated`) across all connected browser clients upon filesystem mutation.
+  - Main Dashboard Live Workstream Card (`DashboardView.svelte`): Added high-visibility studio radar card above the creative pipeline funnel with real-time ticking stopwatches for each active designer workstation.
+  - Header Studio Pulse Pill (`App.svelte`): Added ambient indicator (`● {N} in Studio` / `● Studio Idle`) with dropdown flyout previewing active tasks, workstation machine IDs, and direct 1-click project navigation.
+- **Android Companion Live Studio Telemetry (`DeskCompanionMode.kt`, `TeamHubScreen.kt`, `MainActivity.kt`)**:
+  - Connected `SscamApiService.getLiveTasks()` to `ProjectCacheManager` with disk persistence and automatic polling.
+  - **Standby Desk Companion Mode (`DeskCompanionMode.kt`)**: Added infinite pulsing Emerald telemetry ticker (`● N IN STUDIO • DESIGNER: TASK`) and upgraded landscape/portrait focus cards with live workstation activity, designer initials, and elapsed stopwatch. Fixed launch conditional in `MainActivity.kt`.
+  - **Team Hub (`TeamHubScreen.kt`)**: Added elevated `LIVE STUDIO WORKSTREAM` card section above the capacity overview displaying real-time designer stopwatches, initials avatars, and session notes.
+
+### Added & Refined — Master Brand System v3.5.1 & Command Palette Alignment
+- **Global Web Command Palette (`Ctrl + K`) (`CommandPaletteModal.svelte`)**:
+  - Upgraded to 5 reactive category filter tabs: `All Results`, `Projects`, `Brand Colors`, `Copywriting Hooks`, and `Studio Actions`.
+  - Expanded brand tokens to the 16 official Single-Source-of-Truth tokens (Core Blues, Luxury Golds, Canary Yellows, Canvases, Semantic Status, and Grayscale 80).
+  - Added dual-action copying: Normal click copies HEX color code (`#043388`); <kbd>Shift</kbd> + Click copies official CSS token variable (`var(--ss-blue)`).
+  - Embedded pre-scaffolded direct-response marketing hooks directory with 1-click clipboard copying.
+- **Android Brand Hub Screen (`BrandHubScreen.kt`)**:
+  - Embedded the full 16 official v3.5.1 color tokens with 1-tap clipboard copying.
+  - Added Packaging Dieline specifications to Media Specs tab.
+  - Expanded copy snippet vault to 7 categorized high-converting Malay hooks with 1-tap copying for headline, body, and CTA.
+
+### Added & Refined — Packaging Deliverables & Creative Orders Intake
+- **Contextual Packaging Formats (`DashboardCompanionScreen.kt`, `OrderFormView.svelte`, `Models.kt`)**:
+  - Integrated dedicated packaging dieline types: `pkg_box_sleeve` (Packaging Box & Sleeve) and `pkg_label` (Bottle / Jar / Vial Label) with 300 DPI CMYK and die-cut bleed specs.
+  - Added strategic `tier_0` (`🗓️ Low / Pipeline`) priority tier across Web and Android Order Creation modals with automatic scheduling guidance.
+  - Standardized physical substrate chips (`Art Card 260/310gsm`, `Mirrorkote Gloss`, `Synthetic Vinyl`) and millimetre dimension inputs.
+
+### Release Artifacts & Verification
+| Artifact | Platform / Target | Specifications | Status |
+|---|---|---|---|
+| `dist/SS-CAM-v4.9.0.exe` | Windows 10/11 x64 | .NET Framework 4.8 WPF Single-File Binary (5.96 MB) | **Verified** |
+| `dist/SS-CAM.exe` | Windows 10/11 x64 | Latest Production Canonical Exe | **Verified** |
+| `src/SS-CAM.Android/app/build/outputs/bundle/release/app-release.aab` | Android 8.0+ (API 26–36) | Production Android App Bundle, RSA 2048 Signed (5.76 MB) | **Verified** |
+| `src/SS-CAM.Android/app/build/outputs/apk/release/app-release.apk` | Android 8.0+ (API 26–36) | Standalone Release APK | **Verified** |
+| `src/SS-CAM.Web/client/dist/` | Docker / Node.js 20 | Svelte 5 + Vite Production Web Bundle | **Verified** |
+
 ## [4.8.1] - 2026-09-10 (Global Studio Command Palette Ctrl+K, Art Director 60-30-10 Polish, Live Work Session Stopwatch & Status Indicator, Creative Operations Upgrade)
 
 ### Added & Refined — Creative Request Architecture, Backlog Intake & Operations

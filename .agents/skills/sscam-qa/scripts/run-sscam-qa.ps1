@@ -11,7 +11,7 @@ $guardian = Join-Path $repoRoot 'QA\verify-sscam.ps1'
 $project = Join-Path $repoRoot 'src\SS-CAM\SS-CAM.csproj'
 $msbuild64 = Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319\MSBuild.exe'
 $msbuild32 = Join-Path $env:WINDIR 'Microsoft.NET\Framework\v4.0.30319\MSBuild.exe'
-$msbuild = if (Test-Path -LiteralPath $msbuild64) { $msbuild64 } else { $msbuild32 }
+$msbuild = if (Test-Path -LiteralPath $msbuild32) { $msbuild32 } else { $msbuild64 }
 $failures = [System.Collections.Generic.List[string]]::new()
 $warnings = [System.Collections.Generic.List[string]]::new()
 

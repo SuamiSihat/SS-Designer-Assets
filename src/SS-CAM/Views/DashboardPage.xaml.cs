@@ -109,6 +109,23 @@ namespace SS_CAM.Views
 
             // Initialise Live Studio Tasks stream & ticker
             InitLiveTasks();
+
+            WorkspaceWatcherService.Instance.WorkspaceChanged += OnWorkspaceChanged;
+        }
+
+        private void OnWorkspaceChanged(object sender, WorkspaceChangedEventArgs e)
+        {
+            Dispatcher.Invoke(async delegate
+            {
+                try
+                {
+                    await RefreshDashboard();
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine("[DashboardPage] WorkspaceChanged refresh error: " + ex.Message);
+                }
+            });
         }
 
         private void OnScrollViewerPreviewMouseWheel(object sender, System.Windows.Input.MouseWheelEventArgs e)
@@ -134,6 +151,7 @@ namespace SS_CAM.Views
 
         private void OnPageUnloaded(object sender, RoutedEventArgs e)
         {
+            WorkspaceWatcherService.Instance.WorkspaceChanged -= OnWorkspaceChanged;
             if (_tipTimer != null)
             {
                 _tipTimer.Stop();

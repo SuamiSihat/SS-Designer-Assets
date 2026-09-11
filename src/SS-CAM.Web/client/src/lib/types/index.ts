@@ -133,6 +133,13 @@ export interface Project {
   copywriting?: CopywritingState;
   approvals?: ApprovalRecord[];
   deliverables?: DeliverableItem[];
+  subtasks?: any[];
+  completedSubtasksCount?: number;
+  totalSubtasksCount?: number;
+  totalWeight?: number;
+  categoryWeight?: number | null;
+  subtaskProgressDisplay?: string;
+  deadlineDisplay?: string;
 }
 
 export interface DashboardKPIs {
@@ -305,7 +312,14 @@ export interface AssignedProjectSummary {
   presetCode?: string;
   slaDays?: number;
   slotWeight?: number;
+  totalWeight?: number;
   shortLabel?: string;
+  subtasks?: any[];
+  completedSubtasksCount?: number;
+  totalSubtasksCount?: number;
+  subtaskProgressDisplay?: string;
+  deadlineDisplay?: string;
+  categoryWeight?: number | null;
 }
 
 export interface TeamMember {

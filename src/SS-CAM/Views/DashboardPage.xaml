@@ -292,7 +292,7 @@
                             <ui:SymbolIcon Symbol="PeopleTeam24" FontSize="16" Foreground="{DynamicResource FluentBrand80}" Margin="0,0,8,0" VerticalAlignment="Center"/>
                             <ui:TextBlock Text="Designer Workload &amp; Capacity Radar" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource TextFillColorPrimaryBrush}" VerticalAlignment="Center"/>
                         </StackPanel>
-                        <ui:TextBlock Grid.Column="1" Text="Max 4 active tasks recommended" FontSize="11" Foreground="{DynamicResource TextFillColorSecondaryBrush}" VerticalAlignment="Center"/>
+                        <ui:TextBlock Grid.Column="1" Text="Max 5.0 creative units recommended" FontSize="11" Foreground="{DynamicResource TextFillColorSecondaryBrush}" VerticalAlignment="Center"/>
                     </Grid>
 
                     <ItemsControl x:Name="DesignerWorkloadControl">
@@ -312,7 +312,11 @@
                                             </Grid.ColumnDefinitions>
                                             <StackPanel>
                                                 <ui:TextBlock Text="{Binding DesignerName}" FontWeight="Bold" FontSize="13" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                                                <ui:TextBlock Text="{Binding StaffId}" FontSize="10.5" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                                <StackPanel Orientation="Horizontal">
+                                                    <ui:TextBlock Text="{Binding StaffId}" FontSize="10.5" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                                    <ui:TextBlock Text=" &#x2022; " FontSize="10.5" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                                    <ui:TextBlock Text="{Binding ActiveWeightDisplay}" FontSize="10.5" FontWeight="SemiBold" Foreground="{DynamicResource FluentBrand80}"/>
+                                                </StackPanel>
                                             </StackPanel>
                                             <Border Grid.Column="1" Background="{DynamicResource FluentBrandLight}" CornerRadius="4" Padding="6,2" VerticalAlignment="Top">
                                                 <ui:TextBlock Text="{Binding CapacityStatus}" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource FluentBrand80}"/>
